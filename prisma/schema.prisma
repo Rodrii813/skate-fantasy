@@ -1,0 +1,207 @@
+// Skate Fantasy — modelo de datos
+//
+// Idea general: un Evento (p.ej. "Libre Senior Femenino" en el
+// "Campeonato del Mundo 2026") tiene varios "Slots" de fantasy
+// (p.ej. "Mejor combinación de saltos", "Giro combinado", "Componentes").
+// El usuario elige un patinador inscrito en ese evento para cada slot.
+// El admin, tras la competición, introduce a mano la puntuación real que
+// sacó cada patinador en cada categoría de elemento (tal como viene en el
+// protocolo oficial). La puntuación fantasy de un usuario = suma de la
+// puntuación real obtenida por el patinador que eligió, en el elemento
+// que corresponde a cada slot.
+//
+// Todo el catálogo (disciplinas, categorías de edad, categorías de
+// elemento) es editable desde el panel de admin, sin tocar código, porque
+// el reglamento de World Skate cambia de temporada en temporada.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum EventStatus {
+  UPCOMING // aún se pueden hacer/editar picks
+  LOCKED // el plazo de picks ha cerrado, competición en curso
+  RESULTS_IN // el admin ya ha cargado puntuaciones (parcial o total)
+  FINISHED // evento cerrado, ranking definitivo
+}
+
+model User {
+  id           String          @id @default(cuid())
+  name         String
+  email        String          @unique
+  passwordHash String
+  role         Role            @default(USER)
+  createdAt    DateTime        @default(now())
+  rosters      FantasyRoster[]
+}
+
+model Discipline {
+  id     String  @id @default(cuid())
+  name   String  @unique // Libre, Parejas, Solo Danza, Pareja Danza, Inline, Show, Precisión, Figuras...
+  slug   String  @unique
+  events Event[]
+  skaters Skater[]
+}
+
+model Category {
+  id     String  @id @default(cuid())
+  name   String  @unique // Senior, Junior, Cadete, Juvenil, Infantil, Alevín, Novato A/B/C...
+  slug   String  @unique
+  order  Int     @default(0) // para ordenar de menor a mayor nivel
+  events Event[]
+  skaters Skater[]
+}
+
+model Competition {
+  id        String   @id @default(cuid())
+  name      String // p.ej. "Campeonato del Mundo World Skate Games 2026"
+  season    String // p.ej. "2026"
+  location  String?
+  startDate DateTime
+  endDate   DateTime
+  events    Event[]
+}
+
+// Un Event = una disciplina+categoría concreta dentro de una competición
+// p.ej. "Libre Senior Femenino — World Skate Games 2026"
+model Event {
+  id             String        @id @default(cuid())
+  competitionId  String
+  competition    Competition   @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  disciplineId   String
+  discipline     Discipline    @relation(fields: [disciplineId], references: [id])
+  categoryId     String
+  category       Category      @relation(fields: [categoryId], references: [id])
+  name           String // etiqueta libre, p.ej. "Libre Senior Femenino"
+  rosterLocksAt  DateTime // deadline para hacer/cambiar picks
+  status         EventStatus   @default(UPCOMING)
+  segments       Segment[]
+  slots          FantasySlot[]
+  registrations  Registration[]
+  rosters        FantasyRoster[]
+
+  @@index([competitionId])
+}
+
+// Programa Corto / Programa Libre / Danza Obligatoria / Danza Libre / Figura...
+model Segment {
+  id      String  @id @default(cuid())
+  eventId String
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name    String
+  order   Int     @default(0)
+  slots        FantasySlot[]
+  elementScores ElementScore[]
+
+  @@index([eventId])
+}
+
+// Catálogo global de tipos de elemento puntuable (configurable por admin)
+// p.ej. "Salto individual", "Combinación de saltos", "Giro combinado",
+// "Secuencia de pasos", "Secuencia coreográfica", "Componentes del programa"
+model ElementCategory {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  slug          String         @unique
+  slots         FantasySlot[]
+  elementScores ElementScore[]
+}
+
+// Define qué debe elegir el usuario para un Event concreto: un slot por
+// cada hueco del roster fantasy. label permite renombrar el slot para ese
+// evento en particular (p.ej. "Mejor salto del programa libre").
+model FantasySlot {
+  id                String           @id @default(cuid())
+  eventId           String
+  event             Event            @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  elementCategoryId String
+  elementCategory   ElementCategory  @relation(fields: [elementCategoryId], references: [id])
+  segmentId         String?
+  segment           Segment?         @relation(fields: [segmentId], references: [id])
+  label             String
+  order             Int              @default(0)
+  picks             FantasyPick[]
+
+  @@index([eventId])
+}
+
+model Skater {
+  id            String         @id @default(cuid())
+  firstName     String
+  lastName      String
+  country       String // código ISO-3166 alpha-3, p.ej. "ESP"
+  disciplineId  String
+  discipline    Discipline     @relation(fields: [disciplineId], references: [id])
+  categoryId    String
+  category      Category       @relation(fields: [categoryId], references: [id])
+  registrations Registration[]
+  picks         FantasyPick[]
+
+  @@index([disciplineId, categoryId])
+}
+
+// Confirma que un patinador compite en un evento concreto (así el
+// selector de picks solo muestra inscritos reales, no todo el catálogo)
+model Registration {
+  id            String         @id @default(cuid())
+  eventId       String
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  skaterId      String
+  skater        Skater         @relation(fields: [skaterId], references: [id])
+  elementScores ElementScore[]
+
+  @@unique([eventId, skaterId])
+}
+
+// La puntuación real, introducida a mano por el admin desde el protocolo
+// oficial: lo que sacó un patinador inscrito, en un segmento, en una
+// categoría de elemento concreta.
+model ElementScore {
+  id                String          @id @default(cuid())
+  registrationId    String
+  registration      Registration    @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  segmentId         String
+  segment           Segment         @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  elementCategoryId String
+  elementCategory   ElementCategory @relation(fields: [elementCategoryId], references: [id])
+  value             Float // puntuación oficial obtenida
+  note              String? // p.ej. nombre exacto del elemento ("3A", "CCoSp4")
+
+  @@unique([registrationId, segmentId, elementCategoryId])
+}
+
+// El equipo fantasy de un usuario para un evento concreto
+model FantasyRoster {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  picks     FantasyPick[]
+
+  @@unique([userId, eventId])
+}
+
+model FantasyPick {
+  id        String        @id @default(cuid())
+  rosterId  String
+  roster    FantasyRoster @relation(fields: [rosterId], references: [id], onDelete: Cascade)
+  slotId    String
+  slot      FantasySlot   @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  skaterId  String
+  skater    Skater        @relation(fields: [skaterId], references: [id])
+
+  @@unique([rosterId, slotId])
+}
