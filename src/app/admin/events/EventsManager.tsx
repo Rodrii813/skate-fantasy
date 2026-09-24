@@ -24,40 +24,103 @@ export default function EventsManager({
   const [gender, setGender] = useState<"" | "MALE" | "FEMALE">("");
   const [rosterLocksAt, setRosterLocksAt] = useState("");
 
+  const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
-  const handleCreateEvent = async (e: React.FormEvent) => {
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
+  const [deleteConfirmText, setDeleteConfirmText] = useState("");
+  const [loadingDelete, setLoadingDelete] = useState(false);
+
+  const resetForm = () => {
+    setEditingEventId(null);
+    setName("");
+    setCompetitionId(competitions[0]?.id || "");
+    setDisciplineId(disciplines[0]?.id || "");
+    setCategoryId(categories[0]?.id || "");
+    setGender("");
+    setRosterLocksAt("");
+  };
+
+  const toDatetimeLocalValue = (isoDate: string) => {
+    const d = new Date(isoDate);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
+      d.getMinutes()
+    )}`;
+  };
+
+  const handleEditClick = (ev: any) => {
+    setEditingEventId(ev.id);
+    setName(ev.name || "");
+    setCompetitionId(ev.competitionId || ev.competition?.id || "");
+    setDisciplineId(ev.disciplineId || ev.discipline?.id || "");
+    setCategoryId(ev.categoryId || ev.category?.id || "");
+    setGender(ev.gender || "");
+    setRosterLocksAt(ev.rosterLocksAt ? toDatetimeLocalValue(ev.rosterLocksAt) : "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleSubmitEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingCreate(true);
     setStatusMessage(null);
 
+    const isEditing = Boolean(editingEventId);
+
     try {
-      const res = await fetch("/api/admin/events", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          competitionId,
-          disciplineId,
-          categoryId,
-          rosterLocksAt,
-          gender: gender || null,
-        }),
-      });
+      const res = await fetch(
+        isEditing ? `/api/admin/events/${editingEventId}` : "/api/admin/events",
+        {
+          method: isEditing ? "PATCH" : "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            competitionId,
+            disciplineId,
+            categoryId,
+            rosterLocksAt,
+            gender: gender || null,
+          }),
+        }
+      );
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error creando el evento");
+      if (!res.ok) throw new Error(data.error || (isEditing ? "Error editando el evento" : "Error creando el evento"));
 
-      setName("");
-      setGender("");
-      setStatusMessage("✅ Evento creado correctamente");
+      resetForm();
+      setStatusMessage(isEditing ? "✅ Evento actualizado correctamente" : "✅ Evento creado correctamente");
       router.refresh();
     } catch (err: any) {
       setStatusMessage(`❌ ${err.message}`);
     } finally {
       setLoadingCreate(false);
+    }
+  };
+
+  const handleDeleteEvent = async () => {
+    if (!deleteTarget || deleteConfirmText !== deleteTarget.name) return;
+    setLoadingDelete(true);
+    setStatusMessage(null);
+
+    try {
+      const res = await fetch(`/api/admin/events/${deleteTarget.id}`, {
+        method: "DELETE",
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error borrando el evento");
+
+      if (editingEventId === deleteTarget.id) resetForm();
+      setDeleteTarget(null);
+      setDeleteConfirmText("");
+      setStatusMessage("✅ Evento borrado correctamente");
+      router.refresh();
+    } catch (err: any) {
+      setStatusMessage(`❌ ${err.message}`);
+    } finally {
+      setLoadingDelete(false);
     }
   };
 
@@ -92,14 +155,25 @@ export default function EventsManager({
         </div>
       )}
 
-      {/* Formulario Crear Evento */}
+      {/* Formulario Crear/Editar Evento */}
       <form
-        onSubmit={handleCreateEvent}
+        onSubmit={handleSubmitEvent}
         className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4 shadow-xl"
       >
-        <h2 className="text-sm font-bold uppercase tracking-wider text-indigo-400">
-          ➕ Crear Nuevo Evento / Prueba
-        </h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-indigo-400">
+            {editingEventId ? "✏️ Editar Evento / Prueba" : "➕ Crear Nuevo Evento / Prueba"}
+          </h2>
+          {editingEventId && (
+            <button
+              type="button"
+              onClick={resetForm}
+              className="text-[11px] text-slate-400 hover:text-slate-200 underline"
+            >
+              Cancelar edición
+            </button>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
           <div className="space-y-1">
@@ -194,7 +268,13 @@ export default function EventsManager({
           disabled={loadingCreate}
           className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-xs transition"
         >
-          {loadingCreate ? "Creando evento..." : "Guardar Evento"}
+          {loadingCreate
+            ? editingEventId
+              ? "Guardando cambios..."
+              : "Creando evento..."
+            : editingEventId
+            ? "Guardar Cambios"
+            : "Guardar Evento"}
         </button>
       </form>
 
@@ -273,12 +353,79 @@ export default function EventsManager({
                       La generación automática de slots aún no está disponible para esta disciplina
                     </span>
                   )}
+
+                  <button
+                    onClick={() => handleEditClick(ev)}
+                    className="bg-slate-800 hover:bg-slate-700 text-amber-300 hover:text-amber-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition"
+                  >
+                    ✏️ Editar
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setDeleteTarget({ id: ev.id, name: ev.name });
+                      setDeleteConfirmText("");
+                    }}
+                    className="bg-slate-800 hover:bg-red-900 text-red-400 hover:text-red-200 text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 hover:border-red-800 transition"
+                  >
+                    🗑️ Borrar
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       </div>
+
+      {/* Modal de confirmación de borrado */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+          <div className="bg-slate-900 border border-red-900 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-2xl">
+            <h3 className="text-sm font-bold uppercase tracking-wider text-red-400">
+              ⚠️ Borrar evento
+            </h3>
+            <p className="text-xs text-slate-300">
+              Esto borrará permanentemente el evento{" "}
+              <span className="font-bold text-slate-100">"{deleteTarget.name}"</span> y todo lo
+              que dependa de él: slots, inscripciones y puntuaciones de patinadores, rosters y
+              picks de fantasy, y porras. Esta acción no se puede deshacer.
+            </p>
+            <div className="space-y-1">
+              <label className="text-slate-400 font-semibold text-xs">
+                Escribe el nombre exacto del evento para confirmar:
+              </label>
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder={deleteTarget.name}
+                autoFocus
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-xs"
+              />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeleteTarget(null);
+                  setDeleteConfirmText("");
+                }}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-4 py-2 rounded-xl transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleDeleteEvent}
+                disabled={deleteConfirmText !== deleteTarget.name || loadingDelete}
+                className="bg-red-700 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold px-4 py-2 rounded-xl transition"
+              >
+                {loadingDelete ? "Borrando..." : "Borrar definitivamente"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
