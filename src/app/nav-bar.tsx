@@ -17,6 +17,9 @@ export default function NavBar() {
           <Link href="/events" className="hover:text-white">
             Eventos
           </Link>
+          <Link href="/calendario" className="hover:text-white">
+            Calendario
+          </Link>
           <Link href="/leaderboard" className="hover:text-white">
             Ranking
           </Link>

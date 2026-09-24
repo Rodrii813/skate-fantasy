@@ -92,6 +92,7 @@ model Event {
   name          String          // "Solo Danza Senior Femenino"
   gender        Gender?         // Género estructurado del evento (opcional; el nombre libre sigue siendo la fuente visible hasta que se rellene)
   rosterLocksAt DateTime        // deadline para fantasy y predicciones
+  scheduledAt   DateTime?       // Fecha y hora real en que la prueba se disputa en pista (calendario público); no confundir con rosterLocksAt
   status        EventStatus     @default(UPCOMING)
   segments      Segment[]
   slots         FantasySlot[]
