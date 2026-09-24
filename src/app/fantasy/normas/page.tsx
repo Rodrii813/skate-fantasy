@@ -1,0 +1,179 @@
+import Link from "next/link";
+
+export const metadata = {
+  title: "Normas del Fantasy — Skate Fantasy",
+};
+
+function Section({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 border-t border-white/10 pt-6">
+      <h2 className="font-display text-xl font-semibold text-white">{title}</h2>
+      <div className="space-y-3 text-sm leading-relaxed text-ice-100/80">{children}</div>
+    </section>
+  );
+}
+
+function Card({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-4">{children}</div>
+  );
+}
+
+export default function NormasPage() {
+  return (
+    <div className="space-y-8 pb-12">
+      <div>
+        <p className="text-xs uppercase tracking-wide text-accent">Fantasy</p>
+        <h1 className="font-display text-3xl font-semibold text-white">Normas del Fantasy</h1>
+        <p className="mt-3 max-w-2xl text-sm text-ice-100/70">
+          Estas son las reglas reales que aplica la web al validar tu alineación — no es un
+          resumen aparte, es exactamente lo que comprueba el formulario y el servidor al guardar
+          tus picks.
+        </p>
+      </div>
+
+      <Section title="1. Cómo se juega">
+        <p>
+          Por cada prueba (evento) del calendario, eliges una patinadora distinta para cada{" "}
+          <strong className="text-white">slot</strong>: un slot es un elemento concreto del
+          programa (un salto, una combinación de giros, una secuencia de pasos…) o un bloque de
+          componentes del programa (skating skills, transiciones, performance, coreografía).
+        </p>
+        <p>
+          No eliges "quién gana la prueba" de golpe — eliges, elemento a elemento, a quién crees
+          que le va a salir mejor esa parte concreta del programa. Al final se suman las notas
+          oficiales de cada elemento que elegiste y esa es tu puntuación.
+        </p>
+        <p className="text-xs text-ice-100/50">
+          Por qué funciona así: en patinaje real, la ejecución de cada elemento varía mucho de una
+          patinadora a otra e incluso de una competición a otra (una combinación de salto puede
+          fallar y convertirse en un salto individual, por ejemplo). Elegir por elemento, en vez
+          de por posición fija del programa, refleja mejor lo que de verdad pasó sobre el hielo.
+        </p>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Programa Corto — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Combo Jump</li>
+              <li>Solo Jump</li>
+              <li>Axel</li>
+              <li>Spins (piruetas)</li>
+              <li>Step Sequence</li>
+            </ul>
+          </Card>
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Programa Largo — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Combo Jump 1 y 2</li>
+              <li>Solo Jump 1 y 2</li>
+              <li>Spins (piruetas)</li>
+              <li>Choreo Sequence</li>
+            </ul>
+          </Card>
+        </div>
+        <p>
+          En ambos programas hay además 2 slots de{" "}
+          <strong className="text-white">Componentes del Programa</strong>: "Skating Skills +
+          Transitions" y "Performance + Choreography".
+        </p>
+      </Section>
+
+      <Section title="2. Restricciones al elegir: grupos de calentamiento">
+        <p>
+          Las patinadoras inscritas se agrupan en <strong className="text-white">grupos de
+          calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
+          más alto patina al final y suele reunir a las favoritas. Sin estos límites, todo el
+          mundo elegiría siempre a las mismas 3-4 patinadoras top, así que hay un máximo por
+          grupo:
+        </p>
+        <div className="space-y-2">
+          <Card>
+            <p className="font-semibold text-white">Elementos técnicos</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>No puedes repetir la misma patinadora en dos slots técnicos distintos.</li>
+              <li>Máximo 2 patinadoras técnicas del grupo de calentamiento más alto.</li>
+              <li>Máximo 2 patinadoras técnicas del segundo grupo más alto.</li>
+            </ul>
+          </Card>
+          <Card>
+            <p className="font-semibold text-white">Componentes del programa</p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Máximo 1 patinadora por cada grupo de calentamiento.</li>
+              <li>
+                Aquí sí puedes repetir a alguien que ya hayas usado en un slot técnico — la
+                restricción de "no repetir" solo aplica entre slots técnicos.
+              </li>
+            </ul>
+          </Card>
+        </div>
+        <p className="text-xs text-ice-100/50">
+          Estas reglas de grupos están pensadas para la disciplina Libre. Si en el futuro se
+          añaden slots para otras disciplinas (Danza, Parejas, Precisión…), sus límites concretos
+          se anunciarán aparte cuando estén disponibles.
+        </p>
+      </Section>
+
+      <Section title="3. Cómo se puntúa el Fantasy">
+        <p>
+          Tu puntuación en una prueba es la suma de las notas oficiales de cada elemento que
+          elegiste — la misma nota que aparece en el protocolo oficial de jueces de World Skate
+          (TES para elementos técnicos, PCS para componentes). Nosotros cargamos esas notas a mano
+          desde los PDFs oficiales en cuanto se publican los resultados.
+        </p>
+        <p>
+          Cada prueba tiene un <strong className="text-white">plazo de cierre</strong> (lo verás
+          como fecha límite al elegir tu alineación): pasado ese momento ya no se pueden cambiar
+          los picks para esa prueba, para que nadie elija con los resultados ya conocidos.
+        </p>
+      </Section>
+
+      <Section title="4. Predicción / Porra (juego aparte)">
+        <p>
+          Independiente del Fantasy por elementos, cada prueba tiene también una "porra" donde
+          predices el podio y siguientes puestos. Se puntúa así:
+        </p>
+        <Card>
+          <ul className="list-inside list-disc space-y-1 text-ice-100/75">
+            <li>
+              <strong className="text-white">5 puntos</strong> por cada puesto que aciertes
+              exacto.
+            </li>
+            <li>
+              <strong className="text-white">1 punto</strong> si fallas por solo una posición
+              (la pusiste 5ª y quedó 4ª o 6ª).
+            </li>
+            <li>
+              <strong className="text-white">+2 puntos extra</strong> si predijiste a alguien en
+              el podio (1º-3º) y esa patinadora terminó también en el podio, aunque no en el
+              puesto exacto que le pusiste.
+            </li>
+            <li>
+              <strong className="text-white">+3 puntos de bonus</strong> si aciertas el podio
+              completo exacto (1º, 2º y 3º en su orden correcto).
+            </li>
+          </ul>
+        </Card>
+      </Section>
+
+      <div className="border-t border-white/10 pt-6">
+        <Link
+          href="/events"
+          className="inline-flex items-center rounded-full bg-gold px-5 py-2 text-sm font-semibold text-rink hover:bg-gold/90"
+        >
+          Ver pruebas abiertas →
+        </Link>
+      </div>
+    </div>
+  );
+}

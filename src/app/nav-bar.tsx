@@ -20,6 +20,9 @@ export default function NavBar() {
           <Link href="/leaderboard" className="hover:text-white">
             Ranking
           </Link>
+          <Link href="/fantasy/normas" className="hover:text-white">
+            Normas
+          </Link>
           {isAdmin && (
             <Link href="/admin" className="hover:text-white">
               Admin

@@ -143,6 +143,14 @@ export default function FantasyRosterForm({
         <h1 className="text-xl font-black text-slate-100 mt-1">
           Technical Elements & Components: Draft Constraints
         </h1>
+        <a
+          href="/fantasy/normas"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-1 inline-block text-[11px] text-indigo-400 underline hover:text-indigo-300"
+        >
+          Ver normas completas del Fantasy →
+        </a>
       </div>
 
       {/* Reglas Técnicas */}
