@@ -129,9 +129,48 @@ export default function JudgesDetailsUploadPage() {
                 : "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
             }`}
           >
-            {result.error
-              ? `❌ ${result.error}`
-              : `✅ Procesados ${result.skatersParsed} patinadores. Se han computado las puntuaciones de ${result.matchedAndScored} patinadores en los slots.`}
+            {result.error ? (
+              <span>❌ {result.error}</span>
+            ) : (
+              <div>
+                <span>
+                  ✅ Procesados {result.skatersParsed} patinadores (
+                  {result.registrationsInEvent} inscritos en el evento) →{" "}
+                  {result.matchedAndScored} puntuados en "{result.segment}".
+                </span>
+
+                {result.unmatchedNames && result.unmatchedNames.length > 0 && (
+                  <div className="mt-2 font-normal text-amber-400">
+                    ⚠️ No encontrados como inscritos: {result.unmatchedNames.join(", ")}
+                  </div>
+                )}
+
+                {result.registeredNames && (
+                  <div className="mt-3 grid grid-cols-2 gap-3 font-normal">
+                    <div>
+                      <p className="text-slate-400 mb-1">
+                        Inscritos en BD ({result.registeredNames.length})
+                      </p>
+                      <ul className="text-slate-300 space-y-0.5">
+                        {result.registeredNames.map((n: string, i: number) => (
+                          <li key={i}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 mb-1">
+                        Leídos del PDF ({result.parsedNames.length})
+                      </p>
+                      <ul className="text-slate-300 space-y-0.5">
+                        {result.parsedNames.map((n: string, i: number) => (
+                          <li key={i}>{n}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

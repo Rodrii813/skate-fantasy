@@ -33,77 +33,54 @@ export interface SkaterDetailedResult {
   };
 }
 
+function keywordToType(keyword: string, nearbyText: string): ElementExecution["type"] {
+  if (keyword === "ComboJump") return "COMBO_JUMP";
+  if (keyword === "Jump") return nearbyText.includes("Axel") ? "AXEL" : "SOLO_JUMP";
+  if (keyword === "ComboSpin" || keyword === "Spin") return "SPIN";
+  if (keyword === "Step Sequence") return "STEP";
+  return "CHOREO";
+}
+
 export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] {
   const results: SkaterDetailedResult[] = [];
-
-  // Normalizar saltos de línea y espacios
   const cleanText = pdfText.replace(/\r\n/g, "\n");
-
-  // Localizar todas las fichas individuales de "JUDGES DETAILS PER SKATER"
   const skaterChunks = cleanText.split(/JUDGES DETAILS PER SKATER/i);
 
-  // Descartamos la cabecera previa a la primera ficha
   for (let idx = 1; idx < skaterChunks.length; idx++) {
     const chunk = skaterChunks[idx];
+    const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
 
-    // 1. Extraer Rank (ej: Rank \n 1 o Rank 1)
-    const rankMatch = chunk.match(/Rank\s*(\d+)/i) || chunk.match(/(?:^|\n)\s*(\d+)\s*\n\s*(?:Name|[A-ZÁÉÍÓÚÑ\s]{4,})/);
-    const rank = rankMatch ? parseInt(rankMatch[1], 10) : idx;
+    // El nombre del patinador es siempre la primera línea no vacía tras el
+    // separador "JUDGES DETAILS PER SKATER" en el formato real de World
+    // Skate (antes se buscaba con un regex "Name\n..." que no existe en
+    // este PDF, y por eso capturaba la cabecera de la tabla, "Total
+    // Element score", en vez del nombre real).
+    let fullName = lines[0] || "";
+    fullName = fullName.replace(/\s+/g, " ").trim();
+    if (!fullName || /^(rank|name|total|nation)\b/i.test(fullName)) continue;
 
-    // 2. Extraer Nombre del Patinador
-    let fullName = "";
-    // Patrón 1: Name seguido del nombre en la siguiente línea o misma línea
-    const nameMatch = chunk.match(/Name\s*\n\s*([A-ZÁÉÍÓÚÑ\s'-]{4,})/i) || 
-                      chunk.match(/Name\s+([A-ZÁÉÍÓÚÑ\s'-]{4,})/i);
+    // Fila de totales real: "<rank> <NAT>\n<TES> <PCS> <DED> <TOTAL>"
+    const totalsMatch = chunk.match(
+      /(\d+)\s+([A-Z]{3})\s*\n?\s*(\d+\.\d{2})\s+(\d+\.\d{2})\s+([-\d.]+)\s+(\d+\.\d{2})/
+    );
 
-    if (nameMatch) {
-      fullName = nameMatch[1].trim();
-    } else {
-      // Patrón 2: buscar la línea en mayúsculas después de Rank
-      const lines = chunk.split("\n").map(l => l.trim()).filter(Boolean);
-      for (const line of lines.slice(0, 15)) {
-        if (
-          /^[A-ZÁÉÍÓÚÑ\s'-]{5,}$/.test(line) &&
-          !line.includes("TOTAL") &&
-          !line.includes("ELEMENT") &&
-          !line.includes("SCORE") &&
-          !line.includes("PROGRAM") &&
-          !line.includes("WORLD") &&
-          !line.includes("SKATE") &&
-          !line.includes("NATION")
-        ) {
-          fullName = line;
-          break;
-        }
-      }
-    }
-
-    if (!fullName) continue;
-
-    // Limpiar posibles residuos en el nombre
-    fullName = fullName.replace(/\b(Nation|POR|ESP|ITA|FRA|GER|AND|NED|DEN|SLO)\b/g, "").replace(/\s+/g, " ").trim();
-
-    // 3. Extraer Totales (TES, PCS, Deductions, Segment Score)
-    const scoreRowMatch = chunk.match(/(\d+\.\d{2})\s+(\d+\.\d{2})\s+([-\d.]+)\s+(\d+\.\d{2})/);
-    const tes = scoreRowMatch ? parseFloat(scoreRowMatch[1]) : 0;
-    const pcs = scoreRowMatch ? parseFloat(scoreRowMatch[2]) : 0;
-    const deductions = scoreRowMatch ? parseFloat(scoreRowMatch[3]) : 0;
-    const segmentScore = scoreRowMatch ? parseFloat(scoreRowMatch[4]) : 0;
+    const rank = totalsMatch ? parseInt(totalsMatch[1], 10) : idx;
+    const nation = totalsMatch ? totalsMatch[2] : undefined;
+    const tes = totalsMatch ? parseFloat(totalsMatch[3]) : 0;
+    const pcs = totalsMatch ? parseFloat(totalsMatch[4]) : 0;
+    const deductions = totalsMatch ? parseFloat(totalsMatch[5]) : 0;
+    const segmentScore = totalsMatch ? parseFloat(totalsMatch[6]) : 0;
 
     const skaterResult: SkaterDetailedResult = {
       rank,
       fullName,
+      nation,
       tes,
       pcs,
       deductions,
       segmentScore,
       elements: [],
-      components: {
-        skatingSkills: 0,
-        transitions: 0,
-        performance: 0,
-        choreography: 0,
-      },
+      components: { skatingSkills: 0, transitions: 0, performance: 0, choreography: 0 },
       slotScores: {
         comboJump1: 0,
         comboJump2: 0,
@@ -118,58 +95,101 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
       },
     };
 
-    // 4. Extraer Componentes (PCS) buscando la última nota de la fila
+    // Componentes (PCS): en el PDF real cada fila es
+    // "<Label> <J1> <J2> <J3> <J4> <J5> <factored>[factor]", y el valor que
+    // queremos es el penúltimo número (el "factored"), no el primero.
     const getPcsValue = (label: string): number => {
-      const reg = new RegExp(`${label}[\\s\\S]*?(\\d+\\.\\d{2})\\s*(?:\\n|Judges|Transitions|Performance|Choreography)`, "i");
+      const reg = new RegExp(
+        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\d?\\s*$`,
+        "im"
+      );
       const match = chunk.match(reg);
       return match ? parseFloat(match[1]) : 0;
     };
-
     skaterResult.components.skatingSkills = getPcsValue("Skating Skills");
-    skaterResult.components.transitions = getPcsValue("Transitions");
-    skaterResult.components.performance = getPcsValue("Performance");
-    skaterResult.components.choreography = getPcsValue("Choreography");
+    skaterResult.components.transitions = getPcsValue("Transitions/Linking Footwork/Movement");
+    skaterResult.components.performance = getPcsValue("Performance/Execution");
+    skaterResult.components.choreography = getPcsValue("Choreography/Composition");
 
-    // 5. Extraer Elementos Técnicos por líneas individuales
-    const lines = chunk.split("\n").map(l => l.trim()).filter(Boolean);
+    const elementsSectionEnd = chunk.search(/Total\s*\n\s*Segment\s*\n\s*score|Program Components/i);
+    const elementsText = elementsSectionEnd > -1 ? chunk.slice(0, elementsSectionEnd) : chunk;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
+    // Cada elemento técnico empieza con una línea del tipo
+    // "<base> <final>ComboJump1 3 Flip3F +1+1+1+1+11.00" y, cuando el
+    // elemento tiene varias piezas (p.ej. un ComboSpin con 4 posturas), las
+    // líneas siguientes también son pares "<base> <final>" que hay que
+    // sumar al mismo elemento hasta la siguiente declaración.
+    //
+    // Los regex van anclados al INICIO DE LÍNEA ('m'): los pares base/final
+    // reales siempre abren su línea en este formato. Sin el anclaje, las
+    // marcas de jueces pegadas al final de una línea ("+1+1+1+1+11.00")
+    // pueden "empalmar" con el número del inicio de la línea siguiente y
+    // formar un número falso que contamina el elemento equivocado.
+    const declRegexA =
+      /^(\d+\.\d{2})\s+(\d+\.\d{2})(ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step)(\d+)/gm;
+    const declRegexB = /(ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step)(\d+)/g;
+    const pairRegex = /^(\d+\.\d{2})\s+(\d+\.\d{2})/gm;
 
-      // Detectar ComboJump
-      if (line.includes("ComboJump")) {
-        const score = extractScoresOfPanel(lines, i);
-        if (score > 0) skaterResult.elements.push({ type: "COMBO_JUMP", name: "Combo Jump", score });
+    type Ev =
+      | { pos: number; kind: "decl"; category: string; hasOwnScore: boolean; final?: number; matchLen: number }
+      | { pos: number; kind: "pair"; final: number; matchLen: number };
+
+    const events: Ev[] = [];
+
+    for (const m of elementsText.matchAll(declRegexA)) {
+      events.push({
+        pos: m.index!,
+        kind: "decl",
+        category: m[3],
+        hasOwnScore: true,
+        final: parseFloat(m[2]),
+        matchLen: m[0].length,
+      });
+    }
+    for (const m of elementsText.matchAll(declRegexB)) {
+      const alreadyCovered = events.some(
+        (e) => e.kind === "decl" && e.pos <= m.index! && m.index! < e.pos + e.matchLen
+      );
+      if (alreadyCovered) continue;
+      events.push({ pos: m.index!, kind: "decl", category: m[1], hasOwnScore: false, matchLen: m[0].length });
+    }
+    for (const m of elementsText.matchAll(pairRegex)) {
+      const coveredByDecl = events.some((e) => e.kind === "decl" && e.hasOwnScore && e.pos === m.index!);
+      if (coveredByDecl) continue;
+      events.push({ pos: m.index!, kind: "pair", final: parseFloat(m[2]), matchLen: m[0].length });
+    }
+
+    events.sort((a, b) => a.pos - b.pos);
+
+    let currentCategory: string | null = null;
+    let currentSum = 0;
+    let currentStartPos = 0;
+
+    const flush = () => {
+      if (currentCategory !== null) {
+        // Para decidir si un "Jump" es un Axel, solo miramos su MISMA
+        // línea (hasta el siguiente salto de línea): una ventana de
+        // longitud fija podía colarse en la línea del elemento siguiente
+        // y clasificar mal un salto normal como Axel.
+        const lineEnd = elementsText.indexOf("\n", currentStartPos);
+        const nearby =
+          lineEnd > -1 ? elementsText.slice(currentStartPos, lineEnd) : elementsText.slice(currentStartPos);
+        const type = keywordToType(currentCategory, nearby);
+        skaterResult.elements.push({ type, name: currentCategory, score: Number(currentSum.toFixed(2)) });
       }
-      // Detectar Jump individual
-      else if (line === "Jump" || line.startsWith("Jump ") || line.endsWith("Jump") || /^\d+\s*Jump/i.test(line)) {
-        const block = lines.slice(i, i + 6).join(" ");
-        const isAxel = block.includes("Axel") || block.includes("1A") || block.includes("2A") || block.includes("3A");
-        const score = extractScoresOfPanel(lines, i);
-        if (score > 0) {
-          skaterResult.elements.push({
-            type: isAxel ? "AXEL" : "SOLO_JUMP",
-            name: isAxel ? "Axel" : "Solo Jump",
-            score,
-          });
-        }
-      }
-      // Detectar Piruetas (ComboSpin o Spin)
-      else if (line.includes("ComboSpin") || (line.includes("Spin") && !line.includes("Broken") && !line.includes("No Level"))) {
-        const score = extractScoresOfPanel(lines, i);
-        if (score > 0) skaterResult.elements.push({ type: "SPIN", name: "Spin", score });
-      }
-      // Detectar Choreo Sequence (ChSt)
-      else if (line.includes("ChSt") || line.includes("Choreo Step")) {
-        const score = extractScoresOfPanel(lines, i);
-        if (score > 0) skaterResult.elements.push({ type: "CHOREO", name: "Choreo Step", score });
-      }
-      // Detectar Step Sequence (St)
-      else if (line.includes("Step Sequence") || line.includes("St1") || line.includes("StB")) {
-        const score = extractScoresOfPanel(lines, i);
-        if (score > 0) skaterResult.elements.push({ type: "STEP", name: "Step Sequence", score });
+    };
+
+    for (const ev of events) {
+      if (ev.kind === "decl") {
+        flush();
+        currentCategory = ev.category;
+        currentStartPos = ev.pos;
+        currentSum = ev.hasOwnScore ? ev.final! : 0;
+      } else if (ev.kind === "pair" && currentCategory !== null) {
+        currentSum += ev.final;
       }
     }
+    flush();
 
     // 6. Ordenar y asignar a los slots oficiales
     const combos = skaterResult.elements.filter((e) => e.type === "COMBO_JUMP").sort((a, b) => b.score - a.score);
@@ -200,22 +220,4 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
   }
 
   return results;
-}
-
-// Helper para extraer la nota de panel (Scores of Panel)
-function extractScoresOfPanel(lines: string[], startIdx: number): number {
-  for (let k = 1; k <= 15; k++) {
-    const candidate = lines[startIdx + k];
-    if (!candidate) break;
-    // Si llegamos a otro elemento, paramos
-    if (k > 1 && (candidate.includes("Combo") || candidate.includes("Jump") || candidate.includes("Sequence") || candidate.includes("Program Components"))) {
-      break;
-    }
-    const val = parseFloat(candidate);
-    // Un elemento puntúa habitualmente entre 0.01 y 30.00
-    if (!isNaN(val) && val > 0 && candidate.includes(".") && candidate.length <= 6) {
-      return val;
-    }
-  }
-  return 0;
 }

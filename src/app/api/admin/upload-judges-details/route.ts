@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File;
     const eventId = formData.get("eventId") as string;
+    const segmentName = (formData.get("segmentName") as string) || "";
 
     if (!file || !eventId) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
@@ -41,27 +42,26 @@ export async function POST(req: Request) {
     const { text } = await extractText(arrayBuffer);
     const fullText = Array.isArray(text) ? text.join("\n") : text;
 
-    // 2. Parsear el acta oficial con tu parser
+    // 2. Parsear el acta oficial
     const parsedResults = parseJudgesDetailsText(fullText);
 
     if (!parsedResults || parsedResults.length === 0) {
       return NextResponse.json(
-        { error: "No se pudieron extraer datos de patinadores del acta PDF." },
+        {
+          error:
+            "No se pudieron extraer datos de patinadores del acta PDF. Comprueba que es un acta 'Judges Details per Skater'.",
+        },
         { status: 422 }
       );
     }
 
-    // 3. Obtener el evento, registros y slots
+    // 3. Obtener el evento, inscripciones y slots
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
-        registrations: {
-          include: { skater: true },
-        },
+        registrations: { include: { skater: true } },
         segments: true,
-        slots: {
-          include: { elementCategory: true },
-        },
+        slots: { include: { elementCategory: true } },
       },
     });
 
@@ -69,18 +69,48 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
     }
 
-    const segment = event.segments[0];
+    if (event.registrations.length === 0) {
+      return NextResponse.json(
+        {
+          error:
+            `Este evento ("${event.name}") no tiene ningún patinador inscrito (Registration) todavía. ` +
+            `Registra a los patinadores de este evento antes de importar resultados. ` +
+            `El acta PDF se leyó bien (${parsedResults.length} patinadores), pero no hay nadie con quien compararla.`,
+        },
+        { status: 422 }
+      );
+    }
+
+    // Resuelve el segmento real por nombre (Short/Long), no siempre el primero
+    const segment = segmentName
+      ? event.segments.find(
+          (s) => s.name.trim().toLowerCase() === segmentName.trim().toLowerCase()
+        )
+      : event.segments[0];
+
     if (!segment) {
       return NextResponse.json(
-        { error: "Debes generar los slots del evento antes de importar resultados." },
+        {
+          error: `No existe el segmento "${segmentName}" en este evento. Genera sus slots antes de importar.`,
+        },
+        { status: 400 }
+      );
+    }
+
+    // Solo los slots de este segmento concreto
+    const segmentSlots = event.slots.filter((s) => s.segmentId === segment.id);
+
+    if (segmentSlots.length === 0) {
+      return NextResponse.json(
+        { error: `El segmento "${segment.name}" no tiene slots generados todavía.` },
         { status: 400 }
       );
     }
 
     let matchedAndScored = 0;
+    const unmatchedNames: string[] = [];
 
     for (const res of parsedResults) {
-      // En tu parser el nombre viene en skaterName (o fullName)
       const rawName = (res as any).skaterName || (res as any).fullName || "";
 
       if (
@@ -94,7 +124,6 @@ export async function POST(req: Request) {
 
       const targetName = cleanStr(rawName);
 
-      // Buscar coincidencia en las inscripciones del evento
       const matchedReg = event.registrations.find((reg) => {
         const fullDirect = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
         const fullInverted = cleanStr(`${reg.skater.lastName} ${reg.skater.firstName}`);
@@ -109,33 +138,36 @@ export async function POST(req: Request) {
       });
 
       if (!matchedReg) {
+        unmatchedNames.push(rawName);
         console.log(`⚠️ Patinador no registrado en este evento: "${rawName}"`);
         continue;
       }
 
-      // En tu parser las notas totales vienen en totalSegmentScore y technicalElementsScore
-      const total = (res as any).totalSegmentScore ?? (res as any).totalScore ?? null;
-      const tech = (res as any).technicalElementsScore ?? (res as any).technicalScore ?? null;
+      // El parser real devuelve segmentScore y tes (no totalSegmentScore/technicalScore)
+      const total = (res as any).segmentScore ?? null;
+      const tech = (res as any).tes ?? null;
+      const isFirstSegment = segment.order <= 1;
 
-      // 1. Guardar totales en Registration
       await prisma.registration.update({
         where: { id: matchedReg.id },
         data: {
-          totalScore: total !== null ? Number(total) : null,
-          segment1Score: tech !== null ? Number(tech) : null,
+          ...(isFirstSegment
+            ? { segment1Score: tech !== null ? Number(tech) : null }
+            : { segment2Score: tech !== null ? Number(tech) : null }),
+          ...(total !== null ? { totalScore: Number(total) } : {}),
         },
       });
 
-      // 2. Mapear cada slot a su nota obtenida
-      for (const slot of event.slots) {
+      for (const slot of segmentSlots) {
         let earnedScore = 0;
         const tag = (slot.label + " " + (slot.elementCategory?.name || "")).toLowerCase();
         const scores = res.slotScores || ({} as any);
+        const isSecond = /\b2\b/.test(tag);
 
         if (tag.includes("combo jump") || tag.includes("combinacion")) {
-          earnedScore = scores.comboJump1 || scores.comboJump2 || 0;
+          earnedScore = isSecond ? scores.comboJump2 || 0 : scores.comboJump1 || 0;
         } else if (tag.includes("solo jump") || tag.includes("salto solo")) {
-          earnedScore = scores.soloJump1 || scores.soloJump2 || 0;
+          earnedScore = isSecond ? scores.soloJump2 || 0 : scores.soloJump1 || 0;
         } else if (tag.includes("axel")) {
           earnedScore = scores.axel || 0;
         } else if (tag.includes("spin") || tag.includes("giro") || tag.includes("pirueta")) {
@@ -162,9 +194,7 @@ export async function POST(req: Request) {
               elementCategoryId: slot.elementCategoryId,
             },
           },
-          update: {
-            value: Number(earnedScore),
-          },
+          update: { value: Number(earnedScore) },
           create: {
             registrationId: matchedReg.id,
             segmentId: segment.id,
@@ -181,6 +211,13 @@ export async function POST(req: Request) {
       ok: true,
       skatersParsed: parsedResults.length,
       matchedAndScored,
+      registrationsInEvent: event.registrations.length,
+      segment: segment.name,
+      unmatchedNames,
+      registeredNames: event.registrations.map(
+        (r) => `${r.skater.firstName} ${r.skater.lastName}`
+      ),
+      parsedNames: parsedResults.map((r: any) => r.fullName || r.skaterName || "(vacío)"),
     });
   } catch (error: any) {
     console.error("Error al procesar Judges Details:", error);
