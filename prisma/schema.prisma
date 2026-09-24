@@ -29,6 +29,11 @@ enum Role {
   ADMIN
 }
 
+enum Gender {
+  MALE
+  FEMALE
+}
+
 enum EventStatus {
   UPCOMING   // aún se pueden hacer/editar picks y porras
   LOCKED     // plazo cerrado, competición en curso
@@ -85,6 +90,7 @@ model Event {
   categoryId    String
   category      Category        @relation(fields: [categoryId], references: [id])
   name          String          // "Solo Danza Senior Femenino"
+  gender        Gender?         // Género estructurado del evento (opcional; el nombre libre sigue siendo la fuente visible hasta que se rellene)
   rosterLocksAt DateTime        // deadline para fantasy y predicciones
   status        EventStatus     @default(UPCOMING)
   segments      Segment[]
@@ -136,6 +142,7 @@ model Skater {
   firstName     String
   lastName      String
   country       String         // Código ISO ("ESP", "ITA", "POR")
+  gender        Gender?        // Género real del patinador (opcional; fuente de verdad para género)
   disciplineId  String
   discipline    Discipline     @relation(fields: [disciplineId], references: [id])
   categoryId    String

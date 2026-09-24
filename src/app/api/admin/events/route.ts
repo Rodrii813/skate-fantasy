@@ -38,10 +38,14 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, competitionId, disciplineId, categoryId, rosterLocksAt } = body;
+    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender } = body;
 
     if (!name || !competitionId || !disciplineId || !categoryId || !rosterLocksAt) {
       return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
+    }
+
+    if (gender !== undefined && gender !== null && gender !== "MALE" && gender !== "FEMALE") {
+      return NextResponse.json({ error: "Género inválido" }, { status: 400 });
     }
 
     const newEvent = await prisma.event.create({
@@ -51,6 +55,7 @@ export async function POST(req: Request) {
         disciplineId,
         categoryId,
         rosterLocksAt: new Date(rosterLocksAt),
+        gender: gender || null,
       },
     });
 

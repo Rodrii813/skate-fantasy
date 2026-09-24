@@ -50,12 +50,23 @@ export async function POST(
 
     const event = await prisma.event.findUnique({
       where: { id: eventId },
+      include: { discipline: true },
     });
 
     if (!event) {
       return NextResponse.json(
         { error: "Evento no encontrado" },
         { status: 404 }
+      );
+    }
+
+    if (event.discipline.slug !== "libre") {
+      return NextResponse.json(
+        {
+          error:
+            "La generación automática de slots aún no está disponible para esta disciplina",
+        },
+        { status: 400 }
       );
     }
 
