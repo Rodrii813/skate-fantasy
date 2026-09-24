@@ -1,49 +1,58 @@
-import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
+import AdminNav from "./AdminNav";
 
-export default async function AdminPage() {
-  const session = await getServerSession(authOptions);
-  if ((session?.user as any)?.role !== "ADMIN") redirect("/");
-
-  const events = await prisma.event.findMany({
-    orderBy: { rosterLocksAt: "desc" },
-    include: { competition: true, discipline: true, category: true, registrations: true },
-  });
+export default function AdminDashboardPage() {
+  const sections = [
+    {
+      title: "🏆 Competiciones",
+      desc: "Crea, edita o elimina campeonatos (fechas, sede, nombre).",
+      href: "/admin/competitions",
+      color: "border-blue-500/30 hover:border-blue-500",
+    },
+    {
+      title: "⚙️ Eventos y Slots",
+      desc: "Configura las pruebas (Senior Mujeres, Corto, Largo) y carga las plantillas oficiales.",
+      href: "/admin/events",
+      color: "border-emerald-500/30 hover:border-emerald-500",
+    },
+    {
+      title: "⛸️ Patinadores",
+      desc: "Lista de deportistas, borrado de patinadores falsos o corrección de nombres y países.",
+      href: "/admin/skaters",
+      color: "border-amber-500/30 hover:border-amber-500",
+    },
+    {
+      title: "📊 Importar Resultados (PDF)",
+      desc: "Sube las actas de Judges Details para computar puntuaciones automáticamente.",
+      href: "/admin/judges-details",
+      color: "border-purple-500/30 hover:border-purple-500",
+    },
+  ];
 
   return (
-    <div>
-      <h1 className="font-display text-3xl font-semibold text-white">Panel de admin</h1>
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div>
+          <h1 className="text-2xl font-black text-slate-50">🛠️ Panel de Control - Skate Fantasy</h1>
+          <p className="text-xs text-slate-400 mt-1">Gestiona todo el torneo desde una sola pantalla sin necesidad de tocar rutas.</p>
+        </div>
 
-      <div className="mt-6 rounded-xl border border-white/10 bg-white/[0.03] p-5 text-sm text-ice-100/70">
-        Para dar de alta competiciones, disciplinas, categorías, patinadores, eventos, segmentos
-        y slots de fantasy, usa <code className="text-accent">npm run db:studio</code> (Prisma
-        Studio): te da un editor de tablas al instante sin tener que construir un CRUD para cada
-        cosa. Esta pantalla se centra en lo que se hace cada semana: cargar resultados tras la
-        competición.
-      </div>
+        <AdminNav />
 
-      <h2 className="font-display mt-10 text-xl font-semibold text-white">Cargar resultados por evento</h2>
-      <ul className="mt-4 divide-y divide-white/10">
-        {events.map((e) => (
-          <li key={e.id} className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-white">{e.name}</p>
-              <p className="text-xs text-ice-100/50">
-                {e.competition.name} · {e.registrations.length} patinadores inscritos
-              </p>
-            </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {sections.map((sec) => (
             <Link
-              href={`/admin/results/${e.id}`}
-              className="rounded-full border border-white/15 px-4 py-1.5 text-sm text-white hover:border-gold/60"
+              key={sec.href}
+              href={sec.href}
+              className={`p-5 rounded-2xl bg-slate-900 border transition flex flex-col justify-between space-y-2 ${sec.color}`}
             >
-              Cargar puntuaciones
+              <h2 className="text-base font-bold text-slate-100">{sec.title}</h2>
+              <p className="text-xs text-slate-400">{sec.desc}</p>
+              <span className="text-[11px] font-semibold text-indigo-400 mt-2 block">Acceder →</span>
             </Link>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
