@@ -40,7 +40,7 @@ export default function NormasPage() {
 
       <Section title="1. Cómo se juega">
         <p>
-          Por cada prueba (evento) del calendario, eliges una patinadora distinta para cada{" "}
+          Por cada prueba (evento) del calendario, eliges un patinador distinto para cada{" "}
           <strong className="text-white">slot</strong>: un slot es un elemento concreto del
           programa (un salto, una combinación de giros, una secuencia de pasos…) o un bloque de
           componentes del programa (skating skills, transiciones, performance, coreografía).
@@ -52,9 +52,9 @@ export default function NormasPage() {
         </p>
         <p className="text-xs text-ice-100/50">
           Por qué funciona así: en patinaje real, la ejecución de cada elemento varía mucho de una
-          patinadora a otra e incluso de una competición a otra (una combinación de salto puede
+          patinador a otro e incluso de una competición a otra (una combinación de salto puede
           fallar y convertirse en un salto individual, por ejemplo). Elegir por elemento, en vez
-          de por posición fija del programa, refleja mejor lo que de verdad pasó sobre el hielo.
+          de por posición fija del programa, refleja mejor lo que de verdad pasó sobre la pista.
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -91,25 +91,25 @@ export default function NormasPage() {
 
       <Section title="2. Restricciones al elegir: grupos de calentamiento">
         <p>
-          Las patinadoras inscritas se agrupan en <strong className="text-white">grupos de
+          Los patinadores inscritos se agrupan en <strong className="text-white">grupos de
           calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
           más alto patina al final y suele reunir a las favoritas. Sin estos límites, todo el
-          mundo elegiría siempre a las mismas 3-4 patinadoras top, así que hay un máximo por
+          mundo elegiría siempre a los mismos 3-4 patinadores top, así que hay un máximo por
           grupo:
         </p>
         <div className="space-y-2">
           <Card>
             <p className="font-semibold text-white">Elementos técnicos</p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
-              <li>No puedes repetir la misma patinadora en dos slots técnicos distintos.</li>
-              <li>Máximo 2 patinadoras técnicas del grupo de calentamiento más alto.</li>
-              <li>Máximo 2 patinadoras técnicas del segundo grupo más alto.</li>
+              <li>No puedes repetir el mismo patinador en dos slots técnicos distintos.</li>
+              <li>Máximo 2 patinadores técnicos del grupo de calentamiento más alto.</li>
+              <li>Máximo 2 patinadores técnicos del segundo grupo más alto.</li>
             </ul>
           </Card>
           <Card>
             <p className="font-semibold text-white">Componentes del programa</p>
             <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
-              <li>Máximo 1 patinadora por cada grupo de calentamiento.</li>
+              <li>Máximo 1 patinador por cada grupo de calentamiento.</li>
               <li>
                 Aquí sí puedes repetir a alguien que ya hayas usado en un slot técnico — la
                 restricción de "no repetir" solo aplica entre slots técnicos.
@@ -155,7 +155,7 @@ export default function NormasPage() {
             </li>
             <li>
               <strong className="text-white">+2 puntos extra</strong> si predijiste a alguien en
-              el podio (1º-3º) y esa patinadora terminó también en el podio, aunque no en el
+              el podio (1º-3º) y ese patinador terminó también en el podio, aunque no en el
               puesto exacto que le pusiste.
             </li>
             <li>
