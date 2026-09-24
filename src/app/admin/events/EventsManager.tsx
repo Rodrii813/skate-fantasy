@@ -243,6 +243,13 @@ export default function EventsManager({
                     👥 Inscribir Patinadores ({ev._count?.registrations || 0})
                   </Link>
 
+                  <Link
+                    href={`/admin/results/${ev.id}`}
+                    className="bg-slate-800 hover:bg-slate-700 text-emerald-300 hover:text-white text-xs font-semibold px-3 py-1.5 rounded-lg border border-slate-700 transition"
+                  >
+                    📊 Resultados
+                  </Link>
+
                   {slotsAvailableForDiscipline ? (
                     <>
                       <button
