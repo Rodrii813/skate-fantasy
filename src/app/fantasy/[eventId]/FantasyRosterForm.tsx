@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { getCountryFlag } from "@/lib/flags";
+import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
 
 interface Skater {
   id: string;
@@ -46,21 +47,8 @@ export default function FantasyRosterForm({
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // Identificar si un slot es de Componentes (PCS)
-  const isComponentSlot = (label: string) => {
-    const l = label.toLowerCase();
-    return (
-      l.includes("skating") ||
-      l.includes("transition") ||
-      l.includes("performance") ||
-      l.includes("composition") ||
-      l.includes("choreo sequence") ||
-      l.includes("pcs")
-    );
-  };
-
-  const technicalSlots = useMemo(() => slots.filter((s) => !isComponentSlot(s.label)), [slots]);
-  const componentSlots = useMemo(() => slots.filter((s) => isComponentSlot(s.label)), [slots]);
+  const technicalSlots = useMemo(() => slots.filter((s) => !isComponentSlotLabel(s.label)), [slots]);
+  const componentSlots = useMemo(() => slots.filter((s) => isComponentSlotLabel(s.label)), [slots]);
 
   // Agrupar registros por Warmup Group desc
   const groupedRegistrations = useMemo(() => {
@@ -84,103 +72,33 @@ export default function FantasyRosterForm({
       }));
   }, [registrations]);
 
-  const maxGroupNum = groupedRegistrations[0]?.group || 1;
-  const secondMaxGroupNum = groupedRegistrations[1]?.group || 0;
+  // Validación de reglas — vive en src/lib/fantasyValidation.ts para que la
+  // misma lógica la aplique también /api/fantasy/roster en el servidor, y
+  // así no sea posible saltarse las normas evitando este formulario.
+  const validationResult = useMemo(
+    () =>
+      validateFantasyRoster({
+        slots,
+        registrations: registrations.map((r) => ({
+          skaterId: r.skaterId,
+          warmupGroup: r.warmupGroup,
+        })),
+        picks,
+      }),
+    [slots, registrations, picks]
+  );
 
-  // 1. Conteo de uso por grupo en ELEMENTOS TÉCNICOS
-  const techGroupUsage = useMemo(() => {
-    const usage: Record<number, number> = {};
-    for (const slot of technicalSlots) {
-      const skaterId = picks[slot.id];
-      if (skaterId) {
-        const reg = registrations.find((r) => r.skaterId === skaterId);
-        if (reg) {
-          const g = reg.warmupGroup || 1;
-          usage[g] = (usage[g] || 0) + 1;
-        }
-      }
-    }
-    return usage;
-  }, [picks, technicalSlots, registrations]);
-
-  // 2. Conteo de uso por grupo en COMPONENTES (máx 1 por grupo)
-  const compGroupUsage = useMemo(() => {
-    const usage: Record<number, number> = {};
-    for (const slot of componentSlots) {
-      const skaterId = picks[slot.id];
-      if (skaterId) {
-        const reg = registrations.find((r) => r.skaterId === skaterId);
-        if (reg) {
-          const g = reg.warmupGroup || 1;
-          usage[g] = (usage[g] || 0) + 1;
-        }
-      }
-    }
-    return usage;
-  }, [picks, componentSlots, registrations]);
-
-  // Validación de reglas
-  const validation = useMemo(() => {
-    const totalSlots = slots.length;
-    const filledCount = Object.values(picks).filter(Boolean).length;
-    const missingSlots = totalSlots - filledCount;
-
-    // Regla Técnico 1: No repetir patinadora dentro de los slots técnicos
-    const techSkaterCounts: Record<string, number> = {};
-    for (const slot of technicalSlots) {
-      const sId = picks[slot.id];
-      if (sId) techSkaterCounts[sId] = (techSkaterCounts[sId] || 0) + 1;
-    }
-    const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > 1);
-
-    // Regla Técnico 2: Máx 2 en los últimos 2 grupos
-    const countTopGroup = techGroupUsage[maxGroupNum] || 0;
-    const countSecondGroup = secondMaxGroupNum ? techGroupUsage[secondMaxGroupNum] || 0 : 0;
-    const exceedsTopTech = countTopGroup > 2;
-    const exceedsSecondTech = countSecondGroup > 2;
-
-    // Regla Componentes: Máx 1 por Warmup Group en components
-    const exceedsCompGroup = Object.entries(compGroupUsage).some(([_, count]) => count > 1);
-
-    let errorMessage = "";
-    if (missingSlots > 0) {
-      errorMessage = `Faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
-    } else if (repeatedTechSkater) {
-      errorMessage = "No puedes elegir a la misma patinadora en dos elementos técnicos";
-    } else if (exceedsTopTech) {
-      errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
-    } else if (exceedsSecondTech) {
-      errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
-    } else if (exceedsCompGroup) {
-      errorMessage = "En Componentes: Máximo 1 patinadora por cada grupo de calentamiento";
-    }
-
-    const isValid =
-      missingSlots === 0 &&
-      !repeatedTechSkater &&
-      !exceedsTopTech &&
-      !exceedsSecondTech &&
-      !exceedsCompGroup;
-
-    return {
-      isValid,
-      errorMessage,
-      countTopGroup,
-      countSecondGroup,
-      exceedsTopTech,
-      exceedsSecondTech,
-      exceedsCompGroup,
-    };
-  }, [
-    picks,
-    slots,
-    technicalSlots,
-    componentSlots,
-    techGroupUsage,
-    compGroupUsage,
-    maxGroupNum,
-    secondMaxGroupNum,
-  ]);
+  const validation = {
+    isValid: validationResult.valid,
+    errorMessage: validationResult.errorMessage,
+    countTopGroup: validationResult.countTopGroup,
+    countSecondGroup: validationResult.countSecondGroup,
+    exceedsTopTech: validationResult.exceedsTopTech,
+    exceedsSecondTech: validationResult.exceedsSecondTech,
+    exceedsCompGroup: validationResult.exceedsCompGroup,
+  };
+  const maxGroupNum = validationResult.maxGroupNum;
+  const secondMaxGroupNum = validationResult.secondMaxGroupNum;
 
   const handleSelect = (slotId: string, skaterId: string) => {
     setPicks((prev) => ({

@@ -1,165 +1,136 @@
-export interface SkaterPickInfo {
-  slotType: "TECHNICAL" | "COMPONENT";
+// Reglas del roster de Fantasy — fuente única de verdad.
+//
+// Estas son las normas reales que el usuario ve en el formulario
+// (FantasyRosterForm.tsx). Antes vivían DUPLICADAS: una copia aquí (con
+// umbrales distintos, y sin usar por nadie) y otra copia inline dentro del
+// propio formulario (la que de verdad se aplicaba, pero solo en el
+// navegador). La API que guarda el roster (/api/fantasy/roster) no
+// comprobaba nada de esto, así que las reglas eran opcionales para
+// cualquiera que las evitase desde fuera del formulario.
+//
+// Ahora hay una sola función, usada tanto por el formulario (para pintar
+// los contadores en vivo) como por la API (para rechazar de verdad los
+// roster que no las cumplen).
+
+export interface SlotInfo {
+  id: string;
+  label: string;
+}
+
+export interface RegistrationInfo {
   skaterId: string;
-  warmupGroup: number;
+  warmupGroup: number | null;
 }
 
-export interface ValidationResult {
+export function isComponentSlotLabel(label: string): boolean {
+  const l = label.toLowerCase();
+  return (
+    l.includes("skating") ||
+    l.includes("transition") ||
+    l.includes("performance") ||
+    l.includes("composition") ||
+    l.includes("choreo sequence") ||
+    l.includes("pcs")
+  );
+}
+
+export interface ValidateRosterInput {
+  slots: SlotInfo[];
+  registrations: RegistrationInfo[];
+  picks: Record<string, string>; // slotId -> skaterId
+}
+
+export interface ValidateRosterResult {
   valid: boolean;
-  error?: string;
-  counters?: {
-    techLast: number;
-    techPenultimate: number;
-    compLast: number;
-    compPenultimate: number;
-    lastGroupNum: number;
-    penultimateGroupNum: number;
-  };
+  errorMessage: string;
+  // Detalles para pintar los contadores en la UI, incluso mientras el
+  // roster todavía es válido (p.ej. "1/2" antes de llegar al límite).
+  countTopGroup: number;
+  countSecondGroup: number;
+  maxGroupNum: number;
+  secondMaxGroupNum: number;
+  exceedsTopTech: boolean;
+  exceedsSecondTech: boolean;
+  exceedsCompGroup: boolean;
 }
 
-export function validateFantasyRoster(
-  picks: SkaterPickInfo[],
-  totalGroups: number
-): ValidationResult {
-  if (picks.length === 0) {
-    return { valid: true };
+export function validateFantasyRoster({
+  slots,
+  registrations,
+  picks,
+}: ValidateRosterInput): ValidateRosterResult {
+  const technicalSlots = slots.filter((s) => !isComponentSlotLabel(s.label));
+  const componentSlots = slots.filter((s) => isComponentSlotLabel(s.label));
+
+  const warmupGroupOf = new Map(registrations.map((r) => [r.skaterId, r.warmupGroup || 1]));
+
+  // Grupos ordenados de mayor a menor (el "último grupo" real de calentamiento
+  // es el número de grupo más alto, no necesariamente "el grupo 2").
+  const groupNums = Array.from(new Set(registrations.map((r) => r.warmupGroup || 1))).sort(
+    (a, b) => b - a
+  );
+  const maxGroupNum = groupNums[0] ?? 1;
+  const secondMaxGroupNum = groupNums[1] ?? 0;
+
+  const techSkaterCounts: Record<string, number> = {};
+  const techGroupUsage: Record<number, number> = {};
+  for (const slot of technicalSlots) {
+    const skaterId = picks[slot.id];
+    if (!skaterId) continue;
+    techSkaterCounts[skaterId] = (techSkaterCounts[skaterId] || 0) + 1;
+    const g = warmupGroupOf.get(skaterId) ?? 1;
+    techGroupUsage[g] = (techGroupUsage[g] || 0) + 1;
   }
 
-  // 1. Contador de repeticiones por patinador
-  const techSkaterCounts = new Map<string, number>();
-  const compSkaterCounts = new Map<string, number>();
-
-  picks.forEach((p) => {
-    if (p.slotType === "TECHNICAL") {
-      techSkaterCounts.set(p.skaterId, (techSkaterCounts.get(p.skaterId) || 0) + 1);
-    } else {
-      compSkaterCounts.set(p.skaterId, (compSkaterCounts.get(p.skaterId) || 0) + 1);
-    }
-  });
-
-  // CASO 1: 1 solo Grupo de calentamiento
-  if (totalGroups <= 1) {
-    for (const [, count] of techSkaterCounts.entries()) {
-      if (count > 2) {
-        return {
-          valid: false,
-          error: "Con 1 solo grupo, no puedes seleccionar al mismo patinador en más de 2 slots técnicos.",
-        };
-      }
-    }
-    for (const [, count] of compSkaterCounts.entries()) {
-      if (count > 1) {
-        return {
-          valid: false,
-          error: "No puedes seleccionar al mismo patinador más de 1 vez en componentes.",
-        };
-      }
-    }
-    return { valid: true };
+  const compGroupUsage: Record<number, number> = {};
+  for (const slot of componentSlots) {
+    const skaterId = picks[slot.id];
+    if (!skaterId) continue;
+    const g = warmupGroupOf.get(skaterId) ?? 1;
+    compGroupUsage[g] = (compGroupUsage[g] || 0) + 1;
   }
 
-  // Para 2 o más grupos: Prohibido repetir el mismo patinador en más de un slot técnico
-  for (const [, count] of techSkaterCounts.entries()) {
-    if (count > 1) {
-      return {
-        valid: false,
-        error: "No puedes repetir al mismo patinador en más de un slot técnico.",
-      };
-    }
+  const countTopGroup = techGroupUsage[maxGroupNum] || 0;
+  const countSecondGroup = secondMaxGroupNum ? techGroupUsage[secondMaxGroupNum] || 0 : 0;
+  const exceedsTopTech = countTopGroup > 2;
+  const exceedsSecondTech = countSecondGroup > 2;
+  const exceedsCompGroup = Object.values(compGroupUsage).some((c) => c > 1);
+
+  const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > 1);
+
+  const totalSlots = slots.length;
+  const filledCount = Object.values(picks).filter(Boolean).length;
+  const missingSlots = totalSlots - filledCount;
+
+  let errorMessage = "";
+  if (missingSlots > 0) {
+    errorMessage = `Faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
+  } else if (repeatedTechSkater) {
+    errorMessage = "No puedes elegir a la misma patinadora en dos elementos técnicos";
+  } else if (exceedsTopTech) {
+    errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
+  } else if (exceedsSecondTech) {
+    errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
+  } else if (exceedsCompGroup) {
+    errorMessage = "En Componentes: Máximo 1 patinadora por cada grupo de calentamiento";
   }
 
-  // CASO 2: Exactamente 2 Grupos de Calentamiento
-  if (totalGroups === 2) {
-    const lastGroup = 2;
+  const valid =
+    missingSlots === 0 &&
+    !repeatedTechSkater &&
+    !exceedsTopTech &&
+    !exceedsSecondTech &&
+    !exceedsCompGroup;
 
-    const techLast = picks.filter(
-      (p) => p.slotType === "TECHNICAL" && p.warmupGroup === lastGroup
-    ).length;
-
-    const compLast = picks.filter(
-      (p) => p.slotType === "COMPONENT" && p.warmupGroup === lastGroup
-    ).length;
-
-    if (techLast > 3) {
-      return {
-        valid: false,
-        error: `Llevas ${techLast} patinadores del Grupo 2 en técnica. El límite permitido es 3.`,
-        counters: { techLast, techPenultimate: 0, compLast, compPenultimate: 0, lastGroupNum: 2, penultimateGroupNum: 1 },
-      };
-    }
-
-    if (compLast > 1) {
-      return {
-        valid: false,
-        error: "En componentes solo puedes elegir como máximo 1 patinador del Grupo 2.",
-        counters: { techLast, techPenultimate: 0, compLast, compPenultimate: 0, lastGroupNum: 2, penultimateGroupNum: 1 },
-      };
-    }
-
-    return {
-      valid: true,
-      counters: { techLast, techPenultimate: 0, compLast, compPenultimate: 0, lastGroupNum: 2, penultimateGroupNum: 1 },
-    };
-  }
-
-  // CASO 3: 3 o más Grupos de Calentamiento
-  const lastGroup = totalGroups;
-  const penultimateGroup = totalGroups - 1;
-
-  const techLast = picks.filter(
-    (p) => p.slotType === "TECHNICAL" && p.warmupGroup === lastGroup
-  ).length;
-  const techPenultimate = picks.filter(
-    (p) => p.slotType === "TECHNICAL" && p.warmupGroup === penultimateGroup
-  ).length;
-
-  const compLast = picks.filter(
-    (p) => p.slotType === "COMPONENT" && p.warmupGroup === lastGroup
-  ).length;
-  const compPenultimate = picks.filter(
-    (p) => p.slotType === "COMPONENT" && p.warmupGroup === penultimateGroup
-  ).length;
-
-  const counters = {
-    techLast,
-    techPenultimate,
-    compLast,
-    compPenultimate,
-    lastGroupNum: lastGroup,
-    penultimateGroupNum: penultimateGroup,
+  return {
+    valid,
+    errorMessage,
+    countTopGroup,
+    countSecondGroup,
+    maxGroupNum,
+    secondMaxGroupNum,
+    exceedsTopTech,
+    exceedsSecondTech,
+    exceedsCompGroup,
   };
-
-  if (techLast > 2) {
-    return {
-      valid: false,
-      error: `Llevas ${techLast} patinadores del último grupo (G${lastGroup}) en técnica. El máximo permitido es 2.`,
-      counters,
-    };
-  }
-
-  if (techPenultimate > 2) {
-    return {
-      valid: false,
-      error: `Llevas ${techPenultimate} patinadores del penúltimo grupo (G${penultimateGroup}) en técnica. El máximo permitido es 2.`,
-      counters,
-    };
-  }
-
-  if (compLast > 1) {
-    return {
-      valid: false,
-      error: `En componentes solo puedes elegir como máximo 1 patinador del último grupo (G${lastGroup}).`,
-      counters,
-    };
-  }
-
-  if (compPenultimate > 1) {
-    return {
-      valid: false,
-      error: `En componentes solo puedes elegir como máximo 1 patinador del penúltimo grupo (G${penultimateGroup}).`,
-      counters,
-    };
-  }
-
-  return { valid: true, counters };
 }
