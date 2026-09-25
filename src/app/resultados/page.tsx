@@ -126,7 +126,7 @@ export default async function ResultadosPage() {
                           <p className="text-xs text-slate-500">{event.competition.name}</p>
                         </div>
                         <Link
-                          href={`/competitions/${event.id}`}
+                          href={`/competitions/${event.competitionId}?event=${event.id}`}
                           className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-lg border border-slate-700 transition whitespace-nowrap"
                         >
                           Ver tabla completa →

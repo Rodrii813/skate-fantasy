@@ -1,5 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { formatInTimeZone, VENUE_TIMEZONE } from "@/lib/timezone";
+import LocalDateTime from "@/app/_components/LocalDateTime";
+import TimezoneSelector from "@/app/_components/TimezoneSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -25,16 +28,21 @@ export default async function CalendarioPage() {
     .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
   const unscheduled = events.filter((e) => !e.scheduledAt);
 
-  // Agrupa por día usando la fecha (zona horaria del servidor, igual que el
-  // resto del sitio: rosterLocksAt se formatea igual en events/[id] y en
-  // competitions/[id] sin conversión explícita de zona horaria).
+  // Se agrupa por el día de calendario EN LA SEDE (Paraguay), no en UTC ni
+  // en la zona de quien mira la página: el "programa del sábado" es el
+  // sábado en Asunción para todo el mundo, igual que un cartel de
+  // competición real. Lo que sí varía según quién mira es la HORA exacta
+  // dentro de cada fila (ver <LocalDateTime> más abajo).
   const dayGroups: { key: string; label: string; events: typeof scheduled }[] = [];
   for (const event of scheduled) {
-    const date = new Date(event.scheduledAt!);
-    const key = date.toISOString().slice(0, 10);
+    const key = formatInTimeZone(event.scheduledAt!, VENUE_TIMEZONE, {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    });
     let group = dayGroups.find((g) => g.key === key);
     if (!group) {
-      const label = date.toLocaleDateString("es-ES", {
+      const label = formatInTimeZone(event.scheduledAt!, VENUE_TIMEZONE, {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -47,10 +55,19 @@ export default async function CalendarioPage() {
 
   return (
     <div>
-      <h1 className="font-display text-3xl font-semibold text-white">Calendario</h1>
-      <p className="mt-2 text-sm text-ice-100/60">
-        Programa oficial de la competición, evento a evento.
-      </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-semibold text-white">Calendario</h1>
+          <p className="mt-2 text-sm text-ice-100/60">
+            Programa oficial de la competición, evento a evento. Los días son los de la sede
+            (Paraguay); las horas se muestran en tu zona horaria.
+          </p>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-ice-100/60">
+          <span>Mostrar horas en:</span>
+          <TimezoneSelector />
+        </div>
+      </div>
 
       {unscheduled.length > 0 && (
         <section className="mt-8">
@@ -97,12 +114,11 @@ export default async function CalendarioPage() {
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10"
                 >
                   <div className="flex items-center gap-4">
-                    <span className="font-display w-14 shrink-0 text-lg font-semibold text-gold">
-                      {new Date(event.scheduledAt!).toLocaleTimeString("es-ES", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </span>
+                    <LocalDateTime
+                      value={event.scheduledAt}
+                      options={{ hour: "2-digit", minute: "2-digit" }}
+                      className="font-display w-14 shrink-0 text-lg font-semibold text-gold"
+                    />
                     <div>
                       <p className="text-xs uppercase tracking-wide text-accent">
                         {event.competition.name}
