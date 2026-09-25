@@ -20,6 +20,9 @@ export default function NavBar() {
           <Link href="/calendario" className="hover:text-white">
             Calendario
           </Link>
+          <Link href="/resultados" className="hover:text-white">
+            Resultados
+          </Link>
           <Link href="/leaderboard" className="hover:text-white">
             Ranking
           </Link>
