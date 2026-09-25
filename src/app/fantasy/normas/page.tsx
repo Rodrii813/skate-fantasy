@@ -87,9 +87,52 @@ export default function NormasPage() {
           <strong className="text-white">Componentes del Programa</strong>: "Skating Skills +
           Transitions" y "Performance + Choreography".
         </p>
+        <p className="text-xs text-ice-100/50">
+          Inline sigue exactamente esta misma estructura (mismos elementos técnicos y
+          componentes) — es la misma disciplina sobre patines en línea.
+        </p>
       </Section>
 
-      <Section title="2. Restricciones al elegir: grupos de calentamiento">
+      <Section title="2. Solo Danza">
+        <p>
+          Solo Danza tiene sus propios elementos, distintos a los de Libre/Inline, pero se juega
+          con la misma mecánica: un patinador por slot técnico, más los 2 slots de Componentes del
+          Programa.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Style Dance — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Pattern Sequence</li>
+              <li>Cluster</li>
+              <li>Traveling</li>
+              <li>Choreo Stop</li>
+              <li>Art Sequence</li>
+            </ul>
+          </Card>
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Freedance — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Foot Sequence</li>
+              <li>Cluster</li>
+              <li>Traveling</li>
+              <li>Choreo Stop</li>
+              <li>Dance Step</li>
+            </ul>
+          </Card>
+        </div>
+        <p>
+          Igual que en Libre, en ambos programas hay además 2 slots de{" "}
+          <strong className="text-white">Componentes del Programa</strong>: "Skating Skills +
+          Transitions" y "Performance + Choreography".
+        </p>
+      </Section>
+
+      <Section title="3. Restricciones al elegir: grupos de calentamiento">
         <p>
           Los patinadores inscritos se agrupan en <strong className="text-white">grupos de
           calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
@@ -118,13 +161,13 @@ export default function NormasPage() {
           </Card>
         </div>
         <p className="text-xs text-ice-100/50">
-          Estas reglas de grupos están pensadas para la disciplina Libre. Si en el futuro se
-          añaden slots para otras disciplinas (Danza, Parejas, Precisión…), sus límites concretos
-          se anunciarán aparte cuando estén disponibles.
+          Estas reglas de grupos se aplican igual en todas las disciplinas disponibles (Libre,
+          Inline y Solo Danza). Si en el futuro se añaden slots para el resto (Parejas, Precisión,
+          Figuras…), sus límites concretos se anunciarán aparte cuando estén disponibles.
         </p>
       </Section>
 
-      <Section title="3. Cómo se puntúa el Fantasy">
+      <Section title="4. Cómo se puntúa el Fantasy">
         <p>
           Tu puntuación en una prueba es la suma de las notas oficiales de cada elemento que
           elegiste — la misma nota que aparece en el protocolo oficial de jueces de World Skate
@@ -138,7 +181,7 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="4. Predicción (juego aparte)">
+      <Section title="5. Predicción (juego aparte)">
         <p>
           Independiente del Fantasy por elementos, cada prueba tiene también una Predicción donde
           predices el podio y siguientes puestos. Se puntúa así:

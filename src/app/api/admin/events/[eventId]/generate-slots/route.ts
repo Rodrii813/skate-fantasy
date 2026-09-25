@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import {
   FREE_SKATING_SHORT_SLOTS,
   FREE_SKATING_LONG_SLOTS,
+  SOLO_DANCE_STYLE_SLOTS,
+  SOLO_DANCE_FREE_SLOTS,
 } from "@/lib/fantasyTemplates";
 
 function generateSlug(text: string): string {
@@ -60,7 +62,37 @@ export async function POST(
       );
     }
 
-    if (event.discipline.slug !== "libre") {
+    // Slots de Fantasy por disciplina. "inline" usa exactamente la misma
+    // estructura que "libre" (patinaje libre sobre ruedas en línea: mismos
+    // elementos técnicos y componentes), así que reutiliza sus plantillas
+    // en vez de duplicarlas.
+    const disciplineTemplates: Record<
+      string,
+      { shortName: string; longName: string; short: typeof FREE_SKATING_SHORT_SLOTS; long: typeof FREE_SKATING_LONG_SLOTS }
+    > = {
+      libre: {
+        shortName: "Short Program",
+        longName: "Long Program",
+        short: FREE_SKATING_SHORT_SLOTS,
+        long: FREE_SKATING_LONG_SLOTS,
+      },
+      inline: {
+        shortName: "Short Program",
+        longName: "Long Program",
+        short: FREE_SKATING_SHORT_SLOTS,
+        long: FREE_SKATING_LONG_SLOTS,
+      },
+      "solo-danza": {
+        shortName: "Style Dance",
+        longName: "Freedance",
+        short: SOLO_DANCE_STYLE_SLOTS,
+        long: SOLO_DANCE_FREE_SLOTS,
+      },
+    };
+
+    const disciplineConfig = disciplineTemplates[event.discipline.slug];
+
+    if (!disciplineConfig) {
       return NextResponse.json(
         {
           error:
@@ -71,12 +103,10 @@ export async function POST(
     }
 
     const segmentName =
-      segmentType === "SHORT" ? "Short Program" : "Long Program";
+      segmentType === "SHORT" ? disciplineConfig.shortName : disciplineConfig.longName;
     const segmentOrder = segmentType === "SHORT" ? 1 : 2;
     const templates =
-      segmentType === "SHORT"
-        ? FREE_SKATING_SHORT_SLOTS
-        : FREE_SKATING_LONG_SLOTS;
+      segmentType === "SHORT" ? disciplineConfig.short : disciplineConfig.long;
 
     // 1. Buscar o crear el Segmento para este evento
     let segment = await prisma.segment.findFirst({
