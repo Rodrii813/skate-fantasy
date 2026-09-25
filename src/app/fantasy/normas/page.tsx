@@ -212,7 +212,49 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="5. Restricciones al elegir: grupos de calentamiento">
+      <Section title="5. Show">
+        <p>
+          Show funciona distinto al resto: se compite en un único programa (no hay Corto/Largo),
+          y dentro de la disciplina hay 3 formatos con estructura de puntos diferente —{" "}
+          <strong className="text-white">Cuartetos</strong>,{" "}
+          <strong className="text-white">Grupos Pequeños</strong> y{" "}
+          <strong className="text-white">Grupos Grandes</strong>.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Cuartetos — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Creative</li>
+              <li>Canon</li>
+              <li>Traveling</li>
+              <li>Cluster</li>
+            </ul>
+            <p className="mt-2 text-xs text-ice-100/60">
+              + los 2 slots de Componentes de siempre: "Skating Skills + Transitions" y
+              "Performance + Choreography".
+            </p>
+          </Card>
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Grupos Pequeños y Grupos Grandes
+            </p>
+            <p className="text-ice-100/75">
+              No hay elementos técnicos como tal: todo el programa se puntúa por Componentes, y
+              aquí cada categoría es su propio slot (no se agrupan de 2 en 2 como en el resto):
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Skating Skills</li>
+              <li>Group Technique</li>
+              <li>Performance</li>
+              <li>Idea and Choreography</li>
+            </ul>
+          </Card>
+        </div>
+      </Section>
+
+      <Section title="6. Restricciones al elegir: grupos de calentamiento">
         <p>
           Los patinadores inscritos se agrupan en <strong className="text-white">grupos de
           calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
@@ -242,13 +284,13 @@ export default function NormasPage() {
         </div>
         <p className="text-xs text-ice-100/50">
           Estas reglas de grupos se aplican igual en todas las disciplinas disponibles (Libre,
-          Inline, Solo Danza, Parejas y Pareja Danza). Si en el futuro se añaden slots para el
-          resto (Show, Precisión, Figuras…), sus límites concretos se anunciarán aparte cuando
-          estén disponibles.
+          Inline, Solo Danza, Parejas, Pareja Danza y Show). Si en el futuro se añaden slots para
+          el resto (Precisión, Figuras…), sus límites concretos se anunciarán aparte cuando estén
+          disponibles.
         </p>
       </Section>
 
-      <Section title="6. Cómo se puntúa el Fantasy">
+      <Section title="7. Cómo se puntúa el Fantasy">
         <p>
           Tu puntuación en una prueba es la suma de las notas oficiales de cada elemento que
           elegiste — la misma nota que aparece en el protocolo oficial de jueces de World Skate
@@ -262,7 +304,7 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="7. Predicción (juego aparte)">
+      <Section title="8. Predicción (juego aparte)">
         <p>
           Independiente del Fantasy por elementos, cada prueba tiene también una Predicción donde
           predices el podio y siguientes puestos. Se puntúa así:

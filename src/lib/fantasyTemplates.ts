@@ -2,7 +2,7 @@ export interface SlotTemplate {
   name: string;
   slotType: "TECHNICAL" | "COMPONENT";
   categoryCode: string;
-  rule?: "BEST_1" | "BEST_2" | "AXEL_ONLY" | "SUM_ALL" | "COMBINED_PCS";
+  rule?: "BEST_1" | "BEST_2" | "AXEL_ONLY" | "SUM_ALL" | "COMBINED_PCS" | "SINGLE_PCS";
 }
 
 // 1. PROGRAMA CORTO (SHORT PROGRAM)
@@ -126,4 +126,33 @@ export const COUPLE_DANCE_FREE_SLOTS: SlotTemplate[] = [
   // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
   { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
   { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
+// 9. SHOW — CUARTETOS
+// Único formato de Show que sí tiene elementos técnicos propios (Creative,
+// Canon...). Los componentes son los mismos 2 grupos combinados que en el
+// resto de disciplinas.
+export const SHOW_QUARTET_SLOTS: SlotTemplate[] = [
+  // Técnica (4 slots)
+  { name: "Creative", slotType: "TECHNICAL", categoryCode: "CREATIVE", rule: "BEST_1" },
+  { name: "Canon", slotType: "TECHNICAL", categoryCode: "CANON", rule: "BEST_1" },
+  { name: "Traveling", slotType: "TECHNICAL", categoryCode: "TRAVELING", rule: "BEST_1" },
+  { name: "Cluster", slotType: "TECHNICAL", categoryCode: "CLUSTER", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
+// 10. SHOW — GRUPOS PEQUEÑOS y GRUPOS GRANDES
+// Sin elementos técnicos: todo el programa se puntúa por 4 categorías de
+// Componentes, cada una en SU PROPIO slot (a diferencia del resto de
+// disciplinas, donde los componentes se agrupan de 2 en 2). Grupos Pequeños
+// y Grupos Grandes usan exactamente la misma lista — el usuario ha
+// confirmado que son idénticos en estructura de slots.
+export const SHOW_GROUP_SLOTS: SlotTemplate[] = [
+  { name: "Skating Skills", slotType: "COMPONENT", categoryCode: "PCS_SKATING_SKILLS_SHOW", rule: "SINGLE_PCS" },
+  { name: "Group Technique", slotType: "COMPONENT", categoryCode: "PCS_GROUP_TECHNIQUE", rule: "SINGLE_PCS" },
+  { name: "Performance", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_SHOW", rule: "SINGLE_PCS" },
+  { name: "Idea and Choreography", slotType: "COMPONENT", categoryCode: "PCS_IDEA_CHOREOGRAPHY", rule: "SINGLE_PCS" },
 ];

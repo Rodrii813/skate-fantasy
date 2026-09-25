@@ -46,17 +46,21 @@ export interface SegmentInfo {
 
 export function isComponentSlotLabel(label: string): boolean {
   const l = label.toLowerCase();
-  // OJO: "Choreo Sequence (ChSt)" es un elemento TÉCNICO del Programa Largo
-  // (ver fantasyTemplates.ts), no debe confundirse con "Choreography", que
-  // solo aparece como parte del slot de componentes "Performance +
-  // Choreography" (ya detectado por el "performance" de abajo). Antes
-  // "choreo sequence" estaba aquí por error y metía ese slot técnico en la
-  // sección de Componentes.
+  // OJO: "Choreo Sequence (ChSt)", "Choreo Stop" y "Choreo Step" son
+  // elementos TÉCNICOS (ver fantasyTemplates.ts) — no deben confundirse con
+  // "Choreography" (con -graphy), que solo aparece en slots de Componentes:
+  // "Performance + Choreography" (Libre/Danza/Parejas, ya cubierto por
+  // "performance") e "Idea and Choreography" (Show, sin "performance" en el
+  // nombre, por eso "choreography" está aquí aparte). "technique" cubre
+  // "Group Technique" (Show Grupos Pequeños/Grandes): ahí NO hay elementos
+  // técnicos como tal, las 4 categorías son de Componentes por separado.
   return (
     l.includes("skating") ||
     l.includes("transition") ||
     l.includes("performance") ||
     l.includes("composition") ||
+    l.includes("choreography") ||
+    l.includes("technique") ||
     l.includes("pcs")
   );
 }

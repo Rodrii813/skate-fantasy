@@ -163,15 +163,22 @@ export default function EventsManager({
     }
   };
 
-  const handleGenerateSlots = async (eventId: string, segment: "SHORT" | "LONG") => {
-    setActionLoadingId(`${eventId}-${segment}`);
+  // "key" identifica la acción para el spinner del botón (p.ej. "SHORT",
+  // "LONG", o "QUARTET"/"SMALL_GROUP"/"LARGE_GROUP" para Show, que no tiene
+  // Corto/Largo sino 3 formatos distintos — ver generate-slots/route.ts).
+  const handleGenerateSlots = async (
+    eventId: string,
+    key: string,
+    body: { segment: "SHORT" | "LONG" } | { format: "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP" }
+  ) => {
+    setActionLoadingId(`${eventId}-${key}`);
     setStatusMessage(null);
 
     try {
       const res = await fetch(`/api/admin/events/${eventId}/generate-slots`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ segment }),
+        body: JSON.stringify(body),
       });
 
       const data = await res.json();
@@ -351,9 +358,9 @@ export default function EventsManager({
             // pero la API devuelve error, o al revés, el botón no aparece
             // aunque la API ya la soporte.
             const DISCIPLINES_WITH_SLOTS = ["libre", "inline", "solo-danza", "parejas", "pareja-danza"];
-            const slotsAvailableForDiscipline = DISCIPLINES_WITH_SLOTS.includes(
-              ev.discipline?.slug || ""
-            );
+            const isShow = ev.discipline?.slug === "show";
+            const slotsAvailableForDiscipline =
+              isShow || DISCIPLINES_WITH_SLOTS.includes(ev.discipline?.slug || "");
 
             return (
               <div
@@ -451,23 +458,55 @@ export default function EventsManager({
                   </Link>
 
                   {slotsAvailableForDiscipline ? (
-                    <>
-                      <button
-                        onClick={() => handleGenerateSlots(ev.id, "SHORT")}
-                        disabled={actionLoadingId === `${ev.id}-SHORT`}
-                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-                      >
-                        {actionLoadingId === `${ev.id}-SHORT` ? "Cargando..." : "⚡ Slots Corto"}
-                      </button>
+                    isShow ? (
+                      // Show no tiene Corto/Largo: es un único programa, y
+                      // dentro de la disciplina hay 3 formatos con slots
+                      // distintos que el admin elige a mano (no se puede
+                      // detectar solo, no depende de segmentos).
+                      <>
+                        <button
+                          onClick={() => handleGenerateSlots(ev.id, "QUARTET", { format: "QUARTET" })}
+                          disabled={actionLoadingId === `${ev.id}-QUARTET`}
+                          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                        >
+                          {actionLoadingId === `${ev.id}-QUARTET` ? "Cargando..." : "⚡ Generar Cuartetos"}
+                        </button>
 
-                      <button
-                        onClick={() => handleGenerateSlots(ev.id, "LONG")}
-                        disabled={actionLoadingId === `${ev.id}-LONG`}
-                        className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-                      >
-                        {actionLoadingId === `${ev.id}-LONG` ? "Cargando..." : "⚡ Slots Largo"}
-                      </button>
-                    </>
+                        <button
+                          onClick={() => handleGenerateSlots(ev.id, "SMALL_GROUP", { format: "SMALL_GROUP" })}
+                          disabled={actionLoadingId === `${ev.id}-SMALL_GROUP`}
+                          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                        >
+                          {actionLoadingId === `${ev.id}-SMALL_GROUP` ? "Cargando..." : "⚡ Generar Grupos Pequeños"}
+                        </button>
+
+                        <button
+                          onClick={() => handleGenerateSlots(ev.id, "LARGE_GROUP", { format: "LARGE_GROUP" })}
+                          disabled={actionLoadingId === `${ev.id}-LARGE_GROUP`}
+                          className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                        >
+                          {actionLoadingId === `${ev.id}-LARGE_GROUP` ? "Cargando..." : "⚡ Generar Grupos Grandes"}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => handleGenerateSlots(ev.id, "SHORT", { segment: "SHORT" })}
+                          disabled={actionLoadingId === `${ev.id}-SHORT`}
+                          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                        >
+                          {actionLoadingId === `${ev.id}-SHORT` ? "Cargando..." : "⚡ Slots Corto"}
+                        </button>
+
+                        <button
+                          onClick={() => handleGenerateSlots(ev.id, "LONG", { segment: "LONG" })}
+                          disabled={actionLoadingId === `${ev.id}-LONG`}
+                          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                        >
+                          {actionLoadingId === `${ev.id}-LONG` ? "Cargando..." : "⚡ Slots Largo"}
+                        </button>
+                      </>
+                    )
                   ) : (
                     <span className="text-[11px] text-slate-500 italic max-w-[220px]">
                       La generación automática de slots aún no está disponible para esta disciplina
