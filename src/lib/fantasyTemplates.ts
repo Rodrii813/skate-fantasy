@@ -144,6 +144,28 @@ export const SHOW_QUARTET_SLOTS: SlotTemplate[] = [
   { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
 ];
 
+// 9b. PRECISIÓN
+// Programa único (sin Corto/Largo, como Show), con una lista FIJA de 8
+// elementos técnicos que todo equipo incluye (confirmado por el usuario a
+// partir de un protocolo real: los códigos W4/L4/PB3... son solo el nivel
+// elegido para cada elemento, no cambian la categoría). Componentes
+// agrupados de 2 en 2, igual que en el resto de disciplinas (no como Show).
+export const PRECISION_SLOTS: SlotTemplate[] = [
+  // Técnica (8 slots)
+  { name: "Rotating Wheel", slotType: "TECHNICAL", categoryCode: "WHEEL", rule: "BEST_1" },
+  { name: "Linear Line", slotType: "TECHNICAL", categoryCode: "LINE", rule: "BEST_1" },
+  { name: "Pivoting Block", slotType: "TECHNICAL", categoryCode: "BLOCK", rule: "BEST_1" },
+  { name: "Move Element", slotType: "TECHNICAL", categoryCode: "MOVE_ELEMENT", rule: "BEST_1" },
+  { name: "Intersection", slotType: "TECHNICAL", categoryCode: "INTERSECTION", rule: "BEST_1" },
+  { name: "Traveling", slotType: "TECHNICAL", categoryCode: "TRAVELING", rule: "BEST_1" },
+  { name: "Creative", slotType: "TECHNICAL", categoryCode: "CREATIVE", rule: "BEST_1" },
+  { name: "No Hold Element", slotType: "TECHNICAL", categoryCode: "NO_HOLD_ELEMENT", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
 // 10. SHOW — GRUPOS PEQUEÑOS y GRUPOS GRANDES
 // Sin elementos técnicos: todo el programa se puntúa por 4 categorías de
 // Componentes, cada una en SU PROPIO slot (a diferencia del resto de

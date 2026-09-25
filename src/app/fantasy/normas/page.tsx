@@ -254,7 +254,34 @@ export default function NormasPage() {
         </div>
       </Section>
 
-      <Section title="6. Restricciones al elegir: grupos de calentamiento">
+      <Section title="6. Precisión">
+        <p>
+          Precisión también se compite en un único programa (sin Corto/Largo). Todo equipo
+          incluye una lista fija de 8 elementos técnicos — el nivel que elija cada equipo para
+          cada uno no cambia qué slots hay, solo la nota.
+        </p>
+        <Card>
+          <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+            Slots técnicos (8)
+          </p>
+          <ul className="mt-2 grid gap-1 sm:grid-cols-2 list-inside list-disc text-ice-100/75">
+            <li>Rotating Wheel</li>
+            <li>Linear Line</li>
+            <li>Pivoting Block</li>
+            <li>Move Element</li>
+            <li>Intersection</li>
+            <li>Traveling</li>
+            <li>Creative</li>
+            <li>No Hold Element</li>
+          </ul>
+        </Card>
+        <p>
+          Igual que en el resto de disciplinas (menos Show), en Componentes hay 2 slots
+          agrupados: "Skating Skills + Transitions" y "Performance + Choreography".
+        </p>
+      </Section>
+
+      <Section title="7. Restricciones al elegir: grupos de calentamiento">
         <p>
           Los patinadores inscritos se agrupan en <strong className="text-white">grupos de
           calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
@@ -284,13 +311,12 @@ export default function NormasPage() {
         </div>
         <p className="text-xs text-ice-100/50">
           Estas reglas de grupos se aplican igual en todas las disciplinas disponibles (Libre,
-          Inline, Solo Danza, Parejas, Pareja Danza y Show). Si en el futuro se añaden slots para
-          el resto (Precisión, Figuras…), sus límites concretos se anunciarán aparte cuando estén
-          disponibles.
+          Inline, Solo Danza, Parejas, Pareja Danza, Show y Precisión). Si en el futuro se añaden
+          slots para Figuras, sus límites concretos se anunciarán aparte cuando estén disponibles.
         </p>
       </Section>
 
-      <Section title="7. Cómo se puntúa el Fantasy">
+      <Section title="8. Cómo se puntúa el Fantasy">
         <p>
           Tu puntuación en una prueba es la suma de las notas oficiales de cada elemento que
           elegiste — la misma nota que aparece en el protocolo oficial de jueces de World Skate
@@ -304,7 +330,7 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="8. Predicción (juego aparte)">
+      <Section title="9. Predicción (juego aparte)">
         <p>
           Independiente del Fantasy por elementos, cada prueba tiene también una Predicción donde
           predices el podio y siguientes puestos. Se puntúa así:

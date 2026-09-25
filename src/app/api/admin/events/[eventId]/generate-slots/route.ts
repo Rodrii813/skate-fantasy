@@ -13,6 +13,7 @@ import {
   COUPLE_DANCE_FREE_SLOTS,
   SHOW_QUARTET_SLOTS,
   SHOW_GROUP_SLOTS,
+  PRECISION_SLOTS,
   type SlotTemplate,
 } from "@/lib/fantasyTemplates";
 
@@ -139,6 +140,18 @@ export async function POST(
       }
 
       const result = await generateSlotsForSegment(event.id, showConfig.segmentName, 1, showConfig.templates);
+
+      return NextResponse.json({
+        ok: true,
+        message: `Generados ${result.count} slots para ${result.segmentName} correctamente`,
+      });
+    }
+
+    // Precisión tampoco tiene Corto/Largo — un único programa con una lista
+    // fija de elementos (ver fantasyTemplates.ts). A diferencia de Show, solo
+    // hay una plantilla, así que no hace falta elegir formato.
+    if (event.discipline.slug === "precision") {
+      const result = await generateSlotsForSegment(event.id, "Programa", 1, PRECISION_SLOTS);
 
       return NextResponse.json({
         ok: true,

@@ -169,7 +169,10 @@ export default function EventsManager({
   const handleGenerateSlots = async (
     eventId: string,
     key: string,
-    body: { segment: "SHORT" | "LONG" } | { format: "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP" }
+    body:
+      | { segment: "SHORT" | "LONG" }
+      | { format: "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP" }
+      | Record<string, never>
   ) => {
     setActionLoadingId(`${eventId}-${key}`);
     setStatusMessage(null);
@@ -359,8 +362,9 @@ export default function EventsManager({
             // aunque la API ya la soporte.
             const DISCIPLINES_WITH_SLOTS = ["libre", "inline", "solo-danza", "parejas", "pareja-danza"];
             const isShow = ev.discipline?.slug === "show";
+            const isPrecision = ev.discipline?.slug === "precision";
             const slotsAvailableForDiscipline =
-              isShow || DISCIPLINES_WITH_SLOTS.includes(ev.discipline?.slug || "");
+              isShow || isPrecision || DISCIPLINES_WITH_SLOTS.includes(ev.discipline?.slug || "");
 
             return (
               <div
@@ -458,7 +462,18 @@ export default function EventsManager({
                   </Link>
 
                   {slotsAvailableForDiscipline ? (
-                    isShow ? (
+                    isPrecision ? (
+                      // Precisión: programa único con una sola plantilla fija
+                      // (sin Corto/Largo ni formatos que elegir, a diferencia
+                      // de Show), así que basta un botón.
+                      <button
+                        onClick={() => handleGenerateSlots(ev.id, "PROGRAMA", {})}
+                        disabled={actionLoadingId === `${ev.id}-PROGRAMA`}
+                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                      >
+                        {actionLoadingId === `${ev.id}-PROGRAMA` ? "Cargando..." : "⚡ Generar Slots"}
+                      </button>
+                    ) : isShow ? (
                       // Show no tiene Corto/Largo: es un único programa, y
                       // dentro de la disciplina hay 3 formatos con slots
                       // distintos que el admin elige a mano (no se puede
