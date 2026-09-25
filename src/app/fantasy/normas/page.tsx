@@ -138,9 +138,9 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="4. Predicción / Porra (juego aparte)">
+      <Section title="4. Predicción (juego aparte)">
         <p>
-          Independiente del Fantasy por elementos, cada prueba tiene también una "porra" donde
+          Independiente del Fantasy por elementos, cada prueba tiene también una Predicción donde
           predices el podio y siguientes puestos. Se puntúa así:
         </p>
         <Card>

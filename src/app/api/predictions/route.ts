@@ -56,12 +56,12 @@ export async function POST(req: Request) {
 
     if (new Date() > new Date(event.rosterLocksAt) || event.status !== "UPCOMING") {
       return NextResponse.json(
-        { error: "El plazo para enviar o modificar porras ya ha finalizado" },
+        { error: "El plazo para enviar o modificar predicciones ya ha finalizado" },
         { status: 400 }
       );
     }
 
-    // Guardar o actualizar la porra (upsert)
+    // Guardar o actualizar la predicción (upsert)
     const prediction = await prisma.prediction.upsert({
       where: {
         userId_eventId: {

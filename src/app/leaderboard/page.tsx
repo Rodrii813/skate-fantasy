@@ -3,6 +3,11 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
+const genderLabel: Record<string, string> = {
+  FEMALE: "Femenino",
+  MALE: "Masculino",
+};
+
 export default async function LeaderboardPage({
   searchParams,
 }: {
@@ -70,7 +75,7 @@ export default async function LeaderboardPage({
     statsRank3 = getRankStats("rank3SkaterId");
   }
 
-  // 3. Leaderboard Porras (Prediction Central)
+  // 3. Leaderboard de Predicciones (Prediction Central)
   const predictionsByUser = await prisma.prediction.findMany({
     where: { pointsEarned: { not: null } },
     include: { user: true },
@@ -168,14 +173,17 @@ export default async function LeaderboardPage({
                   Consenso Público (%)
                 </span>
                 <h2 className="text-lg font-bold text-slate-100 mt-1">
-                  ¿A quién ve ganando la afición?
+                  Favoritos del Público
                 </h2>
                 <p className="text-xs text-slate-400">
-                  {activeEvent.name} • {activeEvent.predictions.length} predicciones enviadas[cite: 1, 2]
+                  {activeEvent.name} • {activeEvent.predictions.length} predicciones enviadas
                 </p>
               </div>
 
-              {/* Selector de Evento */}
+              {/* Selector de Evento — antes mostraba solo e.category.name, que
+                  se repite entre eventos (p.ej. todos son "Senior"), así que
+                  todos los botones parecían iguales. Ahora combina disciplina
+                  + categoría + género para diferenciarlos de verdad. */}
               <div className="flex items-center gap-2 w-full sm:w-auto">
                 <span className="text-xs text-slate-400">Prueba:</span>
                 <div className="flex flex-wrap gap-1.5">
@@ -189,7 +197,8 @@ export default async function LeaderboardPage({
                           : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      {e.category.name}
+                      {e.discipline.name} · {e.category.name}
+                      {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
                     </Link>
                   ))}
                 </div>
@@ -292,7 +301,7 @@ export default async function LeaderboardPage({
                   : "border-transparent text-slate-400 hover:text-slate-200"
               }`}
             >
-              🎯 Ranking Porras (Predicciones)[cite: 1]
+              🎯 Ranking de Predicciones
             </Link>
             <Link
               href={`/leaderboard?tab=fantasy&event=${selectedEventId}`}
@@ -302,11 +311,11 @@ export default async function LeaderboardPage({
                   : "border-transparent text-slate-400 hover:text-slate-200"
               }`}
             >
-              ✨ Ranking Fantasy Clásico[cite: 1, 2]
+              ✨ Ranking Fantasy
             </Link>
           </div>
 
-          {/* Tabla de Porras */}
+          {/* Tabla de Predicciones */}
           {currentTab === "predictions" && (
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
               <div className="p-4 border-b border-slate-800 flex justify-between items-center">
@@ -320,7 +329,7 @@ export default async function LeaderboardPage({
 
               {predictionRanking.length === 0 ? (
                 <p className="p-8 text-center text-xs text-slate-400">
-                  Aún no se han puntuado porras en ningún evento.
+                  Aún no se han puntuado predicciones en ningún evento.
                 </p>
               ) : (
                 <div className="overflow-x-auto">
@@ -362,7 +371,7 @@ export default async function LeaderboardPage({
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
               <div className="p-4 border-b border-slate-800 flex justify-between items-center">
                 <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                  Puntos Fantasy = Suma de notas oficiales en los slots seleccionados[cite: 2]
+                  Puntos Fantasy = Suma de notas oficiales en los slots seleccionados
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
                   {fantasyRanking.length} Equipos

@@ -409,7 +409,7 @@ export default function EventsManager({
               Esto borrará permanentemente el evento{" "}
               <span className="font-bold text-slate-100">"{deleteTarget.name}"</span> y todo lo
               que dependa de él: slots, inscripciones y puntuaciones de patinadores, rosters y
-              picks de fantasy, y porras. Esta acción no se puede deshacer.
+              picks de fantasy, y predicciones. Esta acción no se puede deshacer.
             </p>
             <div className="space-y-1">
               <label className="text-slate-400 font-semibold text-xs">

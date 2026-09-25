@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
 
-  // Consultar si hay eventos abiertos para picks/porras o en vivo
+  // Consultar si hay eventos abiertos para picks/predicciones o en vivo
   const now = new Date();
   const upcomingEvents = await prisma.event.findMany({
     where: {
@@ -90,7 +90,7 @@ export default async function HomePage() {
                 href={`/predictions?event=${nextActiveEvent.id}`}
                 className="flex-1 sm:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition"
               >
-                🎯 Jugar Porra
+                🎯 Predecir Podio
               </Link>
               <Link
                 href={`/events/${nextActiveEvent.id}`}
@@ -156,7 +156,7 @@ export default async function HomePage() {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Porras oficiales: predice los patinadores que subirán al podio en cada categoría.
+                  Predicciones oficiales: predice los patinadores que subirán al podio en cada categoría.
                 </p>
               </div>
             </div>
@@ -202,7 +202,7 @@ export default async function HomePage() {
                   Clasificación General
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Ranking acumulado de la temporada tanto para el Fantasy como para la Porra Central.
+                  Ranking acumulado de la temporada tanto para el Fantasy como para la Predicción.
                 </p>
               </div>
             </div>
@@ -238,7 +238,7 @@ export default async function HomePage() {
                 <span className="text-xl">⛸️</span>
                 <h3 className="text-lg font-bold text-slate-100">¿Aún no juegas?</h3>
                 <p className="text-xs text-slate-400">
-                  Crea tu cuenta gratis en 15 segundos para guardar tus porras y rosters.
+                  Crea tu cuenta gratis en 15 segundos para guardar tus predicciones y rosters.
                 </p>
               </div>
               <Link

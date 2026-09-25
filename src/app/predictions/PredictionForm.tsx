@@ -66,10 +66,10 @@ export default function PredictionForm({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Error al enviar la porra");
+        throw new Error(data.error || "Error al enviar la predicción");
       }
 
-      setMessage({ text: "¡Porra guardada correctamente! 🎉", error: false });
+      setMessage({ text: "¡Predicción guardada correctamente! 🎉", error: false });
       router.refresh();
     } catch (err: any) {
       setMessage({ text: err.message, error: true });
@@ -147,7 +147,7 @@ export default function PredictionForm({
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-blue-900/30 text-sm"
           >
-            {loading ? "Guardando porra..." : initialPrediction ? "Actualizar mi Porra" : "Guardar mi Porra"}
+            {loading ? "Guardando predicción..." : initialPrediction ? "Actualizar mi Predicción" : "Guardar mi Predicción"}
           </button>
         </div>
       )}

@@ -167,7 +167,7 @@ export default async function CompetitionDetailPage({
                         href={`/predictions?event=${activeEvent.id}`}
                         className="flex-1 md:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-blue-900/20"
                       >
-                        🎯 Porra Top 3 / Top 5
+                        🎯 Predicción Top 3 / Top 5
                       </Link>
                       <Link
                         href={`/events/${activeEvent.id}`}
@@ -193,7 +193,7 @@ export default async function CompetitionDetailPage({
                       </p>
                     </div>
                     <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-slate-400 text-xs">Porras Realizadas</span>
+                      <span className="text-slate-400 text-xs">Predicciones Realizadas</span>
                       <p className="text-lg font-bold text-slate-200 mt-0.5">
                         {activeEvent._count.predictions}
                       </p>

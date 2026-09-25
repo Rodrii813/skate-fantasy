@@ -30,14 +30,14 @@ function parseWorldSkateFormat(text: string): ParsedSkaterOrder[] {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
 
-    // Detectar grupo con o sin asteriscos (ej. "******** Warm Up Group 1********")[cite: 6]
+    // Detectar grupo con o sin asteriscos (ej. "******** Warm Up Group 1********")
     const groupMatch = line.match(/warm\s*up\s*group\s*(\d+)/i);
     if (groupMatch) {
       currentGroup = parseInt(groupMatch[1], 10);
       continue;
     }
 
-    // Detectar país al final de la línea o línea que es solo el país (ej: "SUI", "FRA", "ESP")[cite: 6]
+    // Detectar país al final de la línea o línea que es solo el país (ej: "SUI", "FRA", "ESP")
     const countryMatch = line.match(/\b([A-Z]{3})$/);
 
     if (countryMatch) {
@@ -61,7 +61,7 @@ function parseWorldSkateFormat(text: string): ParsedSkaterOrder[] {
       if (inlineName && inlineName[0].trim().length > 2) {
         fullName = inlineName[0].trim();
       } else if (i > 0) {
-        // Caso B: El nombre estaba en la línea anterior (común en este PDF)[cite: 6]
+        // Caso B: El nombre estaba en la línea anterior (común en este PDF)
         const prev = lines[i - 1]
           .replace(/\d{2}:\d{2}/g, "")
           .replace(/^(\d{1,2})\s*/, "")

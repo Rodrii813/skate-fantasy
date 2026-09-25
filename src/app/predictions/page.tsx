@@ -62,7 +62,7 @@ export default async function PredictionsPage({
               <h1 className="text-3xl font-extrabold tracking-tight">Prediction Central</h1>
             </div>
             <p className="text-slate-400 text-sm mt-1">
-              Acierta el podio o el Top 5 de cada categoría y compite en el ranking de porras.
+              Acierta el podio o el Top 5 de cada categoría y compite en el ranking de predicciones.
             </p>
           </div>
 
@@ -141,7 +141,7 @@ export default async function PredictionsPage({
                   </div>
                 ) : activeEvent.registrations.length === 0 ? (
                   <div className="text-center py-8 text-sm text-slate-400">
-                    Aún no hay patinadores inscritos en esta prueba para hacer la porra.
+                    Aún no hay patinadores inscritos en esta prueba para hacer la predicción.
                   </div>
                 ) : (
                   <PredictionForm

@@ -159,7 +159,7 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                             <span>👥 {event._count.registrations} patinadores inscritos</span>
                             <span className="hidden sm:inline">•</span>
-                            <span>🎯 {event._count.predictions} porras enviadas</span>
+                            <span>🎯 {event._count.predictions} predicciones enviadas</span>
                             <span className="hidden sm:inline">•</span>
                             <span>
                               Cierre de picks:{" "}
@@ -186,7 +186,7 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                             href={`/predictions?event=${event.id}`}
                             className="sm:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow-sm"
                           >
-                            🎯 Porra Top 3/5
+                            🎯 Predicción Top 3/5
                           </Link>
 
                           <Link
