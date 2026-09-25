@@ -23,6 +23,7 @@ export default function EventsManager({
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [gender, setGender] = useState<"" | "MALE" | "FEMALE">("");
   const [rosterLocksAt, setRosterLocksAt] = useState("");
+  const [scheduledAt, setScheduledAt] = useState("");
 
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -41,6 +42,7 @@ export default function EventsManager({
     setCategoryId(categories[0]?.id || "");
     setGender("");
     setRosterLocksAt("");
+    setScheduledAt("");
   };
 
   const toDatetimeLocalValue = (isoDate: string) => {
@@ -59,6 +61,7 @@ export default function EventsManager({
     setCategoryId(ev.categoryId || ev.category?.id || "");
     setGender(ev.gender || "");
     setRosterLocksAt(ev.rosterLocksAt ? toDatetimeLocalValue(ev.rosterLocksAt) : "");
+    setScheduledAt(ev.scheduledAt ? toDatetimeLocalValue(ev.scheduledAt) : "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -82,6 +85,7 @@ export default function EventsManager({
             categoryId,
             rosterLocksAt,
             gender: gender || null,
+            scheduledAt: scheduledAt || null,
           }),
         }
       );
@@ -249,7 +253,7 @@ export default function EventsManager({
             </select>
           </div>
 
-          <div className="space-y-1 md:col-span-2">
+          <div className="space-y-1">
             <label className="text-slate-400 font-semibold">
               Cierre de Plantillas (Roster Locks At)
             </label>
@@ -259,6 +263,18 @@ export default function EventsManager({
               onChange={(e) => setRosterLocksAt(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
               required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-slate-400 font-semibold">
+              Fecha y hora en pista (calendario público)
+            </label>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
             />
           </div>
         </div>

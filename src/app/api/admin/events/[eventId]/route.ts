@@ -36,7 +36,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender } = body;
+    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt } = body;
 
     if (gender !== undefined && gender !== null && gender !== "MALE" && gender !== "FEMALE") {
       return NextResponse.json({ error: "Género inválido" }, { status: 400 });
@@ -49,6 +49,7 @@ export async function PATCH(
     if (categoryId !== undefined) data.categoryId = categoryId;
     if (rosterLocksAt !== undefined) data.rosterLocksAt = new Date(rosterLocksAt);
     if (gender !== undefined) data.gender = gender || null;
+    if (scheduledAt !== undefined) data.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
 
     const updatedEvent = await prisma.event.update({
       where: { id: eventId },
