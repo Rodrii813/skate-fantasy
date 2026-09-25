@@ -25,6 +25,9 @@ export default function NavBar() {
       <Link href="/competitions" className="hover:text-white" onClick={closeMenu}>
         Competiciones
       </Link>
+      <Link href="/calendario" className="hover:text-white" onClick={closeMenu}>
+        Calendario
+      </Link>
       <Link href="/fantasy" className="hover:text-white" onClick={closeMenu}>
         Fantasy
       </Link>
