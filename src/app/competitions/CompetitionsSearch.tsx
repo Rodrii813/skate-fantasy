@@ -50,6 +50,29 @@ function normalize(text: string): string {
     .replace(/[̀-ͯ]/g, "");
 }
 
+// Rango de fechas legible tipo agenda: "24 – 28 sep 2026" si cae en el
+// mismo mes, "24 sep – 3 oct 2026" si cruza de mes, con el año repetido
+// solo si start y end caen en años distintos.
+function formatDateRange(startDate: Date, endDate: Date): string {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+  const sameYear = start.getFullYear() === end.getFullYear();
+  const sameMonth = sameYear && start.getMonth() === end.getMonth();
+
+  const startLabel = start.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: sameMonth ? undefined : "short",
+    year: sameYear ? undefined : "numeric",
+  });
+  const endLabel = end.toLocaleDateString("es-ES", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+
+  return `${startLabel} – ${endLabel}`;
+}
+
 export default function CompetitionsSearch({ competitions }: { competitions: CompetitionItem[] }) {
   const [query, setQuery] = useState("");
 
@@ -97,18 +120,27 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
               key={comp.id}
               className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 shadow-lg shadow-black/40 space-y-5"
             >
-              {/* Cabecera de la Competición */}
-              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 border-b border-slate-800/80 pb-4">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-50 tracking-tight">{comp.name}</h2>
-                  <p className="text-sm text-slate-400 flex items-center gap-3 mt-1">
-                    <span>📍 {comp.location || "Sede oficial"}</span>
-                    <span>•</span>
-                    <span>
-                      📅 {new Date(comp.startDate).toLocaleDateString("es-ES")} –{" "}
-                      {new Date(comp.endDate).toLocaleDateString("es-ES")}
-                    </span>
-                  </p>
+              {/* Cabecera de la Competición: el rango de fechas es lo
+                  primero que se lee, tipo tarjeta de agenda, para que se
+                  entienda de un vistazo "de tal fecha a tal fecha" sin
+                  tener que hacer scroll ni leer letra pequeña. */}
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800/80 pb-4">
+                <div className="flex items-start gap-4">
+                  <div className="shrink-0 bg-indigo-950/60 border border-indigo-800/50 rounded-xl px-3 py-2 text-center">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">
+                      {new Date(comp.startDate).toLocaleDateString("es-ES", { month: "short" })}
+                    </p>
+                    <p className="text-xl font-black text-slate-50 leading-none mt-0.5">
+                      {new Date(comp.startDate).getDate()}
+                    </p>
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-50 tracking-tight">{comp.name}</h2>
+                    <p className="text-sm font-semibold text-indigo-300 mt-1">
+                      📅 {formatDateRange(comp.startDate, comp.endDate)}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-1">📍 {comp.location || "Sede oficial"}</p>
+                  </div>
                 </div>
 
                 {comp.website && (

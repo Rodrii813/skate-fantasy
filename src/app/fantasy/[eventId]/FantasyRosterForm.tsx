@@ -31,12 +31,21 @@ interface Segment {
   id: string;
   name: string;
   order: number;
+  // Plazo efectivo (ya resuelto en el servidor: el propio del segmento, o
+  // el general del evento si no tiene uno) y si ya está cerrado — ver
+  // src/lib/segments.ts. Calculado en el servidor para que SSR e
+  // hidratación vean siempre el mismo "ahora".
+  locksAt: string;
+  locked: boolean;
 }
 
 interface Props {
   eventId: string;
   eventName: string;
   rosterLocksAt: string;
+  // Si el evento no tiene segmentos configurados (caso legado), se usa este
+  // flag para bloquear/desbloquear la única pestaña "Roster".
+  eventLocked?: boolean;
   segments: Segment[];
   slots: Slot[];
   registrations: Registration[];
@@ -49,6 +58,7 @@ export default function FantasyRosterForm({
   eventId,
   eventName,
   rosterLocksAt,
+  eventLocked = false,
   segments,
   slots,
   registrations,
@@ -66,7 +76,16 @@ export default function FantasyRosterForm({
 
   const tabs = useMemo(() => {
     if (orderedSegments.length === 0) {
-      return [{ id: DEFAULT_TAB_ID, name: "Roster", order: 0, groupField: "warmupGroupShort" as const }];
+      return [
+        {
+          id: DEFAULT_TAB_ID,
+          name: "Roster",
+          order: 0,
+          groupField: "warmupGroupShort" as const,
+          locksAt: rosterLocksAt,
+          locked: eventLocked,
+        },
+      ];
     }
     return orderedSegments.map((seg, index) => ({
       id: seg.id,
@@ -78,8 +97,10 @@ export default function FantasyRosterForm({
       groupField: (index === 0 ? "warmupGroupShort" : "warmupGroupLong") as
         | "warmupGroupShort"
         | "warmupGroupLong",
+      locksAt: seg.locksAt,
+      locked: seg.locked,
     }));
-  }, [orderedSegments]);
+  }, [orderedSegments, rosterLocksAt, eventLocked]);
 
   const slotsByTab = useMemo(() => {
     const map = new Map<string, Slot[]>();
@@ -221,11 +242,14 @@ export default function FantasyRosterForm({
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <span className="text-xs text-slate-400 font-semibold">
-          Deadline:{" "}
+          Deadline {activeTab?.name ? `(${activeTab.name})` : ""}:{" "}
           <LocalDateTime
-            value={rosterLocksAt}
+            value={activeTab?.locksAt ?? rosterLocksAt}
             options={{ dateStyle: "medium", timeStyle: "short" }}
           />
+          {activeTab?.locked && (
+            <span className="ml-2 text-amber-400 font-bold">🔒 Cerrado</span>
+          )}
         </span>
         <h1 className="text-xl font-black text-slate-100 mt-1">
           Technical Elements & Components: Draft Constraints
@@ -275,7 +299,7 @@ export default function FantasyRosterForm({
                     : "border-transparent text-slate-500 hover:text-slate-300"
                 }`}
               >
-                {tab.name} {segValid === false ? "⚠️" : segValid === true ? "✅" : ""}
+                {tab.name} {tab.locked ? "🔒" : segValid === false ? "⚠️" : segValid === true ? "✅" : ""}
               </button>
             );
           })}
@@ -285,6 +309,37 @@ export default function FantasyRosterForm({
       {activeSlots.length === 0 ? (
         <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-6 text-xs text-slate-400 text-center">
           Todavía no hay slots generados para {activeTab?.name || "este segmento"}.
+        </div>
+      ) : activeTab?.locked ? (
+        // Segmento cerrado: solo lectura. No se muestran los <select> — el
+        // usuario ya no puede tocar estos picks, aunque otro segmento del
+        // mismo evento (p.ej. el Largo) pueda seguir abierto en su propia
+        // pestaña.
+        <div className="space-y-4">
+          <div className="bg-amber-950/30 border border-amber-800/50 rounded-2xl p-4 text-xs text-amber-300 font-semibold">
+            🔒 El plazo de {activeTab.name} ya ha cerrado. Esta alineación queda fijada.
+          </div>
+          <div className="space-y-3">
+            {activeSlots.map((slot) => {
+              const skaterId = picks[slot.id];
+              const reg = registrations.find((r) => r.skaterId === skaterId);
+              return (
+                <div
+                  key={slot.id}
+                  className="bg-[#0b1329] border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"
+                >
+                  <span className="text-xs font-bold text-slate-300">{slot.label}</span>
+                  <span className="text-xs text-slate-400">
+                    {reg
+                      ? `${reg.skater.firstName} ${reg.skater.lastName}${
+                          reg.skater.country ? ` (${reg.skater.country})` : ""
+                        }`
+                      : "— sin asignar —"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : (
         <>
@@ -389,30 +444,36 @@ export default function FantasyRosterForm({
         </>
       )}
 
-      {/* Botón y estado */}
-      <div className="space-y-2 pt-2">
-        <button
-          type="button"
-          onClick={handleSave}
-          disabled={saving || !validationResult.valid}
-          className={`w-full py-3.5 rounded-xl text-xs font-bold transition shadow-lg ${
-            validationResult.valid
-              ? "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
-              : "bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700/50"
-          }`}
-        >
-          {saving
-            ? "Guardando..."
-            : validationResult.valid
-            ? "Guardar Alineación Oficial"
-            : validationResult.errorMessage}
-        </button>
-        {!validationResult.valid && (
-          <p className="text-center text-[11px] text-amber-400 font-medium">
-            ℹ️ {validationResult.errorMessage}
-          </p>
-        )}
-      </div>
+      {/* Botón y estado — solo si el segmento activo sigue abierto. Se
+          guarda con el estado `picks` completo (todos los segmentos), pero
+          la API solo escribe los slots de segmentos abiertos e ignora el
+          resto, así que basta con un único botón aunque haya varios
+          segmentos y alguno ya esté cerrado. */}
+      {!activeTab?.locked && (
+        <div className="space-y-2 pt-2">
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving || !activeSegmentValidation?.valid}
+            className={`w-full py-3.5 rounded-xl text-xs font-bold transition shadow-lg ${
+              activeSegmentValidation?.valid
+                ? "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+                : "bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700/50"
+            }`}
+          >
+            {saving
+              ? "Guardando..."
+              : activeSegmentValidation?.valid
+              ? "Guardar Alineación Oficial"
+              : activeSegmentValidation?.errorMessage || "Completa la alineación"}
+          </button>
+          {!activeSegmentValidation?.valid && (
+            <p className="text-center text-[11px] text-amber-400 font-medium">
+              ℹ️ {activeSegmentValidation?.errorMessage}
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

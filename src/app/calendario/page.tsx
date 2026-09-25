@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatInTimeZone, VENUE_TIMEZONE } from "@/lib/timezone";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import TimezoneSelector from "@/app/_components/TimezoneSelector";
+import { groupEventsByVenueDay } from "@/lib/calendarGrouping";
 
 export const dynamic = "force-dynamic";
 
@@ -23,35 +23,12 @@ export default async function CalendarioPage() {
     include: { competition: true, discipline: true, category: true },
   });
 
-  const scheduled = events
-    .filter((e) => e.scheduledAt)
-    .sort((a, b) => new Date(a.scheduledAt!).getTime() - new Date(b.scheduledAt!).getTime());
   const unscheduled = events.filter((e) => !e.scheduledAt);
 
-  // Se agrupa por el día de calendario EN LA SEDE (Paraguay), no en UTC ni
-  // en la zona de quien mira la página: el "programa del sábado" es el
-  // sábado en Asunción para todo el mundo, igual que un cartel de
-  // competición real. Lo que sí varía según quién mira es la HORA exacta
-  // dentro de cada fila (ver <LocalDateTime> más abajo).
-  const dayGroups: { key: string; label: string; events: typeof scheduled }[] = [];
-  for (const event of scheduled) {
-    const key = formatInTimeZone(event.scheduledAt!, VENUE_TIMEZONE, {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
-    let group = dayGroups.find((g) => g.key === key);
-    if (!group) {
-      const label = formatInTimeZone(event.scheduledAt!, VENUE_TIMEZONE, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
-      group = { key, label, events: [] };
-      dayGroups.push(group);
-    }
-    group.events.push(event);
-  }
+  // La HORA exacta de cada fila sí varía según quién mira (ver
+  // <LocalDateTime> más abajo); el DÍA en el que cae no — ver
+  // src/lib/calendarGrouping.ts.
+  const dayGroups = groupEventsByVenueDay(events);
 
   return (
     <div>

@@ -4,6 +4,14 @@ import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import LocalDateTime from "@/app/_components/LocalDateTime";
+import { groupEventsByVenueDay } from "@/lib/calendarGrouping";
+
+const statusLabel: Record<string, string> = {
+  UPCOMING: "Picks abiertos",
+  LOCKED: "En pista",
+  RESULTS_IN: "Resultados parciales",
+  FINISHED: "Finalizado",
+};
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +28,7 @@ export default async function CompetitionDetailPage({
   searchParams,
 }: {
   params: { id: string };
-  searchParams: { event?: string; view?: string };
+  searchParams: { event?: string; view?: string; cal?: string };
 }) {
   const competition = await prisma.competition.findUnique({
     where: { id: params.id },
@@ -60,6 +68,9 @@ export default async function CompetitionDetailPage({
 
   const tabHref = (eventId: string, forView?: "entries" | "results") =>
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
+
+  const showCalendar = searchParams.cal === "1";
+  const dayGroups = groupEventsByVenueDay(events);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -108,6 +119,89 @@ export default async function CompetitionDetailPage({
           </div>
         ) : (
           <>
+            {/* Toggle entre las pestañas por disciplina (Entries/Results) y
+                el Calendario de ESTA competición, agrupado por día. */}
+            <div className="flex justify-end">
+              <Link
+                href={
+                  showCalendar
+                    ? tabHref(activeEvent?.id ?? events[0].id)
+                    : `/competitions/${competition.id}?cal=1`
+                }
+                className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition inline-flex items-center gap-1.5"
+              >
+                {showCalendar ? "← Volver a las pruebas" : "📅 Ver Calendario de la competición"}
+              </Link>
+            </div>
+
+            {showCalendar ? (
+              <div className="space-y-6">
+                {dayGroups.length === 0 ? (
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
+                    <p className="text-slate-400 text-base">
+                      Ninguna prueba de esta competición tiene todavía horario confirmado.
+                    </p>
+                  </div>
+                ) : (
+                  dayGroups.map((group) => (
+                    <section key={group.key}>
+                      <h2 className="font-display text-lg font-semibold capitalize text-slate-100 border-b border-slate-800 pb-2">
+                        {group.label}
+                      </h2>
+                      <ul className="mt-3 space-y-2">
+                        {group.events.map((event) => (
+                          <li
+                            key={event.id}
+                            className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
+                          >
+                            <div className="flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-4 min-w-0">
+                                <LocalDateTime
+                                  value={event.scheduledAt}
+                                  options={{ hour: "2-digit", minute: "2-digit" }}
+                                  className="font-display w-14 shrink-0 text-lg font-semibold text-indigo-400"
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-display text-base font-semibold text-slate-100 truncate">
+                                    {event.name}
+                                  </p>
+                                  <p className="text-xs text-slate-400">
+                                    {event.discipline.name} · {event.category.name}
+                                    {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                                  </p>
+                                </div>
+                              </div>
+                              <span className="whitespace-nowrap rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 shrink-0">
+                                {statusLabel[event.status]}
+                              </span>
+                            </div>
+                            {/* Enlaces discretos a la Predicción y al Draft
+                                de esta prueba concreta — a propósito no son
+                                botones grandes, para no competir visualmente
+                                con la fila del calendario. */}
+                            <div className="mt-1.5 pl-[4.5rem] flex items-center gap-3 text-[11px]">
+                              <Link
+                                href={`/predictions?event=${event.id}`}
+                                className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                              >
+                                Predicción →
+                              </Link>
+                              <Link
+                                href={`/events/${event.id}`}
+                                className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                              >
+                                Draft →
+                              </Link>
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </section>
+                  ))
+                )}
+              </div>
+            ) : (
+              <>
             {/* Pestañas por disciplina · categoría, con nº de patinadoras */}
             <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-px">
               {events.map((ev) => {
@@ -281,6 +375,8 @@ export default async function CompetitionDetailPage({
                   )}
                 </div>
               </div>
+            )}
+              </>
             )}
           </>
         )}

@@ -13,6 +13,7 @@ export async function GET() {
         discipline: true,
         category: true,
         slots: true,
+        segments: { orderBy: { order: "asc" } },
         _count: { select: { registrations: true } },
       },
     });

@@ -101,3 +101,106 @@ export async function computeGlobalLeaderboard() {
     .map(([userId, v]) => ({ userId, ...v }))
     .sort((a, b) => b.total - a.total);
 }
+
+export type CompetitionScore = {
+  userId: string;
+  userName: string;
+  total: number;
+  eventsPlayed: number;
+};
+
+/**
+ * Ranking Fantasy GLOBAL de una competición: igual que computeGlobalLeaderboard
+ * pero acotado a los eventos de UNA competición (para la vista "Ranking
+ * Fantasy por competición" de /fantasy). Reutiliza computeEventLeaderboard
+ * evento a evento, no reimplementa el cálculo de puntos.
+ */
+export async function computeCompetitionFantasyLeaderboard(
+  competitionId: string
+): Promise<CompetitionScore[]> {
+  const events = await prisma.event.findMany({
+    where: { competitionId },
+    select: { id: true },
+  });
+
+  const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
+
+  for (const event of events) {
+    const board = await computeEventLeaderboard(event.id);
+    for (const row of board) {
+      const existing = totalsByUser.get(row.userId);
+      if (existing) {
+        existing.total += row.total;
+        existing.eventsPlayed += 1;
+      } else {
+        totalsByUser.set(row.userId, { userName: row.userName, total: row.total, eventsPlayed: 1 });
+      }
+    }
+  }
+
+  return Array.from(totalsByUser.entries())
+    .map(([userId, v]) => ({ userId, ...v }))
+    .sort((a, b) => b.total - a.total);
+}
+
+export type PredictionScore = {
+  userId: string;
+  userName: string;
+  total: number;
+  eventsPlayed: number;
+};
+
+/**
+ * Ranking de Predicciones de UN evento. A diferencia del Fantasy, los
+ * puntos de Prediction ya están precalculados y guardados en
+ * Prediction.pointsEarned por scoreEventPredictions() (src/lib/calculatePredictions.ts,
+ * se ejecuta desde el panel de admin al cargar resultados) — aquí solo se
+ * lee y se ordena, no se recalcula la puntuación.
+ */
+export async function computeEventPredictionLeaderboard(eventId: string): Promise<PredictionScore[]> {
+  const predictions = await prisma.prediction.findMany({
+    where: { eventId, pointsEarned: { not: null } },
+    include: { user: true },
+  });
+
+  return predictions
+    .map((p) => ({
+      userId: p.userId,
+      userName: p.user.name,
+      total: p.pointsEarned ?? 0,
+      eventsPlayed: 1,
+    }))
+    .sort((a, b) => b.total - a.total);
+}
+
+/**
+ * Ranking de Predicciones GLOBAL de una competición: suma pointsEarned de
+ * todos los eventos ya puntuados de esa competición, por usuario.
+ */
+export async function computeCompetitionPredictionLeaderboard(
+  competitionId: string
+): Promise<PredictionScore[]> {
+  const predictions = await prisma.prediction.findMany({
+    where: { event: { competitionId }, pointsEarned: { not: null } },
+    include: { user: true },
+  });
+
+  const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
+  for (const p of predictions) {
+    const existing = totalsByUser.get(p.userId);
+    if (existing) {
+      existing.total += p.pointsEarned ?? 0;
+      existing.eventsPlayed += 1;
+    } else {
+      totalsByUser.set(p.userId, {
+        userName: p.user.name,
+        total: p.pointsEarned ?? 0,
+        eventsPlayed: 1,
+      });
+    }
+  }
+
+  return Array.from(totalsByUser.entries())
+    .map(([userId, v]) => ({ userId, ...v }))
+    .sort((a, b) => b.total - a.total);
+}
