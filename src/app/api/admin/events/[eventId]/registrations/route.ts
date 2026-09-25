@@ -3,6 +3,27 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+// Lista los patinadores inscritos en esta prueba, con sus datos y grupos de
+// calentamiento por segmento — usada por la pantalla de admin
+// "Patinadores Inscritos" para mostrar de verdad quién está inscrito (antes
+// esa sección solo mostraba un texto fijo, sin listar a nadie ni poder
+// quitar duplicados desde ahí).
+export async function GET(
+  req: Request,
+  { params }: { params: { eventId: string } }
+) {
+  try {
+    const registrations = await prisma.registration.findMany({
+      where: { eventId: params.eventId },
+      include: { skater: true },
+      orderBy: [{ startOrder: "asc" }],
+    });
+    return NextResponse.json(registrations);
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
 export async function POST(
   req: Request,
   { params }: { params: { eventId: string } }

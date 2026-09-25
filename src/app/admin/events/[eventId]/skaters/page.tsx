@@ -10,6 +10,7 @@ export default function EventSkatersPage() {
 
   const [eventData, setEventData] = useState<any>(null);
   const [allSkaters, setAllSkaters] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Formulario manual
@@ -19,6 +20,7 @@ export default function EventSkatersPage() {
 
   // Formulario Starting Order PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [segmentName, setSegmentName] = useState("Short Program");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -38,6 +40,12 @@ export default function EventSkatersPage() {
         setAllSkaters(skaters);
         if (skaters.length > 0) setSelectedSkaterId(skaters[0].id);
       }
+
+      // 3. Obtener quién está inscrito de verdad en ESTA prueba, para poder
+      // ver duplicados o nombres mal importados y quitarlos aquí mismo.
+      const resRegs = await fetch(`/api/admin/events/${eventId}/registrations`);
+      const regs = await resRegs.json();
+      if (Array.isArray(regs)) setRegistrations(regs);
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -83,6 +91,7 @@ export default function EventSkatersPage() {
 
     const formData = new FormData();
     formData.append("file", pdfFile);
+    formData.append("segmentName", segmentName);
 
     try {
       const res = await fetch(`/api/admin/events/${eventId}/import-starting-order`, {
@@ -91,7 +100,7 @@ export default function EventSkatersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al procesar PDF");
-      setMsg(`✅ Importados ${data.count} patinadores con sus grupos de calentamiento`);
+      setMsg(`✅ Importados ${data.count} patinadores con su grupo de calentamiento de "${segmentName}"`);
       loadData();
     } catch (err: any) {
       setMsg(`❌ ${err.message}`);
@@ -205,6 +214,25 @@ export default function EventSkatersPage() {
               <p className="text-[11px] text-slate-400">
                 Detecta y extrae todos los patinadores, dorsales y grupos de calentamiento automáticamente.
               </p>
+
+              <div className="space-y-1">
+                <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
+                  Segmento
+                </label>
+                <select
+                  value={segmentName}
+                  onChange={(e) => setSegmentName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
+                >
+                  <option value="Short Program">Short Program (Programa Corto)</option>
+                  <option value="Long Program">Long Program (Programa Largo)</option>
+                </select>
+                <p className="text-[10px] text-slate-500">
+                  El Corto y el Largo tienen sorteos de grupo de calentamiento distintos: sube el
+                  PDF de cada uno por separado, eligiendo aquí el segmento correcto cada vez.
+                </p>
+              </div>
+
               <input
                 type="file"
                 accept=".pdf"
@@ -227,20 +255,51 @@ export default function EventSkatersPage() {
         {/* Lista de Registrados */}
         <div className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Patinadores en la prueba ({eventData?._count?.registrations || 0})
+            Patinadores en la prueba ({registrations.length})
           </h2>
+          <p className="text-[11px] text-slate-500">
+            Si ves un nombre duplicado o mal leído del PDF (p.ej. con el país pegado al apellido),
+            quítalo aquí con "Desinscribir" y corrígelo o bórralo del todo en{" "}
+            <Link href="/admin/skaters" className="text-indigo-400 hover:underline">
+              Gestión de Patinadores
+            </Link>
+            .
+          </p>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800 text-xs">
             {loading ? (
               <div className="p-4 text-center text-slate-400">Cargando lista...</div>
-            ) : eventData?._count?.registrations === 0 ? (
+            ) : registrations.length === 0 ? (
               <div className="p-4 text-center text-slate-400">
                 No hay patinadores inscritos en esta prueba todavía.
               </div>
             ) : (
-              <div className="p-4 text-slate-300">
-                Patinadores listos para el draft y puntuación del evento.
-              </div>
+              registrations.map((reg) => (
+                <div key={reg.id} className="p-3 flex items-center justify-between hover:bg-slate-850">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-slate-500 w-6">
+                      {reg.startOrder ?? "—"}
+                    </span>
+                    <span className="font-semibold text-slate-100">
+                      {reg.skater.firstName} {reg.skater.lastName}
+                    </span>
+                    {reg.skater.country && (
+                      <span className="text-[10px] bg-slate-800 text-slate-400 font-semibold px-1.5 py-0.5 rounded">
+                        {reg.skater.country}
+                      </span>
+                    )}
+                    <span className="text-[10px] text-slate-500">
+                      G.Corto: {reg.warmupGroupShort ?? "—"} · G.Largo: {reg.warmupGroupLong ?? "—"}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => handleDeleteRegistration(reg.skaterId)}
+                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 rounded text-[11px]"
+                  >
+                    Desinscribir
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>

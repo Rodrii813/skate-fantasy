@@ -1,5 +1,4 @@
 import type { SegmentResultBlock } from "@/lib/segmentResults";
-import { getCountryFlag } from "@/lib/flags";
 
 // 3 bloques colapsables por evento — "Programa Corto" / "Programa Largo" /
 // "Total" — inspirado en el patrón de rockerskating.com ("Short Program
@@ -55,9 +54,13 @@ export default function SegmentResultsTables({
                       </td>
                       <td className="py-3 px-4 font-sans font-semibold text-slate-200">
                         {row.skaterName}{" "}
-                        <span className="font-mono text-[11px] text-slate-500">
-                          {getCountryFlag(row.country)} {row.country}
-                        </span>
+                        {/* Los emojis de bandera no se renderizan bien en
+                            todos los sistemas (en Windows, sobre todo, salen
+                            en blanco o como texto suelto que parecía un país
+                            duplicado). Se muestra solo el código de país. */}
+                        {row.country && (
+                          <span className="font-mono text-[11px] text-slate-500">({row.country})</span>
+                        )}
                       </td>
                       <td className="py-3 px-4 text-right font-bold text-indigo-400 text-base">
                         {numberOrDash(row.total)}

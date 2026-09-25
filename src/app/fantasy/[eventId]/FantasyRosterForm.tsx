@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { getCountryFlag } from "@/lib/flags";
 import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
 
 interface Skater {
@@ -200,7 +199,8 @@ export default function FantasyRosterForm({
             <optgroup key={group} label={`── Warmup Group ${group} ──`}>
               {skaters.map((reg) => (
                 <option key={reg.skater.id} value={reg.skater.id}>
-                  {reg.skater.firstName} {reg.skater.lastName} {getCountryFlag(reg.skater.country)} {reg.skater.country}
+                  {reg.skater.firstName} {reg.skater.lastName}
+                  {reg.skater.country ? ` (${reg.skater.country})` : ""}
                 </option>
               ))}
             </optgroup>

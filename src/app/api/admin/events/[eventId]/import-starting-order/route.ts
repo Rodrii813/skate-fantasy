@@ -96,11 +96,20 @@ async function parseAndRegisterSkaters(
   const imported: { startOrder: number; warmupGroup: number; fullName: string; country: string }[] = [];
 
   // 1. Limpieza radical: Borramos todas las horas (12:27, 05:15), fechas (07/09/2026) y ruido de encabezados
+  //
+  // OJO: las dos líneas de palabras de ruido llevan \b (límites de palabra)
+  // a propósito. Sin ellos, el replace buscaba esas letras EN CUALQUIER
+  // SITIO, incluso dentro de un nombre real — por ejemplo "BRENDA" contiene
+  // "END" (bR-END-a) y "Nation" sin \b tacharía el trozo "NAT" de cualquier
+  // nombre que lo contuviera. Esto convertía de verdad "BRENDA LUQUE
+  // SANTAMARIA" en "BRA LUQUE SANTAMARIA" al importar. Con \b solo se borran
+  // esas palabras completas (encabezados de tabla), nunca un trozo de un
+  // nombre.
   let clean = blockText
     .replace(/\d{1,2}:\d{2}(:\d{2})?/g, "") // Elimina formatos HH:MM
     .replace(/\d{2}\/\d{2}\/\d{4}/g, "")    // Elimina formatos DD/MM/YYYY
-    .replace(/(Start|Length|End|Nation|TIME|SKATING|ORDER|SHORT|PROGRAM|WORLD|SKATE)/gi, "")
-    .replace(/Seniores|Free|Ladies/gi, "");
+    .replace(/\b(Start|Length|End|Nation|TIME|SKATING|ORDER|SHORT|PROGRAM|WORLD|SKATE)\b/gi, "")
+    .replace(/\b(Seniores|Free|Ladies)\b/gi, "");
 
   // 2. Expresión regular: Busca (Dorsal) -> (Espacios/Saltos) -> (Nombre) -> (Espacios) -> (País de 3 letras)
   //
