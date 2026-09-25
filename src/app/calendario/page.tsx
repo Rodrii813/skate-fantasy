@@ -2,7 +2,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import TimezoneSelector from "@/app/_components/TimezoneSelector";
-import { groupEventsByVenueDay } from "@/lib/calendarGrouping";
+import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
 
 export const dynamic = "force-dynamic";
 
@@ -20,15 +20,26 @@ const genderLabel: Record<string, string> = {
 
 export default async function CalendarioPage() {
   const events = await prisma.event.findMany({
-    include: { competition: true, discipline: true, category: true },
+    include: {
+      competition: true,
+      discipline: true,
+      category: true,
+      segments: { orderBy: { order: "asc" } },
+    },
   });
 
-  const unscheduled = events.filter((e) => !e.scheduledAt);
+  // Una fila del calendario normalmente es "el evento entero", pero cuando
+  // sus segmentos tienen hora de pista propia (Corto/Largo a horas
+  // distintas, o el Largo partido en "Top 10"/"Resto"), un mismo evento
+  // aparece en varias filas — ver src/lib/calendarGrouping.ts.
+  const rows = buildCalendarRows(events);
+  const scheduledEventIds = new Set(rows.map((r) => r.event.id));
+  const unscheduled = events.filter((e) => !scheduledEventIds.has(e.id));
 
   // La HORA exacta de cada fila sí varía según quién mira (ver
   // <LocalDateTime> más abajo); el DÍA en el que cae no — ver
   // src/lib/calendarGrouping.ts.
-  const dayGroups = groupEventsByVenueDay(events);
+  const dayGroups = groupCalendarRowsByVenueDay(rows);
 
   return (
     <div>
@@ -84,15 +95,17 @@ export default async function CalendarioPage() {
             {group.label}
           </h2>
           <ul className="mt-3 space-y-2">
-            {group.events.map((event) => (
-              <li key={event.id}>
+            {group.events.map((row, i) => {
+              const event = row.event;
+              return (
+              <li key={`${event.id}-${i}`}>
                 <Link
                   href={`/events/${event.id}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10"
                 >
                   <div className="flex items-center gap-4">
                     <LocalDateTime
-                      value={event.scheduledAt}
+                      value={row.scheduledAt}
                       options={{ hour: "2-digit", minute: "2-digit" }}
                       className="font-display w-14 shrink-0 text-lg font-semibold text-gold"
                     />
@@ -100,7 +113,14 @@ export default async function CalendarioPage() {
                       <p className="text-xs uppercase tracking-wide text-accent">
                         {event.competition.name}
                       </p>
-                      <p className="font-display text-base font-semibold text-white">{event.name}</p>
+                      <p className="font-display text-base font-semibold text-white">
+                        {event.name}
+                        {row.rowLabel && (
+                          <span className="ml-2 text-sm font-normal text-ice-100/60">
+                            — {row.rowLabel}
+                          </span>
+                        )}
+                      </p>
                       <p className="text-sm text-ice-100/60">
                         {event.discipline.name} · {event.category.name}
                         {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
@@ -112,7 +132,8 @@ export default async function CalendarioPage() {
                   </span>
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </section>
       ))}

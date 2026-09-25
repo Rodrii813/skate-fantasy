@@ -37,10 +37,20 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt } = body;
+    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt, showFormat } = body;
 
     if (gender !== undefined && gender !== null && gender !== "MALE" && gender !== "FEMALE") {
       return NextResponse.json({ error: "Género inválido" }, { status: 400 });
+    }
+
+    if (
+      showFormat !== undefined &&
+      showFormat !== null &&
+      showFormat !== "QUARTET" &&
+      showFormat !== "SMALL_GROUP" &&
+      showFormat !== "LARGE_GROUP"
+    ) {
+      return NextResponse.json({ error: "Formato de Show inválido" }, { status: 400 });
     }
 
     const data: Record<string, unknown> = {};
@@ -54,6 +64,7 @@ export async function PATCH(
     if (gender !== undefined) data.gender = gender || null;
     if (scheduledAt !== undefined)
       data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
+    if (showFormat !== undefined) data.showFormat = showFormat || null;
 
     const updatedEvent = await prisma.event.update({
       where: { id: eventId },

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import LocalDateTime from "@/app/_components/LocalDateTime";
-import { groupEventsByVenueDay } from "@/lib/calendarGrouping";
+import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
 
 const statusLabel: Record<string, string> = {
   UPCOMING: "Picks abiertos",
@@ -70,7 +70,11 @@ export default async function CompetitionDetailPage({
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
 
   const showCalendar = searchParams.cal === "1";
-  const dayGroups = groupEventsByVenueDay(events);
+  // Una fila del calendario normalmente es "el evento entero", pero cuando
+  // sus segmentos tienen hora de pista propia (Corto/Largo a horas
+  // distintas, o el Largo partido en "Top 10"/"Resto"), un mismo evento
+  // aparece en varias filas — ver src/lib/calendarGrouping.ts.
+  const dayGroups = groupCalendarRowsByVenueDay(buildCalendarRows(events));
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -149,21 +153,28 @@ export default async function CompetitionDetailPage({
                         {group.label}
                       </h2>
                       <ul className="mt-3 space-y-2">
-                        {group.events.map((event) => (
+                        {group.events.map((row, i) => {
+                          const event = row.event;
+                          return (
                           <li
-                            key={event.id}
+                            key={`${event.id}-${i}`}
                             className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
                           >
                             <div className="flex items-center justify-between gap-4">
                               <div className="flex items-center gap-4 min-w-0">
                                 <LocalDateTime
-                                  value={event.scheduledAt}
+                                  value={row.scheduledAt}
                                   options={{ hour: "2-digit", minute: "2-digit" }}
                                   className="font-display w-14 shrink-0 text-lg font-semibold text-indigo-400"
                                 />
                                 <div className="min-w-0">
                                   <p className="font-display text-base font-semibold text-slate-100 truncate">
                                     {event.name}
+                                    {row.rowLabel && (
+                                      <span className="ml-2 text-xs font-normal text-slate-400">
+                                        — {row.rowLabel}
+                                      </span>
+                                    )}
                                   </p>
                                   <p className="text-xs text-slate-400">
                                     {event.discipline.name} · {event.category.name}
@@ -194,7 +205,8 @@ export default async function CompetitionDetailPage({
                               </Link>
                             </div>
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
                     </section>
                   ))

@@ -120,21 +120,25 @@ export async function POST(
 
     // Show no tiene Corto/Largo — es un único programa, y dentro de la
     // disciplina "Show" hay 3 formatos con slots distintos (Cuartetos,
-    // Grupos Pequeños, Grupos Grandes) que el admin elige explícitamente,
-    // en vez del segmento SHORT/LONG que usan el resto de disciplinas.
+    // Grupos Pequeños, Grupos Grandes). Cuartetos/Grupos Pequeños/Grupos
+    // Grandes son en realidad competiciones separadas (cada una su propio
+    // Event, con su propia hora e inscritos), así que el formato se fija UNA
+    // vez al crear/editar el evento (event.showFormat) en vez de elegirse
+    // cada vez que se generan los slots.
     if (event.discipline.slug === "show") {
-      const format = body.format as "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP";
-
       const showFormats: Record<string, { segmentName: string; templates: SlotTemplate[] }> = {
         QUARTET: { segmentName: "Programa (Cuartetos)", templates: SHOW_QUARTET_SLOTS },
         SMALL_GROUP: { segmentName: "Programa (Grupos Pequeños)", templates: SHOW_GROUP_SLOTS },
         LARGE_GROUP: { segmentName: "Programa (Grupos Grandes)", templates: SHOW_GROUP_SLOTS },
       };
 
-      const showConfig = showFormats[format];
+      const showConfig = event.showFormat ? showFormats[event.showFormat] : undefined;
       if (!showConfig) {
         return NextResponse.json(
-          { error: "Falta especificar el formato de Show (QUARTET, SMALL_GROUP o LARGE_GROUP)" },
+          {
+            error:
+              "Este evento de Show no tiene formato asignado. Edítalo y elige Cuartetos, Grupos Pequeños o Grupos Grandes antes de generar los slots.",
+          },
           { status: 400 }
         );
       }

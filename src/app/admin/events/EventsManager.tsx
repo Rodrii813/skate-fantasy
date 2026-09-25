@@ -25,6 +25,10 @@ export default function EventsManager({
   const [gender, setGender] = useState<"" | "MALE" | "FEMALE">("");
   const [rosterLocksAt, setRosterLocksAt] = useState("");
   const [scheduledAt, setScheduledAt] = useState("");
+  // Solo se usa/envía cuando la disciplina elegida es "Show" — ver
+  // generate-slots/route.ts (Cuartetos/Grupos Pequeños/Grupos Grandes son
+  // competiciones separadas, así que cada evento necesita saber cuál es).
+  const [showFormat, setShowFormat] = useState<"" | "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP">("");
 
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -41,6 +45,15 @@ export default function EventsManager({
   const [segmentLocksInputs, setSegmentLocksInputs] = useState<Record<string, string>>({});
   const [segmentSavingId, setSegmentSavingId] = useState<string | null>(null);
 
+  // Hora de pista propia de cada segmento (para el calendario) y su split
+  // opcional Top N / Resto — ver src/lib/calendarGrouping.ts. Estado local
+  // por segmentId, con la clave "<segmentId>:schedule", ":splitLabel" y
+  // ":splitSchedule" para no mezclar los 3 campos entre sí.
+  const [segmentScheduleInputs, setSegmentScheduleInputs] = useState<Record<string, string>>({});
+  const [segmentScheduleSavingId, setSegmentScheduleSavingId] = useState<string | null>(null);
+
+  const isShowDiscipline = disciplines.find((d) => d.id === disciplineId)?.slug === "show";
+
   const resetForm = () => {
     setEditingEventId(null);
     setName("");
@@ -50,6 +63,7 @@ export default function EventsManager({
     setGender("");
     setRosterLocksAt("");
     setScheduledAt("");
+    setShowFormat("");
   };
 
   // El servidor interpreta lo que se escriba aquí como hora de la sede
@@ -68,6 +82,7 @@ export default function EventsManager({
     setGender(ev.gender || "");
     setRosterLocksAt(ev.rosterLocksAt ? toDatetimeLocalValue(ev.rosterLocksAt) : "");
     setScheduledAt(ev.scheduledAt ? toDatetimeLocalValue(ev.scheduledAt) : "");
+    setShowFormat(ev.showFormat || "");
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -92,6 +107,7 @@ export default function EventsManager({
             rosterLocksAt,
             gender: gender || null,
             scheduledAt: scheduledAt || null,
+            showFormat: isShowDiscipline ? showFormat || null : null,
           }),
         }
       );
@@ -160,6 +176,40 @@ export default function EventsManager({
       setStatusMessage(`❌ ${err.message}`);
     } finally {
       setSegmentSavingId(null);
+    }
+  };
+
+  // Guarda la hora de pista propia de un segmento y/o su split Top N/Resto
+  // — ver src/lib/calendarGrouping.ts. Los 3 campos son independientes: se
+  // manda solo lo que se ha tocado en el formulario de este segmento.
+  const handleSaveSegmentSchedule = async (eventId: string, segmentId: string) => {
+    setSegmentScheduleSavingId(segmentId);
+    setStatusMessage(null);
+
+    const scheduledAtValue = segmentScheduleInputs[`${segmentId}:schedule`] ?? "";
+    const splitLabelValue = segmentScheduleInputs[`${segmentId}:splitLabel`] ?? "";
+    const splitScheduledAtValue = segmentScheduleInputs[`${segmentId}:splitSchedule`] ?? "";
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/segments/${segmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scheduledAt: scheduledAtValue || null,
+          splitLabel: splitLabelValue || null,
+          splitScheduledAt: splitScheduledAtValue || null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error guardando el horario del segmento");
+
+      setStatusMessage("✅ Horario del segmento actualizado");
+      router.refresh();
+    } catch (err: any) {
+      setStatusMessage(`❌ ${err.message}`);
+    } finally {
+      setSegmentScheduleSavingId(null);
     }
   };
 
@@ -297,6 +347,28 @@ export default function EventsManager({
               <option value="MALE">Masculino</option>
             </select>
           </div>
+
+          {isShowDiscipline && (
+            <div className="space-y-1">
+              <label className="text-slate-400 font-semibold">
+                Formato de Show{" "}
+                <span className="font-normal text-slate-500">
+                  — Cuartetos/Grupos Pequeños/Grandes son competiciones separadas
+                </span>
+              </label>
+              <select
+                value={showFormat}
+                onChange={(e) => setShowFormat(e.target.value as typeof showFormat)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
+                required
+              >
+                <option value="">Selecciona un formato…</option>
+                <option value="QUARTET">Cuartetos</option>
+                <option value="SMALL_GROUP">Grupos Pequeños</option>
+                <option value="LARGE_GROUP">Grupos Grandes</option>
+              </select>
+            </div>
+          )}
 
           <div className="space-y-1">
             <label className="text-slate-400 font-semibold">
@@ -443,6 +515,81 @@ export default function EventsManager({
                       })}
                     </div>
                   )}
+
+                  {/* Hora de pista propia por segmento, para el calendario
+                      (/calendario y /competitions/[id]). Vacío = el
+                      calendario sigue usando la hora general del evento de
+                      arriba, sin desglosar por segmento. El split Top N /
+                      Resto es opcional y solo tiene sentido si el segmento
+                      ya tiene su propia hora rellena. */}
+                  {ev.segments && ev.segments.length > 0 && (
+                    <div className="mt-3 space-y-2.5 bg-slate-950/50 border border-slate-800/80 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Horario por segmento (calendario){" "}
+                        <span className="font-normal normal-case text-slate-600">
+                          — vacío = usa la hora general del evento, sin desglosar
+                        </span>
+                      </p>
+                      {ev.segments.map((seg: any) => {
+                        const scheduleKey = `${seg.id}:schedule`;
+                        const splitLabelKey = `${seg.id}:splitLabel`;
+                        const splitScheduleKey = `${seg.id}:splitSchedule`;
+                        const scheduleValue =
+                          segmentScheduleInputs[scheduleKey] ??
+                          (seg.scheduledAt ? toDatetimeLocalValue(seg.scheduledAt) : "");
+                        const splitLabelValue = segmentScheduleInputs[splitLabelKey] ?? seg.splitLabel ?? "";
+                        const splitScheduleValue =
+                          segmentScheduleInputs[splitScheduleKey] ??
+                          (seg.splitScheduledAt ? toDatetimeLocalValue(seg.splitScheduledAt) : "");
+                        return (
+                          <div key={seg.id} className="space-y-1.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">
+                                {seg.name}
+                              </span>
+                              <input
+                                type="datetime-local"
+                                value={scheduleValue}
+                                onChange={(e) =>
+                                  setSegmentScheduleInputs((prev) => ({ ...prev, [scheduleKey]: e.target.value }))
+                                }
+                                className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                              />
+                              <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 pl-[6.5rem]">
+                              <span className="text-[10px] text-slate-500 shrink-0">Split (opcional):</span>
+                              <input
+                                type="text"
+                                placeholder="Ej. Top 10"
+                                value={splitLabelValue}
+                                onChange={(e) =>
+                                  setSegmentScheduleInputs((prev) => ({ ...prev, [splitLabelKey]: e.target.value }))
+                                }
+                                className="w-24 bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                              />
+                              <input
+                                type="datetime-local"
+                                value={splitScheduleValue}
+                                onChange={(e) =>
+                                  setSegmentScheduleInputs((prev) => ({ ...prev, [splitScheduleKey]: e.target.value }))
+                                }
+                                className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleSaveSegmentSchedule(ev.id, seg.id)}
+                                disabled={segmentScheduleSavingId === seg.id}
+                                className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-indigo-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                              >
+                                {segmentScheduleSavingId === seg.id ? "Guardando…" : "Guardar"}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botonera de acciones por evento */}
@@ -474,35 +621,21 @@ export default function EventsManager({
                         {actionLoadingId === `${ev.id}-PROGRAMA` ? "Cargando..." : "⚡ Generar Slots"}
                       </button>
                     ) : isShow ? (
-                      // Show no tiene Corto/Largo: es un único programa, y
-                      // dentro de la disciplina hay 3 formatos con slots
-                      // distintos que el admin elige a mano (no se puede
-                      // detectar solo, no depende de segmentos).
-                      <>
-                        <button
-                          onClick={() => handleGenerateSlots(ev.id, "QUARTET", { format: "QUARTET" })}
-                          disabled={actionLoadingId === `${ev.id}-QUARTET`}
-                          className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-                        >
-                          {actionLoadingId === `${ev.id}-QUARTET` ? "Cargando..." : "⚡ Generar Cuartetos"}
-                        </button>
-
-                        <button
-                          onClick={() => handleGenerateSlots(ev.id, "SMALL_GROUP", { format: "SMALL_GROUP" })}
-                          disabled={actionLoadingId === `${ev.id}-SMALL_GROUP`}
-                          className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-                        >
-                          {actionLoadingId === `${ev.id}-SMALL_GROUP` ? "Cargando..." : "⚡ Generar Grupos Pequeños"}
-                        </button>
-
-                        <button
-                          onClick={() => handleGenerateSlots(ev.id, "LARGE_GROUP", { format: "LARGE_GROUP" })}
-                          disabled={actionLoadingId === `${ev.id}-LARGE_GROUP`}
-                          className="bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
-                        >
-                          {actionLoadingId === `${ev.id}-LARGE_GROUP` ? "Cargando..." : "⚡ Generar Grupos Grandes"}
-                        </button>
-                      </>
+                      // Show no tiene Corto/Largo (un único programa) y el
+                      // formato (Cuartetos/Grupos Pequeños/Grandes) ya se fija
+                      // al crear/editar el evento (ev.showFormat), porque cada
+                      // formato es en realidad una competición separada con su
+                      // propia hora — así que basta un botón, igual que
+                      // Precisión. Si el evento no tiene formato asignado
+                      // todavía, la API responde con el error explicándolo.
+                      <button
+                        onClick={() => handleGenerateSlots(ev.id, "PROGRAMA", {})}
+                        disabled={actionLoadingId === `${ev.id}-PROGRAMA` || !ev.showFormat}
+                        title={!ev.showFormat ? "Edita el evento y elige antes un formato de Show" : undefined}
+                        className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
+                      >
+                        {actionLoadingId === `${ev.id}-PROGRAMA` ? "Cargando..." : "⚡ Generar Slots"}
+                      </button>
                     ) : (
                       <>
                         <button

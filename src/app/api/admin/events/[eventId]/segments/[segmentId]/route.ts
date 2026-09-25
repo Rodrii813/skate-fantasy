@@ -4,9 +4,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
 
-// Permite al admin fijar (o quitar) el plazo de fichaje propio de UN
-// segmento (Corto o Largo), independiente del rosterLocksAt general del
-// Event — ver src/lib/segments.ts para cómo se resuelve el plazo efectivo.
+// Permite al admin fijar (o quitar):
+// - El plazo de fichaje propio de UN segmento (locksAt), independiente del
+//   rosterLocksAt general del Event — ver src/lib/segments.ts.
+// - La hora de pista propia de ese segmento para el calendario
+//   (scheduledAt), si va a horas distintas del resto del evento.
+// - Un split de horario dentro del MISMO segmento (splitLabel +
+//   splitScheduledAt): mismos inscritos/picks/resultado, pero la sesión se
+//   reparte en dos bloques a horas distintas (p.ej. Largo "Top 10" y
+//   "Resto") — ver src/lib/calendarGrouping.ts.
+// Cada campo se actualiza solo si viene presente en el body, para poder
+// guardar unos sin tocar los otros.
 export async function PATCH(
   req: Request,
   { params }: { params: { eventId: string; segmentId: string } }
@@ -33,13 +41,26 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { locksAt } = body as { locksAt: string | null };
+    const { locksAt, scheduledAt, splitLabel, splitScheduledAt } = body as {
+      locksAt?: string | null;
+      scheduledAt?: string | null;
+      splitLabel?: string | null;
+      splitScheduledAt?: string | null;
+    };
 
+    const data: Record<string, unknown> = {};
     // locksAt vacío/null -> quita el override y el segmento vuelve a
     // heredar el rosterLocksAt del evento.
+    if (locksAt !== undefined) data.locksAt = locksAt ? zonedTimeToUtc(locksAt, VENUE_TIMEZONE) : null;
+    if (scheduledAt !== undefined)
+      data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
+    if (splitLabel !== undefined) data.splitLabel = splitLabel || null;
+    if (splitScheduledAt !== undefined)
+      data.splitScheduledAt = splitScheduledAt ? zonedTimeToUtc(splitScheduledAt, VENUE_TIMEZONE) : null;
+
     const updated = await prisma.segment.update({
       where: { id: segmentId },
-      data: { locksAt: locksAt ? zonedTimeToUtc(locksAt, VENUE_TIMEZONE) : null },
+      data,
     });
 
     return NextResponse.json({ ok: true, segment: updated });
