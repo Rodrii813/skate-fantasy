@@ -22,17 +22,14 @@ export default function NavBar() {
 
   const navLinks = (
     <>
-      <Link href="/events" className="hover:text-white" onClick={closeMenu}>
-        Eventos
+      <Link href="/competitions" className="hover:text-white" onClick={closeMenu}>
+        Competiciones
       </Link>
-      <Link href="/calendario" className="hover:text-white" onClick={closeMenu}>
-        Calendario
+      <Link href="/fantasy" className="hover:text-white" onClick={closeMenu}>
+        Fantasy
       </Link>
-      <Link href="/resultados" className="hover:text-white" onClick={closeMenu}>
-        Resultados
-      </Link>
-      <Link href="/leaderboard" className="hover:text-white" onClick={closeMenu}>
-        Ranking
+      <Link href="/predictions" className="hover:text-white" onClick={closeMenu}>
+        Predicción
       </Link>
       <Link href="/fantasy/normas" className="hover:text-white" onClick={closeMenu}>
         Normas

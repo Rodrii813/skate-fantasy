@@ -109,6 +109,11 @@ model Segment {
   event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name          String         // Style Dance, Free Dance, Short Program, Long Program...
   order         Int            @default(0)
+  // Plazo de fichaje propio de este segmento (Corto y Largo pueden cerrar en
+  // momentos distintos). Si es null, este segmento hereda el rosterLocksAt
+  // del Event — así los eventos ya existentes (creados antes de este campo)
+  // siguen funcionando exactamente igual que antes, sin migración de datos.
+  locksAt       DateTime?
   slots         FantasySlot[]
   elementScores ElementScore[]
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
 
 export async function POST(req: Request) {
   try {
@@ -45,16 +46,25 @@ export async function POST(req: Request) {
       );
     }
 
-    // Comprobar que el evento aún no haya cerrado
+    // Comprobar que el evento aún no haya cerrado. Las predicciones son del
+    // podio FINAL del evento completo (no por segmento), pero su plazo
+    // ahora se toma del primer segmento (Corto, order=0) si tiene su
+    // propio locksAt — ver src/lib/segments.ts — en vez de siempre
+    // rosterLocksAt directo, para que admita el mismo override que el
+    // Fantasy sin cambiar el comportamiento ("un solo plazo") de cara al
+    // usuario.
     const event = await prisma.event.findUnique({
       where: { id: eventId },
+      include: { segments: { select: { id: true, order: true, locksAt: true } } },
     });
 
     if (!event) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
     }
 
-    if (new Date() > new Date(event.rosterLocksAt) || event.status !== "UPCOMING") {
+    const predictionsLockAt = firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt);
+
+    if (new Date() > predictionsLockAt || event.status !== "UPCOMING") {
       return NextResponse.json(
         { error: "El plazo para enviar o modificar predicciones ya ha finalizado" },
         { status: 400 }

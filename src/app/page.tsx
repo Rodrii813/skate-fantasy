@@ -167,7 +167,7 @@ export default async function HomePage() {
 
           {/* Card 3: Fantasy Hub */}
           <Link
-            href="/events"
+            href="/fantasy"
             className="group relative bg-slate-900/90 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition duration-200 flex flex-col justify-between min-h-[160px] active:scale-[0.98] shadow-lg shadow-black/30"
           >
             <div className="space-y-3">
@@ -188,9 +188,9 @@ export default async function HomePage() {
             </span>
           </Link>
 
-          {/* Card 4: Leaderboard / Clasificación */}
+          {/* Card 4: Normas del Fantasy */}
           <Link
-            href="/leaderboard"
+            href="/fantasy/normas"
             className="group relative bg-slate-900/90 hover:bg-slate-900 border border-slate-800 hover:border-slate-700 rounded-2xl p-6 transition duration-200 flex flex-col justify-between min-h-[160px] active:scale-[0.98] shadow-lg shadow-black/30"
           >
             <div className="space-y-3">
@@ -199,15 +199,15 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100 group-hover:text-amber-400 transition">
-                  Clasificación General
+                  Normas del Fantasy
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Ranking acumulado de la temporada tanto para el Fantasy como para la Predicción.
+                  Cómo se puntúa cada slot y las reglas de draft por Warmup Group, explicadas paso a paso.
                 </p>
               </div>
             </div>
             <span className="text-xs font-medium text-amber-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-              Ver tabla de puntos →
+              Leer las normas →
             </span>
           </Link>
 

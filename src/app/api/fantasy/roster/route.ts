@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateFantasyRoster } from "@/lib/fantasyValidation";
+import { isSegmentLocked } from "@/lib/segments";
 
 export async function POST(req: Request) {
   try {
@@ -53,19 +54,12 @@ export async function POST(req: Request) {
       include: {
         slots: { select: { id: true, label: true, segmentId: true } },
         registrations: { select: { skaterId: true, warmupGroupShort: true, warmupGroupLong: true } },
-        segments: { select: { id: true, order: true } },
+        segments: { select: { id: true, order: true, locksAt: true } },
       },
     });
 
     if (!event) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
-    }
-
-    if (new Date() > event.rosterLocksAt) {
-      return NextResponse.json(
-        { error: "El plazo para elegir patinadoras en este evento ya ha cerrado." },
-        { status: 403 }
-      );
     }
 
     // Los slots y patinadoras elegidos tienen que pertenecer de verdad a
@@ -88,25 +82,57 @@ export async function POST(req: Request) {
       }
     }
 
+    // Cada segmento (Corto/Largo) tiene su propio plazo efectivo — ver
+    // src/lib/segments.ts. Un slot sin segmentId (evento legado sin
+    // segmentos configurados) usa directamente el rosterLocksAt del evento.
+    // Se bloquea POR SLOT, no para el roster completo: un pick que cae en
+    // un segmento ya cerrado se ignora en silencio (esa alineación ya
+    // quedó fijada), mientras que los picks de un segmento todavía abierto
+    // se validan y guardan con normalidad.
+    const now = new Date();
+    const lockedSegmentIds = new Set(
+      event.segments.filter((seg) => isSegmentLocked(seg, event.rosterLocksAt, now)).map((s) => s.id)
+    );
+    const eventLevelLocked = now > event.rosterLocksAt;
+
+    const isSlotLocked = (segmentId: string | null) =>
+      segmentId ? lockedSegmentIds.has(segmentId) : eventLevelLocked;
+
+    const unlockedSlotIds = new Set(event.slots.filter((s) => !isSlotLocked(s.segmentId)).map((s) => s.id));
+
+    if (unlockedSlotIds.size === 0) {
+      return NextResponse.json(
+        { error: "El plazo para elegir patinadoras en este evento ya ha cerrado." },
+        { status: 403 }
+      );
+    }
+
     // Mismas normas que ve el usuario en el formulario (grupos de
     // calentamiento, no repetir patinadora en técnica...), aplicadas aquí
-    // de verdad, no solo sugeridas en el navegador.
-    const picksMap: Record<string, string> = {};
-    for (const p of normalizedPicks) picksMap[p.slotId] = p.skaterId;
+    // de verdad, no solo sugeridas en el navegador. Solo se valida (y se
+    // escribe) lo que cae en slots de segmentos todavía abiertos — los
+    // picks de segmentos ya cerrados que llegue a mandar el cliente (p.ej.
+    // porque siguen en su estado local) se descartan sin más, no hace
+    // falta compararlos con lo ya guardado.
+    const unlockedSlots = event.slots.filter((s) => unlockedSlotIds.has(s.id));
+    const unlockedSegments = event.segments.filter((seg) => !lockedSegmentIds.has(seg.id));
+    const unlockedPicksMap: Record<string, string> = {};
+    for (const p of normalizedPicks) {
+      if (unlockedSlotIds.has(p.slotId)) unlockedPicksMap[p.slotId] = p.skaterId;
+    }
 
     const validation = validateFantasyRoster({
-      slots: event.slots,
+      slots: unlockedSlots,
       registrations: event.registrations,
-      segments: event.segments,
-      picks: picksMap,
+      segments: unlockedSegments,
+      picks: unlockedPicksMap,
     });
 
     if (!validation.valid) {
       return NextResponse.json({ error: validation.errorMessage }, { status: 400 });
     }
 
-    // 1. Obtener o crear el FantasyRoster del usuario para este evento, y
-    // reemplazar sus picks anteriores de forma atómica.
+    // 1. Obtener o crear el FantasyRoster del usuario para este evento.
     const roster = await prisma.fantasyRoster.upsert({
       where: {
         userId_eventId: {
@@ -121,18 +147,25 @@ export async function POST(req: Request) {
       },
     });
 
+    // 2. Reemplazar SOLO los picks de los slots de segmentos abiertos — los
+    // de segmentos ya cerrados no se tocan, así la alineación fijada de
+    // (p.ej.) el Corto sobrevive intacta aunque el usuario guarde cambios
+    // en el Largo.
+    const unlockedSlotIdList = Array.from(unlockedSlotIds);
     await prisma.$transaction([
-      prisma.fantasyPick.deleteMany({ where: { rosterId: roster.id } }),
+      prisma.fantasyPick.deleteMany({
+        where: { rosterId: roster.id, slotId: { in: unlockedSlotIdList } },
+      }),
       prisma.fantasyPick.createMany({
-        data: normalizedPicks.map((item) => ({
+        data: Object.entries(unlockedPicksMap).map(([slotId, skaterId]) => ({
           rosterId: roster.id,
-          slotId: item.slotId,
-          skaterId: item.skaterId,
+          slotId,
+          skaterId,
         })),
       }),
     ]);
 
-    return NextResponse.json({ ok: true, count: normalizedPicks.length });
+    return NextResponse.json({ ok: true, count: Object.keys(unlockedPicksMap).length });
   } catch (error: any) {
     console.error("Error al guardar roster:", error);
     return NextResponse.json({ error: error?.message || "Error guardando roster" }, { status: 500 });

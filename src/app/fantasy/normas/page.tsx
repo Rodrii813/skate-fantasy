@@ -168,7 +168,7 @@ export default function NormasPage() {
 
       <div className="border-t border-white/10 pt-6">
         <Link
-          href="/events"
+          href="/fantasy"
           className="inline-flex items-center rounded-full bg-gold px-5 py-2 text-sm font-semibold text-rink hover:bg-gold/90"
         >
           Ver pruebas abiertas →

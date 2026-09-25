@@ -35,6 +35,12 @@ export default function EventsManager({
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [loadingDelete, setLoadingDelete] = useState(false);
 
+  // Plazo de fichaje propio de cada segmento (Corto/Largo), independiente
+  // del rosterLocksAt general del evento — ver src/lib/segments.ts. Estado
+  // local por segmentId, precargado con el valor que ya tenga guardado.
+  const [segmentLocksInputs, setSegmentLocksInputs] = useState<Record<string, string>>({});
+  const [segmentSavingId, setSegmentSavingId] = useState<string | null>(null);
+
   const resetForm = () => {
     setEditingEventId(null);
     setName("");
@@ -125,6 +131,35 @@ export default function EventsManager({
       setStatusMessage(`❌ ${err.message}`);
     } finally {
       setLoadingDelete(false);
+    }
+  };
+
+  const handleSaveSegmentLocksAt = async (eventId: string, segmentId: string, overrideValue?: string) => {
+    setSegmentSavingId(segmentId);
+    setStatusMessage(null);
+
+    const value = overrideValue ?? segmentLocksInputs[segmentId] ?? "";
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}/segments/${segmentId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ locksAt: value || null }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error guardando el plazo del segmento");
+
+      setStatusMessage(
+        value
+          ? "✅ Plazo del segmento actualizado"
+          : "✅ Segmento vuelve a heredar el plazo general del evento"
+      );
+      router.refresh();
+    } catch (err: any) {
+      setStatusMessage(`❌ ${err.message}`);
+    } finally {
+      setSegmentSavingId(null);
     }
   };
 
@@ -333,6 +368,61 @@ export default function EventsManager({
                       {ev.slots?.length || 0} slots configurados
                     </span>
                   </p>
+
+                  {/* Plazo de fichaje propio por segmento (Corto/Largo). Si
+                      se deja vacío, el segmento hereda el "Cierre de
+                      Plantillas" general del evento de arriba. */}
+                  {ev.segments && ev.segments.length > 0 && (
+                    <div className="mt-3 space-y-1.5 bg-slate-950/50 border border-slate-800/80 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Plazos de fichaje por segmento{" "}
+                        <span className="font-normal normal-case text-slate-600">
+                          — vacío = hereda el general de arriba
+                        </span>
+                      </p>
+                      {ev.segments.map((seg: any) => {
+                        const currentValue =
+                          segmentLocksInputs[seg.id] ?? (seg.locksAt ? toDatetimeLocalValue(seg.locksAt) : "");
+                        return (
+                          <div key={seg.id} className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">
+                              {seg.name}
+                            </span>
+                            <input
+                              type="datetime-local"
+                              value={currentValue}
+                              onChange={(e) =>
+                                setSegmentLocksInputs((prev) => ({ ...prev, [seg.id]: e.target.value }))
+                              }
+                              className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                            />
+                            <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSegmentLocksAt(ev.id, seg.id)}
+                              disabled={segmentSavingId === seg.id}
+                              className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-indigo-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                            >
+                              {segmentSavingId === seg.id ? "Guardando…" : "Guardar"}
+                            </button>
+                            {seg.locksAt && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSegmentLocksInputs((prev) => ({ ...prev, [seg.id]: "" }));
+                                  handleSaveSegmentLocksAt(ev.id, seg.id, "");
+                                }}
+                                disabled={segmentSavingId === seg.id}
+                                className="text-[11px] text-slate-500 hover:text-slate-300 underline"
+                              >
+                                Quitar override
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
 
                 {/* Botonera de acciones por evento */}
