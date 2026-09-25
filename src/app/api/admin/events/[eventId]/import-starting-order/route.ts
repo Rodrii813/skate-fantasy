@@ -111,21 +111,34 @@ async function parseAndRegisterSkaters(
     .replace(/\b(Start|Length|End|Nation|TIME|SKATING|ORDER|SHORT|PROGRAM|WORLD|SKATE)\b/gi, "")
     .replace(/\b(Seniores|Free|Ladies)\b/gi, "");
 
-  // 2. Expresión regular: Busca (Dorsal) -> (Espacios/Saltos) -> (Nombre) -> (Espacios) -> (País de 3 letras)
+  // 2. Cada patinador ocupa SU PROPIA línea en el PDF real
+  // ("<dorsal> <nombre completo> <país>"), así que en vez de un único regex
+  // "global" sobre todo el bloque (que no sabe dónde acaba una línea y
+  // empieza la siguiente), se procesa línea a línea y se exige que el país
+  // sea literalmente lo ÚLTIMO de la línea ("$", fin de línea).
   //
-  // OJO: el grupo del nombre es "no-greedy" (+?) a propósito. Con captura
-  // "greedy" (como estaba antes), si en la línea del PDF aparecían DOS
-  // tokens de 3 letras mayúsculas seguidos (p.ej. el país real y, más
-  // adelante en la misma línea, alguna otra sigla de 3 letras), el nombre se
-  // "comía" el primero de los dos como si fuera parte del nombre y el país
-  // quedaba mal asignado al segundo — esto creó un patinador duplicado real
-  // ("MADALENA RODRIGUES COSTA POR" / país "FOR" en vez de "MADALENA
-  // RODRIGUES COSTA" / país "POR"). Con "no-greedy" el regex se detiene en
-  // el primer código de 3 letras que encuentra, que es el país correcto.
-  const regex = /(\b\d{1,2}\b)\s+([a-zA-ZÁÉÍÓÚÑÏÜáéíóúñïü '-]{4,}?)\s+([A-Z]{3})\b/g;
+  // Esto reemplaza dos intentos anteriores que fallaban con casos reales:
+  // - Con el nombre "greedy": en "MADALENA RODRIGUES COSTA POR" seguido en
+  //   el texto (sin salto de línea real de por medio) del resto de ruido del
+  //   PDF "TIME FOR SKATING ORDER" → tras quitar "TIME/SKATING/ORDER" queda
+  //   un "FOR" suelto que el regex podía coger como si fuera el país,
+  //   dejando "POR" pegado al nombre (patinadora duplicada con país "FOR").
+  // - Con el nombre "no-greedy" (el intento anterior): se paraba en el
+  //   PRIMER grupo de 3 letras mayúsculas que encontraba dentro del propio
+  //   nombre, aunque no fuera el país — "QUINTY VAN LARE NED" se cortaba en
+  //   "VAN" (que no es un país, es parte del apellido), y "ELNA FRANCÉS
+  //   MARÍN ESP" se cortaba en "MAR" (porque en JavaScript una tilde como la
+  //   "Í" no cuenta como letra a efectos de límite de palabra "\b", así que
+  //   "MAR" parecía una palabra completa).
+  // Anclar el país al FINAL DE LÍNEA evita los dos problemas a la vez: nunca
+  // hay más texto real después del país en la misma línea, así que no hace
+  // falta adivinar cuál de varios grupos de 3 letras es el bueno.
+  const lineRegex = /^\s*(\d{1,2})\s+([a-zA-ZÁÉÍÓÚÑÏÜáéíóúñïü '-]+?)\s+([A-Z]{3})\s*$/;
 
-  let match;
-  while ((match = regex.exec(clean)) !== null) {
+  for (const line of clean.split("\n")) {
+    const match = line.match(lineRegex);
+    if (!match) continue;
+
     const order = parseInt(match[1], 10);
     const fullName = match[2].trim();
     const country = match[3];
