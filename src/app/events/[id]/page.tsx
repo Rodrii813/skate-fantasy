@@ -17,12 +17,15 @@ export default async function EventPage({ params }: { params: { id: string } }) 
   const event = await prisma.event.findUnique({
     where: { id: params.id },
     include: {
+      segments: {
+        orderBy: { order: "asc" },
+      },
       slots: {
         orderBy: { order: "asc" },
       },
       registrations: {
         include: { skater: true },
-        orderBy: [{ warmupGroup: "desc" }, { startOrder: "asc" }],
+        orderBy: [{ startOrder: "asc" }],
       },
     },
   });
@@ -55,6 +58,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
         eventId={event.id}
         eventName={event.name}
         rosterLocksAt={event.rosterLocksAt.toISOString()}
+        segments={event.segments}
         slots={event.slots}
         registrations={event.registrations}
         initialPicks={initialPicks}

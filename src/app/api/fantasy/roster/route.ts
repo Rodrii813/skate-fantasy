@@ -51,8 +51,9 @@ export async function POST(req: Request) {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
-        slots: { select: { id: true, label: true } },
-        registrations: { select: { skaterId: true, warmupGroup: true } },
+        slots: { select: { id: true, label: true, segmentId: true } },
+        registrations: { select: { skaterId: true, warmupGroupShort: true, warmupGroupLong: true } },
+        segments: { select: { id: true, order: true } },
       },
     });
 
@@ -96,6 +97,7 @@ export async function POST(req: Request) {
     const validation = validateFantasyRoster({
       slots: event.slots,
       registrations: event.registrations,
+      segments: event.segments,
       picks: picksMap,
     });
 

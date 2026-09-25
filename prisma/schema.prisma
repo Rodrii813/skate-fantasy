@@ -164,7 +164,9 @@ model Registration {
   
   // Añade estas 3 líneas aquí:
   startOrder    Int?           // Orden de salida (1, 2, 3...)
-  warmupGroup   Int?           // Grupo de calentamiento (1, 2, 3...)
+  warmupGroup   Int?           // Grupo de calentamiento (1, 2, 3...) — legado, no segment-aware; se conserva por compatibilidad con datos antiguos pero no se usa para nada nuevo
+  warmupGroupShort Int?        // Grupo de calentamiento del Programa Corto (sorteo propio, distinto del Largo)
+  warmupGroupLong  Int?        // Grupo de calentamiento del Programa Largo (se redibuja según el resultado del Corto)
   club          String?        // Club o federación
 
   // Totales oficiales para el Hub de Competiciones

@@ -8,18 +8,40 @@
 // comprobaba nada de esto, así que las reglas eran opcionales para
 // cualquiera que las evitase desde fuera del formulario.
 //
+// Un evento puede tener 2 segmentos (Programa Corto / Programa Largo), cada
+// uno con su propio sorteo de grupos de calentamiento (el del Largo se
+// redibuja según el resultado del Corto). Las reglas de grupos ("máx 2
+// técnicos del grupo top", "máx 1 componente por grupo"...) se aplican de
+// forma INDEPENDIENTE por segmento: un roster es válido solo si TODOS sus
+// segmentos lo son. A qué segmento pertenece cada slot se decide por
+// slot.segmentId — nunca por el texto del label, porque "Skating Skills +
+// Transitions" y "Performance + Choreography" son labels idénticos en Corto
+// y Largo.
+//
 // Ahora hay una sola función, usada tanto por el formulario (para pintar
-// los contadores en vivo) como por la API (para rechazar de verdad los
-// roster que no las cumplen).
+// los contadores en vivo, por segmento) como por la API (para rechazar de
+// verdad los rosters que no las cumplen).
 
 export interface SlotInfo {
   id: string;
   label: string;
+  segmentId: string | null;
 }
 
 export interface RegistrationInfo {
   skaterId: string;
-  warmupGroup: number | null;
+  warmupGroupShort: number | null;
+  warmupGroupLong: number | null;
+}
+
+// Segmentos del evento, en el orden real de la competición (Corto = el de
+// menor `order`, Largo = el siguiente). Mismo criterio que ya usa
+// upload-judges-details/route.ts ("isFirstSegment = segment.order <= 1"),
+// porque el nombre del segmento es configurable por el admin y no siempre
+// dice literalmente "Short"/"Long".
+export interface SegmentInfo {
+  id: string;
+  order: number;
 }
 
 export function isComponentSlotLabel(label: string): boolean {
@@ -42,14 +64,18 @@ export function isComponentSlotLabel(label: string): boolean {
 export interface ValidateRosterInput {
   slots: SlotInfo[];
   registrations: RegistrationInfo[];
+  segments: SegmentInfo[];
   picks: Record<string, string>; // slotId -> skaterId
 }
 
-export interface ValidateRosterResult {
+// Resultado de validar UN segmento (Corto o Largo) de forma independiente.
+export interface SegmentValidationResult {
+  segmentId: string;
+  segmentLabel: "Corto" | "Largo";
   valid: boolean;
   errorMessage: string;
-  // Detalles para pintar los contadores en la UI, incluso mientras el
-  // roster todavía es válido (p.ej. "1/2" antes de llegar al límite).
+  missingSlots: number;
+  repeatedTechSkater: boolean;
   countTopGroup: number;
   countSecondGroup: number;
   maxGroupNum: number;
@@ -59,19 +85,34 @@ export interface ValidateRosterResult {
   exceedsCompGroup: boolean;
 }
 
-export function validateFantasyRoster({
-  slots,
-  registrations,
-  picks,
-}: ValidateRosterInput): ValidateRosterResult {
+export interface ValidateRosterResult {
+  valid: boolean;
+  // Mensaje del primer segmento inválido (o vacío si todo está bien), para
+  // seguir sirviendo directamente al botón de guardar / a la respuesta de
+  // error de la API sin que quien la llama tenga que recorrer `segments`.
+  errorMessage: string;
+  segments: SegmentValidationResult[];
+}
+
+function validateSegment(
+  segmentId: string,
+  segmentLabel: "Corto" | "Largo",
+  slots: SlotInfo[],
+  registrations: RegistrationInfo[],
+  picks: Record<string, string>,
+  groupField: "warmupGroupShort" | "warmupGroupLong"
+): SegmentValidationResult {
   const technicalSlots = slots.filter((s) => !isComponentSlotLabel(s.label));
   const componentSlots = slots.filter((s) => isComponentSlotLabel(s.label));
 
-  const warmupGroupOf = new Map(registrations.map((r) => [r.skaterId, r.warmupGroup || 1]));
+  const warmupGroupOf = new Map(
+    registrations.map((r) => [r.skaterId, r[groupField] || 1])
+  );
 
-  // Grupos ordenados de mayor a menor (el "último grupo" real de calentamiento
-  // es el número de grupo más alto, no necesariamente "el grupo 2").
-  const groupNums = Array.from(new Set(registrations.map((r) => r.warmupGroup || 1))).sort(
+  // Grupos ordenados de mayor a menor (el "último grupo" real de
+  // calentamiento es el número de grupo más alto, no necesariamente "el
+  // grupo 2").
+  const groupNums = Array.from(new Set(registrations.map((r) => r[groupField] || 1))).sort(
     (a, b) => b - a
   );
   const maxGroupNum = groupNums[0] ?? 1;
@@ -104,20 +145,22 @@ export function validateFantasyRoster({
   const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > 1);
 
   const totalSlots = slots.length;
-  const filledCount = Object.values(picks).filter(Boolean).length;
+  const filledCount = slots.filter((s) => Boolean(picks[s.id])).length;
   const missingSlots = totalSlots - filledCount;
 
   let errorMessage = "";
   if (missingSlots > 0) {
-    errorMessage = `Faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
+    errorMessage = `${segmentLabel}: faltan por rellenar ${missingSlots} ${
+      missingSlots === 1 ? "slot" : "slots"
+    }`;
   } else if (repeatedTechSkater) {
-    errorMessage = "No puedes elegir a la misma patinadora en dos elementos técnicos";
+    errorMessage = `${segmentLabel}: no puedes elegir a la misma patinadora en dos elementos técnicos`;
   } else if (exceedsTopTech) {
-    errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
+    errorMessage = `${segmentLabel}: máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
   } else if (exceedsSecondTech) {
-    errorMessage = `Máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
+    errorMessage = `${segmentLabel}: máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
   } else if (exceedsCompGroup) {
-    errorMessage = "En Componentes: Máximo 1 patinadora por cada grupo de calentamiento";
+    errorMessage = `${segmentLabel}: en Componentes, máximo 1 patinadora por cada grupo de calentamiento`;
   }
 
   const valid =
@@ -128,8 +171,12 @@ export function validateFantasyRoster({
     !exceedsCompGroup;
 
   return {
+    segmentId,
+    segmentLabel,
     valid,
     errorMessage,
+    missingSlots,
+    repeatedTechSkater,
     countTopGroup,
     countSecondGroup,
     maxGroupNum,
@@ -137,5 +184,57 @@ export function validateFantasyRoster({
     exceedsTopTech,
     exceedsSecondTech,
     exceedsCompGroup,
+  };
+}
+
+export function validateFantasyRoster({
+  slots,
+  registrations,
+  segments,
+  picks,
+}: ValidateRosterInput): ValidateRosterResult {
+  const orderedSegments = [...segments].sort((a, b) => a.order - b.order);
+
+  // Segmentos que de verdad tienen slots asociados, en el orden real de la
+  // competición (Corto primero). Un slot sin segmentId (dato legado o
+  // evento sin segmentos generados) se agrupa aparte y se trata como
+  // "Corto" por defecto, para no perder su validación.
+  const segmentIdsWithSlots = Array.from(
+    new Set(slots.map((s) => s.segmentId ?? "__sin_segmento__"))
+  );
+
+  const segmentBuckets = segmentIdsWithSlots.map((segmentId) => {
+    const known = orderedSegments.find((s) => s.id === segmentId);
+    const orderIndex = known
+      ? orderedSegments.findIndex((s) => s.id === segmentId)
+      : 0; // sin match conocido -> se trata como el primer segmento (Corto)
+    const isShort = orderIndex <= 0;
+    return {
+      segmentId,
+      segmentLabel: (isShort ? "Corto" : "Largo") as "Corto" | "Largo",
+      groupField: (isShort ? "warmupGroupShort" : "warmupGroupLong") as
+        | "warmupGroupShort"
+        | "warmupGroupLong",
+    };
+  });
+
+  const segmentResults = segmentBuckets.map((bucket) => {
+    const segmentSlots = slots.filter((s) => (s.segmentId ?? "__sin_segmento__") === bucket.segmentId);
+    return validateSegment(
+      bucket.segmentId,
+      bucket.segmentLabel,
+      segmentSlots,
+      registrations,
+      picks,
+      bucket.groupField
+    );
+  });
+
+  const firstInvalid = segmentResults.find((s) => !s.valid);
+
+  return {
+    valid: segmentResults.every((s) => s.valid),
+    errorMessage: firstInvalid?.errorMessage || "",
+    segments: segmentResults,
   };
 }

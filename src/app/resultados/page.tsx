@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { computeSegmentResultBlocks } from "@/lib/segmentResults";
+import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 
 export const dynamic = "force-dynamic";
 
@@ -36,8 +38,12 @@ export default async function ResultadosPage() {
       competition: true,
       discipline: true,
       category: true,
+      segments: { orderBy: { order: "asc" } },
       registrations: {
-        include: { skater: true },
+        include: {
+          skater: true,
+          elementScores: { include: { elementCategory: true } },
+        },
         orderBy: [{ finalRank: "asc" }, { totalScore: "desc" }],
       },
     },
@@ -92,6 +98,9 @@ export default async function ResultadosPage() {
                     .filter((r: RegistrationWithSkater) => r.finalRank !== null)
                     .slice(0, 3);
                   const hasResults = podium.length > 0;
+                  const resultBlocks = hasResults
+                    ? computeSegmentResultBlocks(event.segments, event.registrations)
+                    : [];
 
                   return (
                     <div
@@ -148,6 +157,13 @@ export default async function ResultadosPage() {
                         <p className="text-xs text-slate-500 pt-2 border-t border-slate-800/80">
                           Todavía sin puntuaciones oficiales cargadas para esta prueba.
                         </p>
+                      )}
+
+                      {/* Desglose Corto / Largo / Total, colapsado por defecto para no saturar esta vista general */}
+                      {hasResults && (
+                        <div className="border-t border-slate-800/80 -mx-5 -mb-5">
+                          <SegmentResultsTables blocks={resultBlocks} defaultOpen={false} />
+                        </div>
                       )}
                     </div>
                   );
