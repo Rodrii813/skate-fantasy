@@ -33,7 +33,7 @@ export default function AdminDashboardPage() {
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
       <div className="max-w-4xl mx-auto space-y-6">
         <div>
-          <h1 className="text-2xl font-black text-slate-50">🛠️ Panel de Control - Skate Fantasy</h1>
+          <h1 className="text-2xl font-black text-slate-50">🛠️ Panel de Control - Rollart Fantasy</h1>
           <p className="text-xs text-slate-400 mt-1">Gestiona todo el torneo desde una sola pantalla sin necesidad de tocar rutas.</p>
         </div>
 

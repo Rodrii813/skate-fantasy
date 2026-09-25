@@ -4,7 +4,7 @@ import Providers from "./providers";
 import NavBar from "./nav-bar";
 
 export const metadata: Metadata = {
-  title: "Skate Fantasy — World Skate Games",
+  title: "Rollart Fantasy — World Skate Games",
   description: "Elige a tus patinadores para cada elemento y compite en el ranking global.",
 };
 

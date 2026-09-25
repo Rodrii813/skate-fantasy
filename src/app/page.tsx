@@ -176,7 +176,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100 group-hover:text-indigo-400 transition">
-                  Skate Fantasy
+                  Rollart Fantasy
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   Configura tu equipo por slots (saltos, giros, componentes) y suma puntos con los protocolos reales.

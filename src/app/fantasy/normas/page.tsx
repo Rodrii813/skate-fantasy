@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Normas del Fantasy — Skate Fantasy",
+  title: "Normas del Fantasy — Rollart Fantasy",
 };
 
 function Section({

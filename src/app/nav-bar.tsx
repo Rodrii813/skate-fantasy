@@ -78,7 +78,7 @@ export default function NavBar() {
           className="font-display text-xl font-semibold tracking-tight text-white"
           onClick={closeMenu}
         >
-          Skate<span className="text-gold">Fantasy</span>
+          Rollart<span className="text-gold">Fantasy</span>
         </Link>
 
         {/* Navegación de escritorio: fila horizontal completa, oculta en móvil */}
