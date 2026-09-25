@@ -143,18 +143,34 @@ export async function POST(req: Request) {
         continue;
       }
 
-      // El parser real devuelve segmentScore y tes (no totalSegmentScore/technicalScore)
+      // El parser real devuelve segmentScore (TES + PCS - deducciones, el
+      // total real de ESTE segmento) y tes (solo el técnico). "segment1Score"
+      // / "segment2Score" deben guardar el total de cada segmento, no solo
+      // el técnico, porque son los que se muestran como "Seg 1"/"Seg 2" en
+      // las tablas de resultados y porque "totalScore" (el que decide el
+      // ranking) se calcula sumando estos dos.
       const total = (res as any).segmentScore ?? null;
-      const tech = (res as any).tes ?? null;
       const isFirstSegment = segment.order <= 1;
+
+      // Antes de esta corrección, subir el segundo segmento (p.ej. el
+      // Programa Largo) SOBRESCRIBÍA totalScore con solo el total de ese
+      // segmento, borrando de facto la puntuación del Programa Corto ya
+      // cargado. Ahora se suma al otro segmento, que ya está en memoria
+      // (matchedReg viene de la consulta del evento, sin "select", así que
+      // trae también segment1Score/segment2Score tal como están en este
+      // momento en la base de datos, antes de este update).
+      const otherSegmentScore = isFirstSegment
+        ? matchedReg.segment2Score ?? 0
+        : matchedReg.segment1Score ?? 0;
+      const newTotalScore = total !== null ? Number((Number(total) + otherSegmentScore).toFixed(2)) : null;
 
       await prisma.registration.update({
         where: { id: matchedReg.id },
         data: {
           ...(isFirstSegment
-            ? { segment1Score: tech !== null ? Number(tech) : null }
-            : { segment2Score: tech !== null ? Number(tech) : null }),
-          ...(total !== null ? { totalScore: Number(total) } : {}),
+            ? { segment1Score: total !== null ? Number(total) : null }
+            : { segment2Score: total !== null ? Number(total) : null }),
+          ...(newTotalScore !== null ? { totalScore: newTotalScore } : {}),
         },
       });
 
@@ -205,6 +221,36 @@ export async function POST(req: Request) {
       }
 
       matchedAndScored++;
+    }
+
+    // Recalcular el ranking (finalRank) y marcar el evento como "con
+    // resultados" cada vez que se importa un acta. Antes nada en la app
+    // actualizaba estos dos campos, así que aunque las puntuaciones se
+    // guardaban bien, la tabla y el podio público (/resultados,
+    // /competitions/[id]) no tenían de dónde sacar el puesto de cada
+    // patinadora ni sabían que el evento ya tenía resultados que mostrar.
+    const allRegs = await prisma.registration.findMany({
+      where: { eventId },
+      orderBy: [{ totalScore: "desc" }],
+    });
+    type RegistrationRow = (typeof allRegs)[number];
+
+    await prisma.$transaction(
+      allRegs
+        .filter((r: RegistrationRow) => r.totalScore !== null)
+        .map((r: RegistrationRow, index: number) =>
+          prisma.registration.update({
+            where: { id: r.id },
+            data: { finalRank: index + 1 },
+          })
+        )
+    );
+
+    if (event.status === "UPCOMING" || event.status === "LOCKED") {
+      await prisma.event.update({
+        where: { id: eventId },
+        data: { status: "RESULTS_IN" },
+      });
     }
 
     return NextResponse.json({
