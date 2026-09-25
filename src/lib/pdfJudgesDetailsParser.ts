@@ -25,6 +25,15 @@ export interface SkaterDetailedResult {
     soloJump1: number;
     soloJump2: number;
     axel: number;
+    // El Axel es obligatorio tanto en Corto como en Largo, pero con una
+    // diferencia real de reglamento: en el Corto va en posición fija y tiene
+    // su propio slot en Fantasy (ver `axel` arriba); en el Largo puede ir en
+    // cualquier momento del programa y cuenta simplemente como "un salto
+    // individual más" — por eso aquí se mezcla con el resto de saltos
+    // individuales (soloJump) y se ordenan juntos de mayor a menor, para
+    // rellenar los slots "Solo Jump 1"/"Solo Jump 2" del Largo.
+    soloOrAxel1: number;
+    soloOrAxel2: number;
     spinsTotal: number;
     stepSequence: number;
     choreoSequence: number;
@@ -87,6 +96,8 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
         soloJump1: 0,
         soloJump2: 0,
         axel: 0,
+        soloOrAxel1: 0,
+        soloOrAxel2: 0,
         spinsTotal: 0,
         stepSequence: 0,
         choreoSequence: 0,
@@ -96,28 +107,33 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     };
 
     // Componentes (PCS): en el PDF real cada fila es
-    // "<Label> <J1> <J2> <J3> <J4> <J5> <promedio>[Factor]", y el valor que
-    // queremos es el promedio (el número justo después de las 5 notas de
-    // jueces), no el Factor que le sigue.
+    // "<Label> <J1> <J2> <J3> <J4> <J5> <promedio><Factor>", y el Factor
+    // (1.6, 1.8, 1.0, 0.8...) varía según disciplina/categoría/segmento —
+    // por eso se lee siempre del propio PDF en vez de asumir un valor fijo,
+    // y se aplica aquí para devolver el componente YA facturado (el mismo
+    // número que suma al "Judges Total Program Component Score (factored)"
+    // oficial), no el promedio sin facturar.
     //
     // OJO: en el Programa Largo (Free Program) de World Skate, el texto del
-    // Factor (p.ej. "1.6") se extrae PEGADO al promedio sin ningún espacio
-    // de por medio ("6.751.6"), aunque visualmente están en columnas
-    // separadas — es un artefacto de cómo ese PDF concreto ordena el texto
-    // internamente. Antes el regex exigía que tras el promedio solo pudiera
-    // venir UN dígito suelto y luego fin de línea, así que esa fila entera
-    // no hacía match y el componente se quedaba en 0 (bug real, reportado
-    // con el acta de "Seniores_Free_Skating_Ladies_FINAL_1.pdf": los 4
-    // componentes salían en blanco solo en el Largo, nunca en el Corto).
-    // Ahora se acepta cualquier número de Factor pegado justo después,
-    // con o sin espacio, y también funciona si no hay Factor al final.
+    // Factor se extrae PEGADO al promedio sin ningún espacio de por medio
+    // ("6.751.6"), aunque visualmente están en columnas separadas — es un
+    // artefacto de cómo ese PDF concreto ordena el texto internamente.
+    // Antes el regex exigía que tras el promedio solo pudiera venir UN
+    // dígito suelto y luego fin de línea, así que esa fila entera no hacía
+    // match y el componente se quedaba en 0 (bug real, reportado con el
+    // acta de "Seniores_Free_Skating_Ladies_FINAL_1.pdf": los 4 componentes
+    // salían en blanco solo en el Largo, nunca en el Corto). Ahora se
+    // captura el Factor aparte (pegado o con espacio) y se multiplica.
     const getPcsValue = (label: string): number => {
       const reg = new RegExp(
-        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\s*(?:\\d+(?:\\.\\d+)?)?\\s*$`,
+        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\s*(\\d+(?:\\.\\d+)?)?\\s*$`,
         "im"
       );
       const match = chunk.match(reg);
-      return match ? parseFloat(match[1]) : 0;
+      if (!match) return 0;
+      const average = parseFloat(match[1]);
+      const factor = match[2] ? parseFloat(match[2]) : 1;
+      return Number((average * factor).toFixed(2));
     };
     skaterResult.components.skatingSkills = getPcsValue("Skating Skills");
     skaterResult.components.transitions = getPcsValue("Transitions/Linking Footwork/Movement");
@@ -217,6 +233,14 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     skaterResult.slotScores.soloJump1 = solos[0]?.score || 0;
     skaterResult.slotScores.soloJump2 = solos[1]?.score || 0;
     skaterResult.slotScores.axel = axels[0]?.score || 0;
+    // El Axel es obligatorio en ambos programas, pero solo en el Corto va en
+    // posición fija con su propio slot; en el Largo puede ir en cualquier
+    // momento y cuenta como un salto individual más, así que aquí se
+    // mezcla con el resto de saltos individuales (solos) y se ordenan
+    // juntos de mayor a menor para rellenar "Solo Jump 1"/"Solo Jump 2".
+    const solosOrAxels = [...solos, ...axels].sort((a, b) => b.score - a.score);
+    skaterResult.slotScores.soloOrAxel1 = solosOrAxels[0]?.score || 0;
+    skaterResult.slotScores.soloOrAxel2 = solosOrAxels[1]?.score || 0;
     skaterResult.slotScores.spinsTotal = Number(spins.reduce((acc, curr) => acc + curr.score, 0).toFixed(2));
     skaterResult.slotScores.choreoSequence = choreos[0]?.score || 0;
     skaterResult.slotScores.stepSequence = steps[0]?.score || 0;

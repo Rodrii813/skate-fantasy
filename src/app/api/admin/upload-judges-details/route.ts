@@ -164,12 +164,34 @@ export async function POST(req: Request) {
         : matchedReg.segment1Score ?? 0;
       const newTotalScore = total !== null ? Number((Number(total) + otherSegmentScore).toFixed(2)) : null;
 
+      // TES/PCS/Deducciones OFICIALES de este segmento, tal cual los da el
+      // acta (res.tes/res.pcs/res.deductions ya vienen correctos del PDF,
+      // independientemente de qué slots de Fantasy existan). Se guardan
+      // aparte de segment1Score/segment2Score para que /resultados y
+      // /competitions/[id] puedan mostrar el desglose oficial exacto en vez
+      // de reconstruirlo a partir de los slots de Fantasy (que por diseño
+      // solo cuentan "los mejores N" de cada tipo de elemento y por eso no
+      // cuadran con el total real — p.ej. dejaban fuera el Axel del Largo).
+      const officialTes = (res as any).tes ?? null;
+      const officialPcs = (res as any).pcs ?? null;
+      const officialDed = (res as any).deductions ?? null;
+
       await prisma.registration.update({
         where: { id: matchedReg.id },
         data: {
           ...(isFirstSegment
-            ? { segment1Score: total !== null ? Number(total) : null }
-            : { segment2Score: total !== null ? Number(total) : null }),
+            ? {
+                segment1Score: total !== null ? Number(total) : null,
+                segment1Tes: officialTes !== null ? Number(officialTes) : null,
+                segment1Pcs: officialPcs !== null ? Number(officialPcs) : null,
+                segment1Ded: officialDed !== null ? Number(officialDed) : null,
+              }
+            : {
+                segment2Score: total !== null ? Number(total) : null,
+                segment2Tes: officialTes !== null ? Number(officialTes) : null,
+                segment2Pcs: officialPcs !== null ? Number(officialPcs) : null,
+                segment2Ded: officialDed !== null ? Number(officialDed) : null,
+              }),
           ...(newTotalScore !== null ? { totalScore: newTotalScore } : {}),
         },
       });
@@ -183,7 +205,18 @@ export async function POST(req: Request) {
         if (tag.includes("combo jump") || tag.includes("combinacion")) {
           earnedScore = isSecond ? scores.comboJump2 || 0 : scores.comboJump1 || 0;
         } else if (tag.includes("solo jump") || tag.includes("salto solo")) {
-          earnedScore = isSecond ? scores.soloJump2 || 0 : scores.soloJump1 || 0;
+          // El Axel es obligatorio en los dos programas, pero solo en el
+          // Corto tiene su propio slot fijo (ver más abajo); en el Largo
+          // puede ir en cualquier posición y cuenta como un salto individual
+          // más, así que aquí se usa el "mejor de saltos individuales +
+          // Axel" (soloOrAxel) en vez de excluir el Axel como hace el Corto.
+          earnedScore = isFirstSegment
+            ? isSecond
+              ? scores.soloJump2 || 0
+              : scores.soloJump1 || 0
+            : isSecond
+              ? scores.soloOrAxel2 || 0
+              : scores.soloOrAxel1 || 0;
         } else if (tag.includes("axel")) {
           earnedScore = scores.axel || 0;
         } else if (tag.includes("spin") || tag.includes("giro") || tag.includes("pirueta")) {

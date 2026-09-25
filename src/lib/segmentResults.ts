@@ -1,14 +1,18 @@
 // Desglosa los resultados oficiales de un evento en 3 bloques — Corto,
 // Largo y Total — calculados al vuelo a partir de lo que ya hay en la
-// base de datos (segment1Score, segment2Score, totalScore, finalRank y
-// ElementScore por segmento). No hace falta guardar rankings por segmento:
-// se recalculan aquí cada vez que se renderiza la página.
+// base de datos. No hace falta guardar rankings por segmento: se recalculan
+// aquí cada vez que se renderiza la página.
 //
-// A qué segmento pertenece cada ElementScore se decide por su segmentId
-// (el mismo criterio que usa src/lib/fantasyValidation.ts para los slots),
-// nunca por el nombre del elemento.
-
-import { isComponentSlotLabel } from "./fantasyValidation";
+// TES/PCS/Deducciones se muestran tal cual los guardó
+// upload-judges-details/route.ts a partir del acta oficial
+// (segment1Tes/Pcs/Ded, segment2Tes/Pcs/Ded) — NO se reconstruyen sumando
+// los ElementScore de los slots de Fantasy. Esos slots solo cuentan "los
+// mejores N" de cada tipo de elemento (por diseño del juego), así que casi
+// nunca cuadran con el total real de la competición: por ejemplo, si un
+// programa tiene más saltos de los que hay slots para elegir, el sobrante
+// se pierde a propósito en Fantasy pero SÍ cuenta en el resultado oficial.
+// Reconstruirlo así producía TES/PCS más bajos que los reales y una columna
+// de Deducciones sin sentido (con el signo invertido, además).
 
 export interface SegmentResultRow {
   registrationId: string;
@@ -27,20 +31,19 @@ export interface SegmentResultBlock {
   rows: SegmentResultRow[];
 }
 
-interface ElementScoreLike {
-  value: number;
-  segmentId: string;
-  elementCategory: { name: string };
-}
-
 interface RegistrationLike {
   id: string;
   totalScore: number | null;
   segment1Score: number | null;
   segment2Score: number | null;
+  segment1Tes: number | null;
+  segment1Pcs: number | null;
+  segment1Ded: number | null;
+  segment2Tes: number | null;
+  segment2Pcs: number | null;
+  segment2Ded: number | null;
   finalRank: number | null;
   skater: { firstName: string; lastName: string; country: string };
-  elementScores: ElementScoreLike[];
 }
 
 interface SegmentLike {
@@ -49,20 +52,10 @@ interface SegmentLike {
   order: number;
 }
 
-function sumScores(scores: ElementScoreLike[], segmentIds: string[] | null, component: boolean): number {
-  return scores
-    .filter(
-      (s) =>
-        (segmentIds === null || segmentIds.includes(s.segmentId)) &&
-        isComponentSlotLabel(s.elementCategory.name) === component
-    )
-    .reduce((acc, s) => acc + s.value, 0);
-}
-
 function buildRows(
   registrations: RegistrationLike[],
   scoreOf: (r: RegistrationLike) => number | null,
-  segmentIdsForBreakdown: string[] | null,
+  breakdownOf: (r: RegistrationLike) => { tes: number | null; pcs: number | null; ded: number | null },
   options: { includeUnscored: boolean; rankOf?: (r: RegistrationLike) => number | null }
 ): SegmentResultRow[] {
   const scored = registrations
@@ -71,10 +64,8 @@ function buildRows(
   const unscored = options.includeUnscored ? registrations.filter((r) => scoreOf(r) === null) : [];
 
   const toRow = (r: RegistrationLike, computedRank: number | null): SegmentResultRow => {
-    const tes = Number(sumScores(r.elementScores, segmentIdsForBreakdown, false).toFixed(2));
-    const pcs = Number(sumScores(r.elementScores, segmentIdsForBreakdown, true).toFixed(2));
+    const { tes, pcs, ded } = breakdownOf(r);
     const total = scoreOf(r);
-    const deductions = total !== null && (tes > 0 || pcs > 0) ? Number((tes + pcs - total).toFixed(2)) : 0;
     const rank = options.rankOf ? options.rankOf(r) ?? computedRank : computedRank;
     return {
       registrationId: r.id,
@@ -82,9 +73,9 @@ function buildRows(
       skaterName: `${r.skater.firstName} ${r.skater.lastName}`,
       country: r.skater.country,
       total,
-      tes,
-      pcs,
-      deductions,
+      tes: tes ?? 0,
+      pcs: pcs ?? 0,
+      deductions: ded ?? 0,
     };
   };
 
@@ -115,9 +106,12 @@ export function computeSegmentResultBlocks(
     blocks.push({
       key: "short",
       title: shortSegment.name,
-      rows: buildRows(registrations, (r) => r.segment1Score, [shortSegment.id], {
-        includeUnscored: false,
-      }),
+      rows: buildRows(
+        registrations,
+        (r) => r.segment1Score,
+        (r) => ({ tes: r.segment1Tes, pcs: r.segment1Pcs, ded: r.segment1Ded }),
+        { includeUnscored: false }
+      ),
     });
   }
 
@@ -125,19 +119,28 @@ export function computeSegmentResultBlocks(
     blocks.push({
       key: "long",
       title: longSegment.name,
-      rows: buildRows(registrations, (r) => r.segment2Score, [longSegment.id], {
-        includeUnscored: false,
-      }),
+      rows: buildRows(
+        registrations,
+        (r) => r.segment2Score,
+        (r) => ({ tes: r.segment2Tes, pcs: r.segment2Pcs, ded: r.segment2Ded }),
+        { includeUnscored: false }
+      ),
     });
   }
 
   blocks.push({
     key: "total",
     title: "Total",
-    rows: buildRows(registrations, (r) => r.totalScore, null, {
-      includeUnscored: true,
-      rankOf: (r) => r.finalRank,
-    }),
+    rows: buildRows(
+      registrations,
+      (r) => r.totalScore,
+      (r) => ({
+        tes: r.segment1Tes !== null || r.segment2Tes !== null ? (r.segment1Tes ?? 0) + (r.segment2Tes ?? 0) : null,
+        pcs: r.segment1Pcs !== null || r.segment2Pcs !== null ? (r.segment1Pcs ?? 0) + (r.segment2Pcs ?? 0) : null,
+        ded: r.segment1Ded !== null || r.segment2Ded !== null ? (r.segment1Ded ?? 0) + (r.segment2Ded ?? 0) : null,
+      }),
+      { includeUnscored: true, rankOf: (r) => r.finalRank }
+    ),
   });
 
   return blocks;

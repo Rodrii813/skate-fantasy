@@ -65,7 +65,11 @@ export default function SegmentResultsTables({
                       <td className="py-3 px-4 text-right text-slate-300">{numberOrDash(row.tes)}</td>
                       <td className="py-3 px-4 text-right text-slate-300">{numberOrDash(row.pcs)}</td>
                       <td className="py-3 px-4 text-right text-slate-400">
-                        {row.deductions !== 0 ? `-${row.deductions.toFixed(2)}` : "0.00"}
+                        {/* row.deductions ya viene con su signo real desde el
+                            acta oficial (0 o negativo, p.ej. -1.00): antes se
+                            le anteponía otro "-" a mano, así que un valor ya
+                            negativo salía con doble guion ("--1.00"). */}
+                        {row.deductions.toFixed(2)}
                       </td>
                     </tr>
                   ))}

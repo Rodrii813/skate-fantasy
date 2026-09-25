@@ -102,8 +102,18 @@ async function parseAndRegisterSkaters(
     .replace(/(Start|Length|End|Nation|TIME|SKATING|ORDER|SHORT|PROGRAM|WORLD|SKATE)/gi, "")
     .replace(/Seniores|Free|Ladies/gi, "");
 
-  // 2. Expresión regular infalible: Busca (Dorsal) -> (Espacios/Saltos) -> (Nombre) -> (Espacios) -> (País de 3 letras)
-  const regex = /(\b\d{1,2}\b)\s+([a-zA-ZÁÉÍÓÚÑÏÜáéíóúñïü '-]{4,})\s+([A-Z]{3})\b/g;
+  // 2. Expresión regular: Busca (Dorsal) -> (Espacios/Saltos) -> (Nombre) -> (Espacios) -> (País de 3 letras)
+  //
+  // OJO: el grupo del nombre es "no-greedy" (+?) a propósito. Con captura
+  // "greedy" (como estaba antes), si en la línea del PDF aparecían DOS
+  // tokens de 3 letras mayúsculas seguidos (p.ej. el país real y, más
+  // adelante en la misma línea, alguna otra sigla de 3 letras), el nombre se
+  // "comía" el primero de los dos como si fuera parte del nombre y el país
+  // quedaba mal asignado al segundo — esto creó un patinador duplicado real
+  // ("MADALENA RODRIGUES COSTA POR" / país "FOR" en vez de "MADALENA
+  // RODRIGUES COSTA" / país "POR"). Con "no-greedy" el regex se detiene en
+  // el primer código de 3 letras que encuentra, que es el país correcto.
+  const regex = /(\b\d{1,2}\b)\s+([a-zA-ZÁÉÍÓÚÑÏÜáéíóúñïü '-]{4,}?)\s+([A-Z]{3})\b/g;
 
   let match;
   while ((match = regex.exec(clean)) !== null) {

@@ -175,6 +175,19 @@ model Registration {
   totalScore    Float?         // Suma total oficial
   finalRank     Int?           // Puesto final (1º, 2º, 3º...)
 
+  // TES/PCS/Deducciones OFICIALES de cada segmento, tal cual los calcula el
+  // panel de jueces (no reconstruidos a partir de los slots de Fantasy, que
+  // por diseño solo cuentan "los mejores N" de cada tipo de elemento y por
+  // eso casi nunca cuadran con el total real). Se guardan aparte para que
+  // /resultados y /competitions/[id] puedan mostrar el desglose oficial
+  // exacto del acta, igual que aparece en el PDF.
+  segment1Tes   Float?
+  segment1Pcs   Float?
+  segment1Ded   Float?
+  segment2Tes   Float?
+  segment2Pcs   Float?
+  segment2Ded   Float?
+
   elementScores ElementScore[]
 
   @@unique([eventId, skaterId])

@@ -1,0 +1,7 @@
+-- AlterTable
+ALTER TABLE "Registration" ADD COLUMN     "segment1Ded" DOUBLE PRECISION,
+ADD COLUMN     "segment1Pcs" DOUBLE PRECISION,
+ADD COLUMN     "segment1Tes" DOUBLE PRECISION,
+ADD COLUMN     "segment2Ded" DOUBLE PRECISION,
+ADD COLUMN     "segment2Pcs" DOUBLE PRECISION,
+ADD COLUMN     "segment2Tes" DOUBLE PRECISION;
