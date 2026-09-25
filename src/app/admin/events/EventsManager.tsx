@@ -344,7 +344,16 @@ export default function EventsManager({
           {initialEvents.map((ev) => {
             const genderLabel =
               ev.gender === "FEMALE" ? "Femenino" : ev.gender === "MALE" ? "Masculino" : null;
-            const slotsAvailableForDiscipline = ev.discipline?.slug === "libre";
+            // Disciplinas que ya tienen plantilla de slots de Fantasy definida
+            // en generate-slots/route.ts. Mantener esta lista sincronizada con
+            // el mapa `disciplineTemplates` de esa ruta — si una disciplina
+            // está aquí pero no en ese mapa (o al revés), el botón aparece
+            // pero la API devuelve error, o al revés, el botón no aparece
+            // aunque la API ya la soporte.
+            const DISCIPLINES_WITH_SLOTS = ["libre", "inline", "solo-danza", "parejas", "pareja-danza"];
+            const slotsAvailableForDiscipline = DISCIPLINES_WITH_SLOTS.includes(
+              ev.discipline?.slug || ""
+            );
 
             return (
               <div

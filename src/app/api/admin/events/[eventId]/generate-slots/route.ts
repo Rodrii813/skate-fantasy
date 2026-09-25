@@ -7,6 +7,10 @@ import {
   FREE_SKATING_LONG_SLOTS,
   SOLO_DANCE_STYLE_SLOTS,
   SOLO_DANCE_FREE_SLOTS,
+  PAIRS_SHORT_SLOTS,
+  PAIRS_FREE_SLOTS,
+  COUPLE_DANCE_STYLE_SLOTS,
+  COUPLE_DANCE_FREE_SLOTS,
 } from "@/lib/fantasyTemplates";
 
 function generateSlug(text: string): string {
@@ -87,6 +91,18 @@ export async function POST(
         longName: "Freedance",
         short: SOLO_DANCE_STYLE_SLOTS,
         long: SOLO_DANCE_FREE_SLOTS,
+      },
+      parejas: {
+        shortName: "Short Program",
+        longName: "Free Program",
+        short: PAIRS_SHORT_SLOTS,
+        long: PAIRS_FREE_SLOTS,
+      },
+      "pareja-danza": {
+        shortName: "Style Dance",
+        longName: "Free Dance",
+        short: COUPLE_DANCE_STYLE_SLOTS,
+        long: COUPLE_DANCE_FREE_SLOTS,
       },
     };
 

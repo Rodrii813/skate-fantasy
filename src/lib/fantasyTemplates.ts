@@ -64,3 +64,66 @@ export const SOLO_DANCE_FREE_SLOTS: SlotTemplate[] = [
   { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
   { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
 ];
+
+// 5. PAREJAS — SHORT PROGRAM
+// Elementos propios de Parejas (Death Spiral, Twist, Lifts, Throw Jumps...
+// no existen en Libre/Inline). Componentes: mismos 2 grupos que en el resto
+// de disciplinas. OJO: el usuario ha avisado de que la lectura de los PDFs
+// de resultados para Parejas tiene particularidades más complejas que se
+// revisarán aparte cuando lleguen esos PDFs reales — esto de aquí es solo
+// la plantilla de slots del Fantasy (qué eliges), no el parser de PDFs.
+export const PAIRS_SHORT_SLOTS: SlotTemplate[] = [
+  // Técnica (5 slots)
+  { name: "Jumps", slotType: "TECHNICAL", categoryCode: "JUMPS", rule: "BEST_1" },
+  { name: "Step Sequence", slotType: "TECHNICAL", categoryCode: "STEP_SEQUENCE", rule: "BEST_1" },
+  { name: "Lifts", slotType: "TECHNICAL", categoryCode: "LIFTS", rule: "BEST_1" },
+  { name: "Death Spiral", slotType: "TECHNICAL", categoryCode: "DEATH_SPIRAL", rule: "BEST_1" },
+  { name: "Combo Spin", slotType: "TECHNICAL", categoryCode: "COMBO_SPIN", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
+// 6. PAREJAS — FREE PROGRAM
+export const PAIRS_FREE_SLOTS: SlotTemplate[] = [
+  // Técnica (6 slots)
+  { name: "Death Spiral", slotType: "TECHNICAL", categoryCode: "DEATH_SPIRAL", rule: "BEST_1" },
+  { name: "Twist", slotType: "TECHNICAL", categoryCode: "TWIST", rule: "BEST_1" },
+  { name: "Jumps", slotType: "TECHNICAL", categoryCode: "JUMPS", rule: "BEST_1" },
+  { name: "Throw Jumps", slotType: "TECHNICAL", categoryCode: "THROW_JUMPS", rule: "BEST_1" },
+  { name: "Choreo Step", slotType: "TECHNICAL", categoryCode: "CHOREO_STEP", rule: "BEST_1" },
+  { name: "Lifts", slotType: "TECHNICAL", categoryCode: "LIFTS", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
+// 7. PAREJA DANZA — STYLE DANCE
+export const COUPLE_DANCE_STYLE_SLOTS: SlotTemplate[] = [
+  // Técnica (5 slots)
+  { name: "Cluster", slotType: "TECHNICAL", categoryCode: "CLUSTER", rule: "BEST_1" },
+  { name: "Choreo Stop", slotType: "TECHNICAL", categoryCode: "CHOREO_STOP", rule: "BEST_1" },
+  { name: "Pattern Sequence", slotType: "TECHNICAL", categoryCode: "PATTERN_SEQUENCE", rule: "BEST_1" },
+  { name: "Lift", slotType: "TECHNICAL", categoryCode: "LIFT", rule: "BEST_1" },
+  { name: "Hold Sequence", slotType: "TECHNICAL", categoryCode: "HOLD_SEQUENCE", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
+// 8. PAREJA DANZA — FREE DANCE
+export const COUPLE_DANCE_FREE_SLOTS: SlotTemplate[] = [
+  // Técnica (5 slots)
+  { name: "Lifts", slotType: "TECHNICAL", categoryCode: "LIFT", rule: "BEST_1" },
+  { name: "Cluster", slotType: "TECHNICAL", categoryCode: "CLUSTER", rule: "BEST_1" },
+  { name: "No Hold Sequence", slotType: "TECHNICAL", categoryCode: "NO_HOLD_SEQUENCE", rule: "BEST_1" },
+  { name: "Choreo Stop", slotType: "TECHNICAL", categoryCode: "CHOREO_STOP", rule: "BEST_1" },
+  { name: "Traveling", slotType: "TECHNICAL", categoryCode: "TRAVELING", rule: "BEST_1" },
+
+  // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
