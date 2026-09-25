@@ -23,6 +23,15 @@ export interface SegmentResultRow {
   tes: number;
   pcs: number;
   deductions: number;
+  // Solo se rellenan en el bloque "total": puesto y puntos que sacó cada
+  // patinadora en cada segmento por separado. El bloque Total ya no repite
+  // el desglose técnico (TES/PCS/Deducciones, que se ve en sus propios
+  // bloques de Corto y Largo más arriba) — en su lugar muestra "puesto y
+  // puntos del Corto", "puesto y puntos del Largo" y la suma final.
+  shortRank?: number | null;
+  shortScore?: number | null;
+  longRank?: number | null;
+  longScore?: number | null;
 }
 
 export interface SegmentResultBlock {
@@ -86,6 +95,49 @@ function buildRows(
 }
 
 /**
+ * Construye las filas del bloque "Total": no recalcula nada nuevo, solo
+ * junta el puesto+puntos que cada patinadora ya sacó en el bloque de Corto
+ * y en el de Largo (recibidos ya calculados) junto con el total oficial.
+ */
+function buildTotalRows(
+  registrations: RegistrationLike[],
+  shortRows: SegmentResultRow[],
+  longRows: SegmentResultRow[]
+): SegmentResultRow[] {
+  const shortByReg = new Map(shortRows.map((r) => [r.registrationId, r]));
+  const longByReg = new Map(longRows.map((r) => [r.registrationId, r]));
+
+  const scored = registrations
+    .filter((r) => r.totalScore !== null)
+    .sort((a, b) => (b.totalScore as number) - (a.totalScore as number));
+  const unscored = registrations.filter((r) => r.totalScore === null);
+
+  const toRow = (r: RegistrationLike, computedRank: number | null): SegmentResultRow => {
+    const shortRow = shortByReg.get(r.id);
+    const longRow = longByReg.get(r.id);
+    return {
+      registrationId: r.id,
+      rank: r.finalRank ?? computedRank,
+      skaterName: `${r.skater.firstName} ${r.skater.lastName}`,
+      country: r.skater.country,
+      total: r.totalScore,
+      tes: 0,
+      pcs: 0,
+      deductions: 0,
+      shortRank: shortRow?.rank ?? null,
+      shortScore: shortRow?.total ?? null,
+      longRank: longRow?.rank ?? null,
+      longScore: longRow?.total ?? null,
+    };
+  };
+
+  const scoredRows = scored.map((r, index) => toRow(r, index + 1));
+  const unscoredRows = unscored.map((r) => toRow(r, null));
+
+  return [...scoredRows, ...unscoredRows];
+}
+
+/**
  * Calcula los 3 bloques de resultados (Corto, Largo, Total) de un evento.
  * Corto y Largo solo incluyen a quien ya tiene puntuación en ESE segmento
  * (no tiene sentido mostrar filas vacías para un segmento que todavía no se
@@ -102,45 +154,31 @@ export function computeSegmentResultBlocks(
 
   const blocks: SegmentResultBlock[] = [];
 
-  if (shortSegment) {
-    blocks.push({
-      key: "short",
-      title: shortSegment.name,
-      rows: buildRows(
+  const shortRows = shortSegment
+    ? buildRows(
         registrations,
         (r) => r.segment1Score,
         (r) => ({ tes: r.segment1Tes, pcs: r.segment1Pcs, ded: r.segment1Ded }),
         { includeUnscored: false }
-      ),
-    });
-  }
+      )
+    : [];
 
-  if (longSegment) {
-    blocks.push({
-      key: "long",
-      title: longSegment.name,
-      rows: buildRows(
+  const longRows = longSegment
+    ? buildRows(
         registrations,
         (r) => r.segment2Score,
         (r) => ({ tes: r.segment2Tes, pcs: r.segment2Pcs, ded: r.segment2Ded }),
         { includeUnscored: false }
-      ),
-    });
-  }
+      )
+    : [];
+
+  if (shortSegment) blocks.push({ key: "short", title: shortSegment.name, rows: shortRows });
+  if (longSegment) blocks.push({ key: "long", title: longSegment.name, rows: longRows });
 
   blocks.push({
     key: "total",
     title: "Total",
-    rows: buildRows(
-      registrations,
-      (r) => r.totalScore,
-      (r) => ({
-        tes: r.segment1Tes !== null || r.segment2Tes !== null ? (r.segment1Tes ?? 0) + (r.segment2Tes ?? 0) : null,
-        pcs: r.segment1Pcs !== null || r.segment2Pcs !== null ? (r.segment1Pcs ?? 0) + (r.segment2Pcs ?? 0) : null,
-        ded: r.segment1Ded !== null || r.segment2Ded !== null ? (r.segment1Ded ?? 0) + (r.segment2Ded ?? 0) : null,
-      }),
-      { includeUnscored: true, rankOf: (r) => r.finalRank }
-    ),
+    rows: buildTotalRows(registrations, shortRows, longRows),
   });
 
   return blocks;

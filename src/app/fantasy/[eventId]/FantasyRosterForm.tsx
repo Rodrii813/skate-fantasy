@@ -105,8 +105,11 @@ export default function FantasyRosterForm({
     [activeSlots]
   );
 
-  // Agrupar registros por Warmup Group desc, usando el campo de grupo que
+  // Agrupar registros por Warmup Group en orden ASCENDENTE (Grupo 1 primero,
+  // que es quien sale a patinar primero), usando el campo de grupo que
   // corresponde a la pestaña activa (Corto/Largo tienen sorteos distintos).
+  // Antes se ordenaba al revés (b - a) y el picker mostraba el último grupo
+  // de calentamiento arriba del todo, en vez del orden real de salida.
   const groupedRegistrations = useMemo(() => {
     const groupField = activeTab?.groupField ?? "warmupGroupShort";
     const groups: Record<number, Registration[]> = {};
@@ -122,7 +125,7 @@ export default function FantasyRosterForm({
 
     return Object.keys(groups)
       .map(Number)
-      .sort((a, b) => b - a)
+      .sort((a, b) => a - b)
       .map((groupNum) => ({
         group: groupNum,
         skaters: groups[groupNum],

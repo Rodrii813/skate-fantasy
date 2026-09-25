@@ -33,6 +33,66 @@ export default function SegmentResultsTables({
             <div className="px-5 pb-5 text-xs text-slate-500">
               Todavía sin puntuaciones oficiales cargadas para {block.title}.
             </div>
+          ) : block.key === "total" ? (
+            // El bloque Total no repite el desglose técnico (TES/PCS/
+            // Deducciones ya se ven en los bloques de Corto y Largo de
+            // arriba): aquí se muestra el puesto y los puntos que sacó cada
+            // patinadora en cada segmento por separado, más la suma final.
+            <div className="overflow-x-auto pb-2">
+              <table className="w-full text-left border-collapse text-sm">
+                <thead>
+                  <tr className="bg-slate-800/60 text-slate-300 font-semibold border-y border-slate-700/80 text-xs uppercase tracking-wider">
+                    <th className="py-2.5 px-5 w-16">Puesto</th>
+                    <th className="py-2.5 px-4">Patinadora</th>
+                    <th className="py-2.5 px-4 text-right">Corto</th>
+                    <th className="py-2.5 px-4 text-right">Largo</th>
+                    <th className="py-2.5 px-4 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/80">
+                  {block.rows.map((row) => (
+                    <tr key={row.registrationId} className="hover:bg-slate-800/30 transition font-mono">
+                      <td className="py-3 px-5 font-bold text-slate-400">
+                        {row.rank !== null ? `#${row.rank}` : "—"}
+                      </td>
+                      <td className="py-3 px-4 font-sans font-semibold text-slate-200">
+                        {row.skaterName}{" "}
+                        {row.country && (
+                          <span className="font-mono text-[11px] text-slate-500">({row.country})</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-300">
+                        {row.shortScore !== null && row.shortScore !== undefined ? (
+                          <>
+                            <span className="text-slate-500 text-xs">
+                              {row.shortRank ? `#${row.shortRank} · ` : ""}
+                            </span>
+                            {row.shortScore.toFixed(2)}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right text-slate-300">
+                        {row.longScore !== null && row.longScore !== undefined ? (
+                          <>
+                            <span className="text-slate-500 text-xs">
+                              {row.longRank ? `#${row.longRank} · ` : ""}
+                            </span>
+                            {row.longScore.toFixed(2)}
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right font-bold text-indigo-400 text-base">
+                        {numberOrDash(row.total)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <div className="overflow-x-auto pb-2">
               <table className="w-full text-left border-collapse text-sm">
