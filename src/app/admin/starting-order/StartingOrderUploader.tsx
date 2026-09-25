@@ -15,6 +15,7 @@ interface EventItem {
 export default function StartingOrderUploader({ events }: { events: EventItem[] }) {
   const router = useRouter();
   const [selectedEventId, setSelectedEventId] = useState(events[0]?.id || "");
+  const [segmentName, setSegmentName] = useState("Long Program");
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -30,10 +31,10 @@ export default function StartingOrderUploader({ events }: { events: EventItem[] 
 
     const formData = new FormData();
     formData.append("file", file);
-    formData.append("eventId", selectedEventId);
+    formData.append("segmentName", segmentName);
 
     try {
-      const res = await fetch("/api/admin/upload-starting-order", {
+      const res = await fetch(`/api/admin/events/${selectedEventId}/import-starting-order`, {
         method: "POST",
         body: formData,
       });
@@ -86,6 +87,24 @@ export default function StartingOrderUploader({ events }: { events: EventItem[] 
               </option>
             ))}
           </select>
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Segmento
+          </label>
+          <select
+            value={segmentName}
+            onChange={(e) => setSegmentName(e.target.value)}
+            className="w-full bg-slate-950 border border-slate-700 text-slate-100 rounded-xl p-3 text-sm focus:outline-none focus:border-indigo-500"
+          >
+            <option value="Long Program">Long Program (Programa Largo)</option>
+            <option value="Short Program">Short Program (Programa Corto)</option>
+          </select>
+          <p className="text-[11px] text-slate-500">
+            El Corto y el Largo tienen sorteos de grupo de calentamiento distintos: el grupo se
+            guarda por separado según el segmento elegido aquí.
+          </p>
         </div>
 
         <div className="space-y-1.5">

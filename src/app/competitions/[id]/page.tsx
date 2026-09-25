@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { computeSegmentResultBlocks } from "@/lib/segmentResults";
+import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +47,7 @@ export default async function CompetitionDetailPage({
   if (!event) notFound();
 
   const isLocked = event.status !== "UPCOMING";
+  const resultBlocks = isLocked ? computeSegmentResultBlocks(event.segments, event.registrations) : [];
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -126,7 +129,7 @@ export default async function CompetitionDetailPage({
           </div>
         </div>
 
-        {/* Tabla de Resultados Oficiales / Inscripciones */}
+        {/* Resultados Oficiales (separados por segmento) / Inscripciones */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-5 border-b border-slate-800 flex justify-between items-center">
             <div>
@@ -135,7 +138,7 @@ export default async function CompetitionDetailPage({
               </h2>
               <p className="text-xs text-slate-400">
                 {isLocked
-                  ? "Puntuaciones oficiales por segmento y total acumulado."
+                  ? "Corto, Largo y Total, calculados al vuelo por segmento."
                   : "Patinadores confirmados para esta prueba."}
               </p>
             </div>
@@ -148,62 +151,34 @@ export default async function CompetitionDetailPage({
             <div className="p-12 text-center text-slate-400 text-sm">
               No hay patinadores registrados todavía en esta prueba.
             </div>
+          ) : isLocked ? (
+            <SegmentResultsTables blocks={resultBlocks} defaultOpen />
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 w-16">Puesto</th>
+                    <th className="py-3 px-4 w-16">Dorsal</th>
                     <th className="py-3 px-4">Patinador</th>
                     <th className="py-3 px-4">País</th>
-                    <th className="py-3 px-4 text-right">
-                      {event.segments[0]?.name || "Seg. 1"}
-                    </th>
-                    <th className="py-3 px-4 text-right">
-                      {event.segments[1]?.name || "Seg. 2"}
-                    </th>
-                    <th className="py-3 px-4 text-right font-bold text-white">
-                      Total
-                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
-                  {event.registrations.map((reg, index) => {
-                    const rankDisplay = reg.finalRank ?? index + 1;
-                    return (
-                      <tr
-                        key={reg.id}
-                        className="hover:bg-slate-800/30 transition font-mono"
-                      >
-                        <td className="py-3.5 px-4 font-bold text-slate-400">
-                          {reg.finalRank ? `#${reg.finalRank}` : `#${index + 1}`}
-                        </td>
-                        <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
-                          {reg.skater.firstName} {reg.skater.lastName}
-                        </td>
-                        <td className="py-3.5 px-4 font-sans text-xs text-slate-400">
-                          <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-slate-300">
-                            {reg.skater.country}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-slate-300">
-                          {reg.segment1Score !== null && reg.segment1Score !== undefined
-                            ? reg.segment1Score.toFixed(2)
-                            : "—"}
-                        </td>
-                        <td className="py-3.5 px-4 text-right text-slate-300">
-                          {reg.segment2Score !== null && reg.segment2Score !== undefined
-                            ? reg.segment2Score.toFixed(2)
-                            : "—"}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-bold text-indigo-400 text-base">
-                          {reg.totalScore !== null && reg.totalScore !== undefined
-                            ? reg.totalScore.toFixed(2)
-                            : "—"}
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {event.registrations.map((reg, index) => (
+                    <tr key={reg.id} className="hover:bg-slate-800/30 transition font-mono">
+                      <td className="py-3.5 px-4 font-bold text-slate-400">
+                        {reg.startOrder ?? index + 1}
+                      </td>
+                      <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
+                        {reg.skater.firstName} {reg.skater.lastName}
+                      </td>
+                      <td className="py-3.5 px-4 font-sans text-xs text-slate-400">
+                        <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-slate-300">
+                          {reg.skater.country}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

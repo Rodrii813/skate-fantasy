@@ -4,6 +4,19 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractText } from "unpdf";
 
+// Campo de BD donde se guarda el grupo de calentamiento según el segmento
+// indicado. "" (sin segmentName) cae en el campo legado `warmupGroup`, para
+// no romper llamadas existentes que no lo envían (p.ej. el formulario
+// manual de /admin/events/[eventId]/skaters).
+type WarmupGroupField = "warmupGroup" | "warmupGroupShort" | "warmupGroupLong";
+
+function resolveWarmupGroupField(segmentName: string): WarmupGroupField {
+  const normalized = segmentName.trim().toLowerCase();
+  if (normalized.includes("short")) return "warmupGroupShort";
+  if (normalized.includes("long")) return "warmupGroupLong";
+  return "warmupGroup";
+}
+
 export async function POST(
   req: Request,
   { params }: { params: { eventId: string } }
@@ -27,6 +40,8 @@ export async function POST(
 
     const formData = await req.formData();
     const file = formData.get("file") as File;
+    const segmentName = (formData.get("segmentName") as string) || "";
+    const warmupGroupField = resolveWarmupGroupField(segmentName);
 
     if (!file) return NextResponse.json({ error: "Falta el archivo PDF" }, { status: 400 });
 
@@ -35,23 +50,35 @@ export async function POST(
     const fullText = Array.isArray(text) ? text.join("\n") : text;
 
     // 1. Separar el documento por "Warm Up Group 1", "Warm Up Group 2"...
-    const segments = fullText.split(/Warm\s*Up\s*Group\s*(\d+)/i);
-    let importedCount = 0;
+    const groupBlocks = fullText.split(/Warm\s*Up\s*Group\s*(\d+)/i);
+    const importedSkaters: {
+      startOrder: number;
+      warmupGroup: number;
+      fullName: string;
+      country: string;
+    }[] = [];
 
-    if (segments.length > 1) {
+    if (groupBlocks.length > 1) {
       // Procesar cada grupo de calentamiento por separado
-      for (let i = 1; i < segments.length; i += 2) {
-        const groupNumber = parseInt(segments[i], 10);
-        const blockContent = segments[i + 1];
-        const count = await parseAndRegisterSkaters(blockContent, groupNumber, eventId, currentEvent);
-        importedCount += count;
+      for (let i = 1; i < groupBlocks.length; i += 2) {
+        const groupNumber = parseInt(groupBlocks[i], 10);
+        const blockContent = groupBlocks[i + 1];
+        const skaters = await parseAndRegisterSkaters(
+          blockContent,
+          groupNumber,
+          eventId,
+          currentEvent,
+          warmupGroupField
+        );
+        importedSkaters.push(...skaters);
       }
     } else {
       // Si no hay grupos detectados, procesa todo el texto como Grupo 1
-      importedCount = await parseAndRegisterSkaters(fullText, 1, eventId, currentEvent);
+      const skaters = await parseAndRegisterSkaters(fullText, 1, eventId, currentEvent, warmupGroupField);
+      importedSkaters.push(...skaters);
     }
 
-    return NextResponse.json({ ok: true, count: importedCount });
+    return NextResponse.json({ ok: true, count: importedSkaters.length, skaters: importedSkaters });
   } catch (error: any) {
     console.error("Error importando Starting Order:", error);
     return NextResponse.json({ error: error?.message || "Error procesando el PDF" }, { status: 500 });
@@ -59,8 +86,14 @@ export async function POST(
 }
 
 // Función mágica que extrae a los patinadores pase lo que pase
-async function parseAndRegisterSkaters(blockText: string, group: number, eventId: string, currentEvent: any) {
-  let count = 0;
+async function parseAndRegisterSkaters(
+  blockText: string,
+  group: number,
+  eventId: string,
+  currentEvent: any,
+  warmupGroupField: WarmupGroupField
+) {
+  const imported: { startOrder: number; warmupGroup: number; fullName: string; country: string }[] = [];
 
   // 1. Limpieza radical: Borramos todas las horas (12:27, 05:15), fechas (07/09/2026) y ruido de encabezados
   let clean = blockText
@@ -109,15 +142,17 @@ async function parseAndRegisterSkaters(blockText: string, group: number, eventId
       });
     }
 
-    // 4. Inscribirlo (Registration)
+    // 4. Inscribirlo (Registration) — el grupo de calentamiento se guarda en
+    // el campo del segmento indicado (warmupGroupShort/warmupGroupLong), o
+    // en el campo legado warmupGroup si no se especificó segmento.
     await prisma.registration.upsert({
       where: { eventId_skaterId: { eventId, skaterId: skater.id } },
-      update: { startOrder: order, warmupGroup: group },
-      create: { eventId, skaterId: skater.id, startOrder: order, warmupGroup: group },
+      update: { startOrder: order, [warmupGroupField]: group },
+      create: { eventId, skaterId: skater.id, startOrder: order, [warmupGroupField]: group },
     });
 
-    count++;
+    imported.push({ startOrder: order, warmupGroup: group, fullName, country });
   }
 
-  return count;
+  return imported;
 }
