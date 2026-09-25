@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
+import TimezoneSelector from "./_components/TimezoneSelector";
 
 export default function NavBar() {
   const { data: session } = useSession();
@@ -29,6 +30,7 @@ export default function NavBar() {
           <Link href="/fantasy/normas" className="hover:text-white">
             Normas
           </Link>
+          <TimezoneSelector />
           {isAdmin && (
             <Link href="/admin" className="hover:text-white">
               Admin

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { utcToZonedInputValue, VENUE_TIMEZONE } from "@/lib/timezone";
 
 export default function EventsManager({
   initialEvents,
@@ -45,13 +46,12 @@ export default function EventsManager({
     setScheduledAt("");
   };
 
-  const toDatetimeLocalValue = (isoDate: string) => {
-    const d = new Date(isoDate);
-    const pad = (n: number) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(
-      d.getMinutes()
-    )}`;
-  };
+  // El servidor interpreta lo que se escriba aquí como hora de la sede
+  // (Paraguay) — ver api/admin/events/route.ts — así que al precargar el
+  // formulario para editar hay que hacer la conversión inversa en esa misma
+  // zona, y no con la hora local del navegador del admin (que puede estar
+  // en cualquier país).
+  const toDatetimeLocalValue = (isoDate: string) => utcToZonedInputValue(isoDate, VENUE_TIMEZONE);
 
   const handleEditClick = (ev: any) => {
     setEditingEventId(ev.id);
@@ -255,7 +255,8 @@ export default function EventsManager({
 
           <div className="space-y-1">
             <label className="text-slate-400 font-semibold">
-              Cierre de Plantillas (Roster Locks At)
+              Cierre de Plantillas (Roster Locks At){" "}
+              <span className="font-normal text-slate-500">— hora de Paraguay</span>
             </label>
             <input
               type="datetime-local"
@@ -268,7 +269,8 @@ export default function EventsManager({
 
           <div className="space-y-1">
             <label className="text-slate-400 font-semibold">
-              Fecha y hora en pista (calendario público)
+              Fecha y hora en pista (calendario público){" "}
+              <span className="font-normal text-slate-500">— hora de Paraguay</span>
             </label>
             <input
               type="datetime-local"
@@ -276,6 +278,9 @@ export default function EventsManager({
               onChange={(e) => setScheduledAt(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
             />
+            <p className="text-[11px] text-slate-500">
+              Cada usuario la verá convertida automáticamente a su zona horaria (o a la que elija) en /calendario.
+            </p>
           </div>
         </div>
 

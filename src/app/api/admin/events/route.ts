@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
 
 export async function GET() {
   try {
@@ -54,9 +55,13 @@ export async function POST(req: Request) {
         competitionId,
         disciplineId,
         categoryId,
-        rosterLocksAt: new Date(rosterLocksAt),
+        // El input datetime-local del admin se interpreta como hora de la
+        // sede (Paraguay), no como UTC directo, y se convierte de verdad
+        // antes de guardar — si no, la hora quedaba desplazada respecto al
+        // instante real que el admin quiso decir.
+        rosterLocksAt: zonedTimeToUtc(rosterLocksAt, VENUE_TIMEZONE),
         gender: gender || null,
-        scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
+        scheduledAt: scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null,
       },
     });
 

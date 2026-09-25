@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -47,9 +48,12 @@ export async function PATCH(
     if (competitionId !== undefined) data.competitionId = competitionId;
     if (disciplineId !== undefined) data.disciplineId = disciplineId;
     if (categoryId !== undefined) data.categoryId = categoryId;
-    if (rosterLocksAt !== undefined) data.rosterLocksAt = new Date(rosterLocksAt);
+    // Mismo criterio que el POST: el datetime-local del admin es hora de la
+    // sede (Paraguay), se convierte a UTC de verdad antes de guardar.
+    if (rosterLocksAt !== undefined) data.rosterLocksAt = zonedTimeToUtc(rosterLocksAt, VENUE_TIMEZONE);
     if (gender !== undefined) data.gender = gender || null;
-    if (scheduledAt !== undefined) data.scheduledAt = scheduledAt ? new Date(scheduledAt) : null;
+    if (scheduledAt !== undefined)
+      data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
 
     const updatedEvent = await prisma.event.update({
       where: { id: eventId },

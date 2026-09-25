@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
+import LocalDateTime from "@/app/_components/LocalDateTime";
 
 interface Skater {
   id: string;
@@ -217,7 +218,11 @@ export default function FantasyRosterForm({
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <span className="text-xs text-slate-400 font-semibold">
-          Deadline: {new Date(rosterLocksAt).toLocaleString("es-ES")}
+          Deadline:{" "}
+          <LocalDateTime
+            value={rosterLocksAt}
+            options={{ dateStyle: "medium", timeStyle: "short" }}
+          />
         </span>
         <h1 className="text-xl font-black text-slate-100 mt-1">
           Technical Elements & Components: Draft Constraints
@@ -229,6 +234,12 @@ export default function FantasyRosterForm({
           className="mt-1 inline-block text-[11px] text-indigo-400 underline hover:text-indigo-300"
         >
           Ver normas completas del Fantasy →
+        </a>
+        <a
+          href={`/fantasy/${eventId}/leaderboard`}
+          className="mt-1 ml-3 inline-block text-[11px] text-amber-400 underline hover:text-amber-300"
+        >
+          🏆 Clasificación en vivo →
         </a>
       </div>
 
