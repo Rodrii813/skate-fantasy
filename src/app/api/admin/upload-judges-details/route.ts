@@ -191,7 +191,14 @@ export async function POST(req: Request) {
         } else if (tag.includes("step") || tag.includes("pasos")) {
           earnedScore = scores.stepSequence || 0;
         } else if (tag.includes("choreo sequence") || tag.includes("coreografico")) {
-          earnedScore = scores.choreoSequence || 0;
+          // El acta oficial no siempre llama a este elemento "Choreo
+          // Sequence": en el Programa Largo del Campeonato de Europa lo
+          // imprime literalmente como "Step Sequence" (aunque la info diga
+          // "ChSt1"), así que el parser lo clasifica como scores.stepSequence
+          // y scores.choreoSequence se queda a 0. Si no hay nada bajo
+          // choreoSequence, usamos stepSequence como alternativa: un
+          // programa real solo trae UNO de los dos, nunca ambos a la vez.
+          earnedScore = scores.choreoSequence || scores.stepSequence || 0;
         } else if (tag.includes("skating skills") || tag.includes("transitions") || tag.includes("habilidades")) {
           earnedScore = scores.pcsSkatingTransitions || 0;
         } else if (tag.includes("performance") || tag.includes("interpretacion")) {

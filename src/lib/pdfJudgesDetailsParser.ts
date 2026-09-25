@@ -96,11 +96,24 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     };
 
     // Componentes (PCS): en el PDF real cada fila es
-    // "<Label> <J1> <J2> <J3> <J4> <J5> <factored>[factor]", y el valor que
-    // queremos es el penúltimo número (el "factored"), no el primero.
+    // "<Label> <J1> <J2> <J3> <J4> <J5> <promedio>[Factor]", y el valor que
+    // queremos es el promedio (el número justo después de las 5 notas de
+    // jueces), no el Factor que le sigue.
+    //
+    // OJO: en el Programa Largo (Free Program) de World Skate, el texto del
+    // Factor (p.ej. "1.6") se extrae PEGADO al promedio sin ningún espacio
+    // de por medio ("6.751.6"), aunque visualmente están en columnas
+    // separadas — es un artefacto de cómo ese PDF concreto ordena el texto
+    // internamente. Antes el regex exigía que tras el promedio solo pudiera
+    // venir UN dígito suelto y luego fin de línea, así que esa fila entera
+    // no hacía match y el componente se quedaba en 0 (bug real, reportado
+    // con el acta de "Seniores_Free_Skating_Ladies_FINAL_1.pdf": los 4
+    // componentes salían en blanco solo en el Largo, nunca en el Corto).
+    // Ahora se acepta cualquier número de Factor pegado justo después,
+    // con o sin espacio, y también funciona si no hay Factor al final.
     const getPcsValue = (label: string): number => {
       const reg = new RegExp(
-        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\d?\\s*$`,
+        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\s*(?:\\d+(?:\\.\\d+)?)?\\s*$`,
         "im"
       );
       const match = chunk.match(reg);

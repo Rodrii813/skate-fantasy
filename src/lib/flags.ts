@@ -63,5 +63,9 @@ export function getCountryFlag(countryCode?: string | null): string {
     BEL: "🇧🇪",
     TUR: "🇹🇷",
   };
-  return flags[upper] || `[${upper}]`;
+  // Antes, un código de país desconocido (typo, dato corrupto...) se
+  // mostraba tal cual entre corchetes ("[FOR]"), lo que parecía una segunda
+  // bandera/etiqueta rara al lado del país real. Mejor mostrar una bandera
+  // neutra: así se ve que falta el dato, sin imprimir el código roto.
+  return flags[upper] || "🏳️";
 }
