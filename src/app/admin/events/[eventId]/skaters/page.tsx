@@ -17,6 +17,7 @@ export default function EventSkatersPage() {
   const [selectedSkaterId, setSelectedSkaterId] = useState("");
   const [warmupGroup, setWarmupGroup] = useState("1");
   const [skatingOrder, setSkatingOrder] = useState("1");
+  const [manualSegment, setManualSegment] = useState("Short Program");
 
   // Formulario Starting Order PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -69,11 +70,12 @@ export default function EventSkatersPage() {
         skaterId: selectedSkaterId,
         warmupGroup: Number(warmupGroup),
         skatingOrder: Number(skatingOrder),
+        segmentName: manualSegment,
       }),
     });
 
     if (res.ok) {
-      setMsg("✅ Patinador inscrito correctamente");
+      setMsg(`✅ Patinador inscrito correctamente en "${manualSegment}"`);
       setSkatingOrder(String(Number(skatingOrder) + 1));
       loadData();
     } else {
@@ -169,9 +171,21 @@ export default function EventSkatersPage() {
               </select>
             </div>
 
+            <div className="space-y-1 text-xs">
+              <label className="text-slate-400">Segmento</label>
+              <select
+                value={manualSegment}
+                onChange={(e) => setManualSegment(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
+              >
+                <option value="Short Program">Short Program (Programa Corto)</option>
+                <option value="Long Program">Long Program (Programa Largo)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
-                <label className="text-slate-400">Grupo Calentamiento</label>
+                <label className="text-slate-400">Grupo Calentamiento ({manualSegment === "Short Program" ? "Corto" : "Largo"})</label>
                 <input
                   type="number"
                   min="1"

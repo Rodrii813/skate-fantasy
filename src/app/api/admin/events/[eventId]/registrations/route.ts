@@ -34,7 +34,21 @@ export async function POST(
 
     const { eventId } = params;
     const body = await req.json();
-    const { skaterId, warmupGroup, skatingOrder } = body;
+    const { skaterId, warmupGroup, skatingOrder, segmentName } = body;
+
+    // Igual que en la importación por PDF: si se indica el segmento
+    // (Corto/Largo), el grupo de calentamiento se guarda en el campo
+    // específico de ese segmento; si no se indica nada, cae en el campo
+    // legado `warmupGroup` (compatibilidad con inscripciones antiguas sin
+    // segmentos). Antes este formulario SIEMPRE escribía en el campo legado,
+    // así que un patinador metido a mano aquí nunca aparecía con grupo en el
+    // picker de Fantasy, que ya solo mira los campos por segmento.
+    const normalizedSegment = (segmentName || "").trim().toLowerCase();
+    const groupField = normalizedSegment.includes("short")
+      ? "warmupGroupShort"
+      : normalizedSegment.includes("long")
+        ? "warmupGroupLong"
+        : "warmupGroup";
 
     const reg = await prisma.registration.upsert({
       where: {
@@ -44,13 +58,13 @@ export async function POST(
         },
       },
       update: {
-        warmupGroup: Number(warmupGroup) || 1,
+        [groupField]: Number(warmupGroup) || 1,
         startOrder: Number(skatingOrder) || 1,
       },
       create: {
         eventId,
         skaterId,
-        warmupGroup: Number(warmupGroup) || 1,
+        [groupField]: Number(warmupGroup) || 1,
         startOrder: Number(skatingOrder) || 1,
       },
     });
