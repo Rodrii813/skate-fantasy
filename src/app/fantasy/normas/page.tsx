@@ -132,7 +132,48 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="3. Restricciones al elegir: grupos de calentamiento">
+      <Section title="3. Parejas">
+        <p>
+          Parejas tiene elementos propios (spirales de la muerte, lanzamientos, elevaciones…) que
+          no existen en las demás disciplinas, pero se juega con la misma mecánica: un patinador
+          — en este caso, una pareja — por slot técnico, más los 2 slots de Componentes del
+          Programa.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Short Program — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Jumps</li>
+              <li>Step Sequence</li>
+              <li>Lifts</li>
+              <li>Death Spiral</li>
+              <li>Combo Spin</li>
+            </ul>
+          </Card>
+          <Card>
+            <p className="text-xs font-semibold uppercase tracking-wide text-gold">
+              Free Program — slots técnicos
+            </p>
+            <ul className="mt-2 list-inside list-disc space-y-1 text-ice-100/75">
+              <li>Death Spiral</li>
+              <li>Twist</li>
+              <li>Jumps</li>
+              <li>Throw Jumps</li>
+              <li>Choreo Step</li>
+              <li>Lifts</li>
+            </ul>
+          </Card>
+        </div>
+        <p>
+          Igual que en el resto de disciplinas, en ambos programas hay además 2 slots de{" "}
+          <strong className="text-white">Componentes del Programa</strong>: "Skating Skills +
+          Transitions" y "Performance + Choreography".
+        </p>
+      </Section>
+
+      <Section title="4. Restricciones al elegir: grupos de calentamiento">
         <p>
           Los patinadores inscritos se agrupan en <strong className="text-white">grupos de
           calentamiento</strong> (warm-up groups), que reflejan su nivel: el grupo con el número
@@ -162,12 +203,13 @@ export default function NormasPage() {
         </div>
         <p className="text-xs text-ice-100/50">
           Estas reglas de grupos se aplican igual en todas las disciplinas disponibles (Libre,
-          Inline y Solo Danza). Si en el futuro se añaden slots para el resto (Parejas, Precisión,
-          Figuras…), sus límites concretos se anunciarán aparte cuando estén disponibles.
+          Inline, Solo Danza y Parejas). Si en el futuro se añaden slots para el resto (Pareja
+          Danza, Precisión, Figuras…), sus límites concretos se anunciarán aparte cuando estén
+          disponibles.
         </p>
       </Section>
 
-      <Section title="4. Cómo se puntúa el Fantasy">
+      <Section title="5. Cómo se puntúa el Fantasy">
         <p>
           Tu puntuación en una prueba es la suma de las notas oficiales de cada elemento que
           elegiste — la misma nota que aparece en el protocolo oficial de jueces de World Skate
@@ -181,7 +223,7 @@ export default function NormasPage() {
         </p>
       </Section>
 
-      <Section title="5. Predicción (juego aparte)">
+      <Section title="6. Predicción (juego aparte)">
         <p>
           Independiente del Fantasy por elementos, cada prueba tiene también una Predicción donde
           predices el podio y siguientes puestos. Se puntúa así:
