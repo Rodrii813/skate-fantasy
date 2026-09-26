@@ -98,11 +98,11 @@ export default async function CalendarioPage() {
             {group.events.map((row, i) => {
               const event = row.event;
               return (
-              <li key={`${event.id}-${i}`}>
-                <Link
-                  href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
-                  className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10"
-                >
+              <li
+                key={`${event.id}-${i}`}
+                className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10"
+              >
+                <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4">
                     <LocalDateTime
                       value={row.scheduledAt}
@@ -130,7 +130,30 @@ export default async function CalendarioPage() {
                   <span className="whitespace-nowrap rounded-full border border-white/15 px-3 py-1 text-xs text-ice-100/80">
                     {statusLabel[event.status]}
                   </span>
-                </Link>
+                </div>
+                {/* Botones de acceso directo a Predicción, Draft y
+                    Resultados de esta prueba, sin salir del calendario para
+                    llegar a la ficha completa del evento. */}
+                <div className="mt-2.5 pl-[4.5rem] flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/predictions?event=${event.id}`}
+                    className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
+                  >
+                    🎯 Predicción
+                  </Link>
+                  <Link
+                    href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
+                    className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
+                  >
+                    ✨ Draft
+                  </Link>
+                  <Link
+                    href={`/competitions/${event.competitionId}?event=${event.id}&view=results`}
+                    className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
+                  >
+                    📊 Resultados
+                  </Link>
+                </div>
               </li>
               );
             })}

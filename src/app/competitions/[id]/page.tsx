@@ -66,6 +66,15 @@ export default async function CompetitionDetailPage({
   const resultBlocks =
     activeEvent && isLocked ? computeSegmentResultBlocks(activeEvent.segments, activeEvent.registrations) : [];
 
+  // Género de las patinadoras/patinadores de ESTE evento concreto, para
+  // rotular la tabla de orden de salida — "Patinadoras" si el evento es
+  // Ladies, "Patinadores" si es Men o si el evento es mixto (gender null).
+  const skaterWord = (ev: { gender: string | null } | undefined, plural: boolean) => {
+    const isFemale = ev?.gender === "FEMALE";
+    if (plural) return isFemale ? "Patinadoras" : "Patinadores";
+    return isFemale ? "Patinadora" : "Patinador";
+  };
+
   const tabHref = (eventId: string, forView?: "entries" | "results") =>
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
 
@@ -186,22 +195,27 @@ export default async function CompetitionDetailPage({
                                 {statusLabel[event.status]}
                               </span>
                             </div>
-                            {/* Enlaces discretos a la Predicción y al Draft
-                                de esta prueba concreta — a propósito no son
-                                botones grandes, para no competir visualmente
-                                con la fila del calendario. */}
-                            <div className="mt-1.5 pl-[4.5rem] flex items-center gap-3 text-[11px]">
+                            {/* Botones de acceso directo a Predicción, Draft
+                                y Resultados de esta prueba concreta, desde la
+                                propia fila del calendario. */}
+                            <div className="mt-2.5 pl-[4.5rem] flex flex-wrap items-center gap-2">
                               <Link
                                 href={`/predictions?event=${event.id}`}
-                                className="text-blue-400 hover:text-blue-300 underline underline-offset-2"
+                                className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
                               >
-                                Predicción →
+                                🎯 Predicción
                               </Link>
                               <Link
                                 href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
-                                className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
+                                className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
                               >
-                                Draft →
+                                ✨ Draft
+                              </Link>
+                              <Link
+                                href={tabHref(event.id, "results")}
+                                className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
+                              >
+                                📊 Resultados
                               </Link>
                             </div>
                           </li>
@@ -325,7 +339,7 @@ export default async function CompetitionDetailPage({
                             : "bg-slate-950 text-slate-400 hover:text-slate-200"
                         }`}
                       >
-                        Entries
+                        Orden de Salida
                       </Link>
                       <Link
                         href={tabHref(activeEvent.id, "results")}
@@ -335,17 +349,17 @@ export default async function CompetitionDetailPage({
                             : "bg-slate-950 text-slate-400 hover:text-slate-200"
                         }`}
                       >
-                        Results
+                        Resultados
                       </Link>
                     </div>
                     <span className="text-xs font-mono bg-slate-800 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">
-                      {activeEvent.registrations.length} Patinadoras
+                      {activeEvent.registrations.length} {skaterWord(activeEvent, true)}
                     </span>
                   </div>
 
                   {activeEvent.registrations.length === 0 ? (
                     <div className="p-12 text-center text-slate-400 text-sm">
-                      No hay patinadoras registradas todavía en esta prueba.
+                      No hay {skaterWord(activeEvent, true).toLowerCase()} registrados todavía en esta prueba.
                     </div>
                   ) : view === "results" ? (
                     isLocked ? (
@@ -360,8 +374,8 @@ export default async function CompetitionDetailPage({
                       <table className="w-full text-left border-collapse text-sm">
                         <thead>
                           <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                            <th className="py-3 px-4 w-16">Dorsal</th>
-                            <th className="py-3 px-4">Patinadora</th>
+                            <th className="py-3 px-4 w-24">Orden de Salida</th>
+                            <th className="py-3 px-4">{skaterWord(activeEvent, false)}</th>
                             <th className="py-3 px-4">País</th>
                           </tr>
                         </thead>
