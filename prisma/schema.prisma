@@ -54,14 +54,16 @@ enum ShowFormat {
 }
 
 model User {
-  id           String          @id @default(cuid())
-  name         String
-  email        String          @unique
-  passwordHash String
-  role         Role            @default(USER)
-  createdAt    DateTime        @default(now())
-  rosters      FantasyRoster[]
-  predictions  Prediction[]
+  id                String             @id @default(cuid())
+  name              String
+  email             String             @unique
+  passwordHash      String
+  role              Role               @default(USER)
+  createdAt         DateTime           @default(now())
+  rosters           FantasyRoster[]
+  predictions       Prediction[]
+  ownedLeagues      League[]           @relation("LeagueOwner")
+  leagueMemberships LeagueMembership[]
 }
 
 model Discipline {
@@ -116,6 +118,7 @@ model Event {
   registrations Registration[]
   rosters       FantasyRoster[]
   predictions   Prediction[]
+  leagues       LeagueEvent[]
 
   @@index([competitionId])
 }
@@ -293,4 +296,44 @@ model Prediction {
   updatedAt     DateTime @updatedAt
 
   @@unique([userId, eventId])
+}
+
+// Ligas privadas: un grupo de amigos que compite en el ranking Fantasy
+// limitado a una selección de eventos elegida por quien crea la liga. El
+// creador es automáticamente el primer miembro (LeagueMembership), y
+// cualquiera puede unirse con el código de invitación mientras lo tenga.
+model League {
+  id          String             @id @default(cuid())
+  name        String
+  code        String             @unique // código de invitación, p.ej. "K7QX9P"
+  ownerId     String
+  owner       User               @relation("LeagueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  events      LeagueEvent[]
+  memberships LeagueMembership[]
+}
+
+// Eventos que cuentan para el ranking de esta liga (subconjunto de los
+// eventos del calendario, elegido por el creador al crear la liga).
+model LeagueEvent {
+  id       String @id @default(cuid())
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, eventId])
+  @@index([eventId])
+}
+
+model LeagueMembership {
+  id       String   @id @default(cuid())
+  leagueId String
+  league   League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([leagueId, userId])
+  @@index([userId])
 }

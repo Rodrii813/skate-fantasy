@@ -165,6 +165,21 @@ export default async function FantasyHubPage({
           </p>
         </div>
 
+        {/* Ligas Privadas */}
+        <Link
+          href="/fantasy/leagues"
+          className="flex items-center justify-between gap-3 bg-indigo-600/10 border border-indigo-500/30 rounded-2xl p-4 hover:border-indigo-500/60 transition"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🏆</span>
+            <div>
+              <p className="font-bold text-slate-100 text-sm">{t.leaguesCardTitle}</p>
+              <p className="text-xs text-slate-400 mt-0.5">{t.leaguesCardBody}</p>
+            </div>
+          </div>
+          <span className="text-indigo-400 text-xs font-semibold whitespace-nowrap">{t.leaguesCardCta} →</span>
+        </Link>
+
         {/* Selector de Competición */}
         <div className="flex flex-wrap gap-2">
           {competitions.map((c) => (

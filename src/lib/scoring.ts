@@ -143,6 +143,53 @@ export async function computeCompetitionFantasyLeaderboard(
     .sort((a, b) => b.total - a.total);
 }
 
+export type LeagueScore = {
+  userId: string;
+  userName: string;
+  total: number;
+  eventsPlayed: number;
+};
+
+/**
+ * Ranking Fantasy de una LIGA PRIVADA: igual que
+ * computeCompetitionFantasyLeaderboard pero acotado a (a) solo los eventos
+ * que el creador de la liga eligió al crearla (LeagueEvent) y (b) solo los
+ * miembros de la liga (LeagueMembership) — un usuario que no está en la
+ * liga no aparece aunque haya jugado esos eventos. Todos los miembros
+ * aparecen desde el primer momento (0 puntos, 0 eventos) aunque todavía no
+ * hayan hecho ningún draft, para que la liga se vea completa nada más
+ * crearse.
+ */
+export async function computeLeagueLeaderboard(leagueId: string): Promise<LeagueScore[]> {
+  const league = await prisma.league.findUnique({
+    where: { id: leagueId },
+    include: {
+      events: { select: { eventId: true } },
+      memberships: { include: { user: { select: { id: true, name: true } } } },
+    },
+  });
+  if (!league) return [];
+
+  const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
+  for (const m of league.memberships) {
+    totalsByUser.set(m.userId, { userName: m.user.name, total: 0, eventsPlayed: 0 });
+  }
+
+  for (const { eventId } of league.events) {
+    const board = await computeEventLeaderboard(eventId);
+    for (const row of board) {
+      const existing = totalsByUser.get(row.userId);
+      if (!existing) continue; // solo cuentan los miembros de la liga
+      existing.total += row.total;
+      existing.eventsPlayed += 1;
+    }
+  }
+
+  return Array.from(totalsByUser.entries())
+    .map(([userId, v]) => ({ userId, ...v }))
+    .sort((a, b) => b.total - a.total);
+}
+
 export type PredictionScore = {
   userId: string;
   userName: string;
