@@ -4,15 +4,10 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSegmentLocked } from "@/lib/segments";
 import { computeEventLeaderboard, computeCompetitionFantasyLeaderboard } from "@/lib/scoring";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
-
-const genderLabel: Record<string, string> = {
-  FEMALE: "Femenino",
-  MALE: "Masculino",
-};
-
-const ROW_LABELS = ["Corto", "Largo"] as const;
 
 // /fantasy es el hub del modo Fantasy: selector Competición → Evento
 // presentado como tabla "Draft Status" (filas = segmento Corto/Largo,
@@ -30,6 +25,11 @@ export default async function FantasyHubPage({
   searchParams: { competition?: string; event?: string; rank?: string };
 }) {
   const session = await getServerSession(authOptions);
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.fantasyHub;
+  const genderLabel = dict.common.gender;
+  const ROW_LABELS = [t.shortLabel, t.longLabel] as const;
 
   const competitions = await prisma.competition.findMany({
     orderBy: { startDate: "asc" },
@@ -52,7 +52,7 @@ export default async function FantasyHubPage({
       <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
         <div className="max-w-5xl mx-auto">
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-            No hay competiciones registradas todavía.
+            {t.noCompetitions}
           </div>
         </div>
       </div>
@@ -130,12 +130,12 @@ export default async function FantasyHubPage({
   };
 
   const stateBadge: Record<CellEvent["state"], { label: string; className: string }> = {
-    proximamente: { label: "Próximamente", className: "bg-slate-800 text-slate-400 border-slate-700" },
+    proximamente: { label: t.stateUpcoming, className: "bg-slate-800 text-slate-400 border-slate-700" },
     abierto: {
-      label: "Abierto",
+      label: t.stateOpen,
       className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     },
-    cerrado: { label: "Cerrado", className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+    cerrado: { label: t.stateClosed, className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
   };
 
   // Ranking: por evento (con selector de evento propio) o global por
@@ -158,10 +158,10 @@ export default async function FantasyHubPage({
         <div className="border-b border-slate-800 pb-6">
           <div className="flex items-center gap-2">
             <span className="text-2xl">✨</span>
-            <h1 className="text-3xl font-extrabold tracking-tight">Fantasy Hub</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">{t.title}</h1>
           </div>
           <p className="text-slate-400 text-sm mt-1">
-            Estado del draft por prueba y segmento, y el ranking Fantasy de cada competición.
+            {t.subtitle}
           </p>
         </div>
 
@@ -186,20 +186,20 @@ export default async function FantasyHubPage({
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
-              Draft Status — {activeCompetition.name}
+              {t.draftStatus(activeCompetition.name)}
             </h2>
           </div>
 
           {columns.length === 0 ? (
             <p className="p-8 text-center text-xs text-slate-400">
-              Esta competición todavía no tiene pruebas creadas.
+              {t.noEvents}
             </p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 w-24">Segmento</th>
+                    <th className="py-3 px-4 w-24">{t.segment}</th>
                     {columns.map((col) => (
                       <th key={col.key} className="py-3 px-4 min-w-[180px]">
                         {col.label}
@@ -235,7 +235,7 @@ export default async function FantasyHubPage({
                                       </span>
                                       {ce.drafted && (
                                         <span className="ml-1.5 text-[11px] text-indigo-400 font-semibold">
-                                          ✓ Ya hiciste draft
+                                          {t.alreadyDrafted}
                                         </span>
                                       )}
                                     </div>
@@ -278,7 +278,7 @@ export default async function FantasyHubPage({
                     : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Por evento
+                {t.byEvent}
               </Link>
               <Link
                 href={rankHref("competition")}
@@ -288,7 +288,7 @@ export default async function FantasyHubPage({
                     : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Global · {activeCompetition.name}
+                {t.global(activeCompetition.name)}
               </Link>
             </div>
 
@@ -318,7 +318,7 @@ export default async function FantasyHubPage({
                 href={`/fantasy/${rankEvent.id}/leaderboard`}
                 className="text-xs text-amber-400 underline hover:text-amber-300"
               >
-                🏆 Ver clasificación en vivo completa (con el desglose por slot) →
+                {t.viewFullLeaderboard}
               </Link>
             </div>
           )}
@@ -328,7 +328,7 @@ export default async function FantasyHubPage({
             if (ranking.length === 0) {
               return (
                 <p className="p-8 text-center text-xs text-slate-400">
-                  Todavía no hay rosters puntuables para mostrar este ranking.
+                  {t.noRankableRosters}
                 </p>
               );
             }
@@ -337,12 +337,12 @@ export default async function FantasyHubPage({
                 <table className="w-full text-left text-sm">
                   <thead>
                     <tr className="bg-slate-800/60 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
-                      <th className="py-3 px-4 w-16">Rank</th>
-                      <th className="py-3 px-4">Entrenador</th>
+                      <th className="py-3 px-4 w-16">{t.rank}</th>
+                      <th className="py-3 px-4">{t.coach}</th>
                       {rankTab === "competition" && (
-                        <th className="py-3 px-4 text-center">Eventos</th>
+                        <th className="py-3 px-4 text-center">{t.events}</th>
                       )}
-                      <th className="py-3 px-4 text-right font-bold text-white">Puntos</th>
+                      <th className="py-3 px-4 text-right font-bold text-white">{t.points}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/70">
@@ -363,7 +363,7 @@ export default async function FantasyHubPage({
                           </td>
                         )}
                         <td className="py-3 px-4 text-right font-bold text-indigo-400">
-                          {row.total.toFixed(2)} pts
+                          {row.total.toFixed(2)} {t.pointsSuffix}
                         </td>
                       </tr>
                     ))}

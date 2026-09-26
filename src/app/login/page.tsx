@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = getDictionary(locale).auth;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -18,7 +22,7 @@ export default function LoginPage() {
     const res = await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
     if (res?.error) {
-      setError("Email o contraseña incorrectos.");
+      setError(t.loginError);
       return;
     }
     router.push("/events");
@@ -27,10 +31,10 @@ export default function LoginPage() {
 
   return (
     <div className="mx-auto max-w-sm py-10">
-      <h1 className="font-display text-3xl font-semibold text-white">Entrar</h1>
+      <h1 className="font-display text-3xl font-semibold text-white">{t.login}</h1>
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <div>
-          <label className="text-sm text-ice-100/70">Email</label>
+          <label className="text-sm text-ice-100/70">{t.email}</label>
           <input
             type="email"
             required
@@ -40,7 +44,7 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="text-sm text-ice-100/70">Contraseña</label>
+          <label className="text-sm text-ice-100/70">{t.password}</label>
           <input
             type="password"
             required
@@ -54,13 +58,13 @@ export default function LoginPage() {
           disabled={loading}
           className="w-full rounded-full bg-gold px-6 py-2.5 font-semibold text-rink hover:bg-gold/90 disabled:opacity-60"
         >
-          {loading ? "Entrando..." : "Entrar"}
+          {loading ? t.loggingIn : t.login}
         </button>
       </form>
       <p className="mt-6 text-sm text-ice-100/60">
-        ¿No tienes cuenta?{" "}
+        {t.noAccount}{" "}
         <a href="/register" className="text-gold hover:underline">
-          Crea una
+          {t.createOne}
         </a>
       </p>
     </div>

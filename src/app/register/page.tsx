@@ -3,9 +3,13 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = getDictionary(locale).auth;
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,7 +29,7 @@ export default function RegisterPage() {
     const data = await res.json();
 
     if (!res.ok) {
-      setError(data.error ?? "No se ha podido crear la cuenta.");
+      setError(data.error ?? t.registerError);
       setLoading(false);
       return;
     }
@@ -38,10 +42,10 @@ export default function RegisterPage() {
 
   return (
     <div className="mx-auto max-w-sm py-10">
-      <h1 className="font-display text-3xl font-semibold text-white">Crear cuenta</h1>
+      <h1 className="font-display text-3xl font-semibold text-white">{t.register}</h1>
       <form onSubmit={handleSubmit} className="mt-8 space-y-4">
         <div>
-          <label className="text-sm text-ice-100/70">Nombre</label>
+          <label className="text-sm text-ice-100/70">{t.name}</label>
           <input
             required
             value={name}
@@ -50,7 +54,7 @@ export default function RegisterPage() {
           />
         </div>
         <div>
-          <label className="text-sm text-ice-100/70">Email</label>
+          <label className="text-sm text-ice-100/70">{t.email}</label>
           <input
             type="email"
             required
@@ -60,7 +64,7 @@ export default function RegisterPage() {
           />
         </div>
         <div>
-          <label className="text-sm text-ice-100/70">Contraseña (mín. 8 caracteres)</label>
+          <label className="text-sm text-ice-100/70">{t.passwordHint}</label>
           <input
             type="password"
             required
@@ -75,7 +79,7 @@ export default function RegisterPage() {
           disabled={loading}
           className="w-full rounded-full bg-gold px-6 py-2.5 font-semibold text-rink hover:bg-gold/90 disabled:opacity-60"
         >
-          {loading ? "Creando..." : "Crear cuenta"}
+          {loading ? t.creating : t.register}
         </button>
       </form>
     </div>

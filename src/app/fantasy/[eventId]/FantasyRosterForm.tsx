@@ -4,6 +4,8 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
 import LocalDateTime from "@/app/_components/LocalDateTime";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 interface Skater {
   id: string;
@@ -71,6 +73,8 @@ export default function FantasyRosterForm({
   initialSegmentId,
 }: Props) {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = getDictionary(locale).fantasyRoster;
   const [picks, setPicks] = useState<Record<string, string>>(initialPicks || {});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -208,9 +212,9 @@ export default function FantasyRosterForm({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Error al guardar el equipo");
+      if (!res.ok) throw new Error(data.error || t.saveError);
 
-      setMsg({ type: "success", text: "✅ ¡Alineación guardada con éxito!" });
+      setMsg({ type: "success", text: t.saveSuccess });
       router.refresh();
     } catch (err: any) {
       setMsg({ type: "error", text: `❌ ${err.message}` });
@@ -228,9 +232,9 @@ export default function FantasyRosterForm({
           onChange={(e) => handleSelect(slot.id, e.target.value)}
           className={`w-full bg-[#0d162e] border border-slate-800 hover:border-slate-700 text-slate-200 text-xs rounded-xl p-3 appearance-none focus:outline-none focus:ring-1 ${ringColor} transition`}
         >
-          <option value="">Select skater for {slot.label}</option>
+          <option value="">{t.selectSkater(slot.label)}</option>
           {groupedRegistrations.map(({ group, skaters }) => (
-            <optgroup key={group} label={`── Warmup Group ${group} ──`}>
+            <optgroup key={group} label={t.warmupGroupLabel(group)}>
               {skaters.map((reg) => (
                 <option key={reg.skater.id} value={reg.skater.id}>
                   {reg.skater.firstName} {reg.skater.lastName}
@@ -251,17 +255,17 @@ export default function FantasyRosterForm({
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <span className="text-xs text-slate-400 font-semibold">
-          Deadline {activeTab?.name ? `(${activeTab.name})` : ""}:{" "}
+          {t.deadline} {activeTab?.name ? `(${activeTab.name})` : ""}:{" "}
           <LocalDateTime
             value={activeTab?.locksAt ?? rosterLocksAt}
             options={{ dateStyle: "medium", timeStyle: "short" }}
           />
           {activeTab?.locked && (
-            <span className="ml-2 text-amber-400 font-bold">🔒 Cerrado</span>
+            <span className="ml-2 text-amber-400 font-bold">{t.closed}</span>
           )}
         </span>
         <h1 className="text-xl font-black text-slate-100 mt-1">
-          Technical Elements & Components: Draft Constraints
+          {t.formTitle}
         </h1>
         <a
           href="/fantasy/normas"
@@ -269,13 +273,13 @@ export default function FantasyRosterForm({
           rel="noopener noreferrer"
           className="mt-1 inline-block text-[11px] text-indigo-400 underline hover:text-indigo-300"
         >
-          Ver normas completas del Fantasy →
+          {t.viewRules}
         </a>
         <a
           href={`/fantasy/${eventId}/leaderboard`}
           className="mt-1 ml-3 inline-block text-[11px] text-amber-400 underline hover:text-amber-300"
         >
-          🏆 Clasificación en vivo →
+          {t.liveRanking}
         </a>
       </div>
 
@@ -317,7 +321,7 @@ export default function FantasyRosterForm({
 
       {activeSlots.length === 0 ? (
         <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-6 text-xs text-slate-400 text-center">
-          Todavía no hay slots generados para {activeTab?.name || "este segmento"}.
+          {t.noSlots(activeTab?.name || t.defaultSegment)}
         </div>
       ) : activeTab?.locked ? (
         // Segmento cerrado: solo lectura. No se muestran los <select> — el
@@ -326,7 +330,7 @@ export default function FantasyRosterForm({
         // pestaña.
         <div className="space-y-4">
           <div className="bg-amber-950/30 border border-amber-800/50 rounded-2xl p-4 text-xs text-amber-300 font-semibold">
-            🔒 El plazo de {activeTab.name} ya ha cerrado. Esta alineación queda fijada.
+            {t.segmentLocked(activeTab.name)}
           </div>
           <div className="space-y-3">
             {activeSlots.map((slot) => {
@@ -343,7 +347,7 @@ export default function FantasyRosterForm({
                       ? `${reg.skater.firstName} ${reg.skater.lastName}${
                           reg.skater.country ? ` (${reg.skater.country})` : ""
                         }`
-                      : "— sin asignar —"}
+                      : t.unassigned}
                   </span>
                 </div>
               );
@@ -355,14 +359,14 @@ export default function FantasyRosterForm({
           {/* Reglas + contadores del segmento activo */}
           <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-5 space-y-3">
             <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
-              Normas Técnicas (Technical Elements) — {activeTab?.name}
+              {t.technicalRulesTitle(activeTab?.name ?? "")}
             </h2>
             <div className="space-y-1 text-xs text-slate-300">
               <p className="flex items-center gap-1.5 font-medium">
-                <span>⚠️</span> 1) Max 1 element per skater
+                <span>⚠️</span> {t.rule1}
               </p>
               <p className="flex items-center gap-1.5 font-medium">
-                <span className="opacity-0">⚠️</span> 2) Max 2 elements in last 2 warmup groups
+                <span className="opacity-0">⚠️</span> {t.rule2}
               </p>
             </div>
 
@@ -370,7 +374,7 @@ export default function FantasyRosterForm({
               <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">
-                    Warmup Group {activeSegmentValidation.maxGroupNum}:
+                    {t.warmupGroup} {activeSegmentValidation.maxGroupNum}:
                   </span>
                   <span
                     className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${
@@ -386,7 +390,7 @@ export default function FantasyRosterForm({
                 {activeSegmentValidation.secondMaxGroupNum > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">
-                      Warmup Group {activeSegmentValidation.secondMaxGroupNum}:
+                      {t.warmupGroup} {activeSegmentValidation.secondMaxGroupNum}:
                     </span>
                     <span
                       className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${
@@ -405,11 +409,10 @@ export default function FantasyRosterForm({
             {/* Reglas Componentes */}
             <div className="pt-2 border-t border-slate-800/80">
               <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">
-                Normas de Componentes (Program Components)
+                {t.componentRulesTitle}
               </h2>
               <p className="text-xs text-slate-300">
-                ⭐ <strong>Max 1 element per warmup group:</strong> Cada componente debe ser de un
-                grupo distinto. Puedes repetir patinadoras de la parte técnica.
+                ⭐ <strong>{t.maxOnePerGroup}:</strong> {t.componentRuleBody}
               </p>
             </div>
           </div>
@@ -417,7 +420,7 @@ export default function FantasyRosterForm({
           {/* 1. SECCIÓN ELEMENTOS TÉCNICOS */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2">
-              Technical Elements
+              {t.technicalElements}
             </h2>
             {technicalSlots.map((slot) => (
               <div key={slot.id} className="space-y-1.5">
@@ -433,7 +436,7 @@ export default function FantasyRosterForm({
           {componentSlots.length > 0 && (
             <div className="space-y-4 pt-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 border-b border-slate-800 pb-2">
-                Program Components
+                {t.programComponents}
               </h2>
               {componentSlots.map((slot) => (
                 <div key={slot.id} className="space-y-1.5">
@@ -442,7 +445,7 @@ export default function FantasyRosterForm({
                       {slot.label}
                     </label>
                     <span className="text-[10px] bg-emerald-950/80 text-emerald-300 px-2 py-0.5 rounded font-medium border border-emerald-900">
-                      Max 1 por grupo
+                      {t.maxOnePerGroup}
                     </span>
                   </div>
                   {renderSlotSelect(slot, "focus:ring-emerald-500")}
@@ -471,10 +474,10 @@ export default function FantasyRosterForm({
             }`}
           >
             {saving
-              ? "Guardando..."
+              ? t.saving
               : activeSegmentValidation?.valid
-              ? "Guardar Alineación Oficial"
-              : activeSegmentValidation?.errorMessage || "Completa la alineación"}
+              ? t.saveOfficial
+              : activeSegmentValidation?.errorMessage || t.completeRoster}
           </button>
           {!activeSegmentValidation?.valid && (
             <p className="text-center text-[11px] text-amber-400 font-medium">

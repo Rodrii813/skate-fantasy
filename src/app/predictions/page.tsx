@@ -5,13 +5,10 @@ import Link from "next/link";
 import PredictionForm from "./PredictionForm";
 import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
-
-const genderLabel: Record<string, string> = {
-  FEMALE: "Femenino",
-  MALE: "Masculino",
-};
 
 // /predictions es ahora el hub de Predicción: selector Competición → Evento
 // (agrupado, más simple que el de /fantasy — no hace falta la tabla Draft
@@ -25,6 +22,10 @@ export default async function PredictionsPage({
   searchParams: { event?: string; rank?: string };
 }) {
   const session = await getServerSession(authOptions);
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.predictions;
+  const genderLabel = dict.common.gender;
 
   const competitions = await prisma.competition.findMany({
     orderBy: { startDate: "asc" },
@@ -102,7 +103,7 @@ export default async function PredictionsPage({
 
       return Array.from(counts.entries())
         .map(([skaterId, count]) => {
-          const skater = skaterMap.get(skaterId) || { name: "Patinador", country: "—" };
+          const skater = skaterMap.get(skaterId) || { name: t.defaultSkaterName, country: "—" };
           return {
             skaterName: skater.name,
             country: skater.country,
@@ -138,10 +139,10 @@ export default async function PredictionsPage({
           <div>
             <div className="flex items-center gap-2">
               <span className="text-2xl">🎯</span>
-              <h1 className="text-3xl font-extrabold tracking-tight">Prediction Central</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">{t.title}</h1>
             </div>
             <p className="text-slate-400 text-sm mt-1">
-              Acierta el podio o el Top 5 de cada categoría y compite en el ranking de predicciones.
+              {t.subtitle}
             </p>
           </div>
 
@@ -149,20 +150,20 @@ export default async function PredictionsPage({
             href="/competitions"
             className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition"
           >
-            Ver Calendario Oficial
+            {t.viewCalendar}
           </Link>
         </div>
 
         {allEvents.length === 0 ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center text-slate-400">
-            No hay eventos disponibles para realizar predicciones.
+            {t.noEvents}
           </div>
         ) : (
           <div className="space-y-6">
             {/* Selector Competición → Evento */}
             <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
               <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Selecciona la prueba:
+                {t.selectEvent}
               </label>
               <div className="space-y-3">
                 {competitions
@@ -200,24 +201,24 @@ export default async function PredictionsPage({
                   <div>
                     <h2 className="text-xl font-bold text-slate-100">{activeEvent.name}</h2>
                     <p className="text-xs text-slate-400 mt-0.5">
-                      {activeEvent.competition.name} • 📍 {activeEvent.competition.location || "Sede oficial"}
+                      {activeEvent.competition.name} • 📍 {activeEvent.competition.location || t.officialSite}
                     </p>
                   </div>
                   <div>
                     {isLocked ? (
                       <span className="px-3 py-1 text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full">
-                        🔒 Plazo Cerrado
+                        {t.locked}
                       </span>
                     ) : (
                       <span className="px-3 py-1 text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full">
-                        ⏰ Cierra el{" "}
-                        {new Date(
-                          firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                        ).toLocaleDateString()}{" "}
-                        a las{" "}
-                        {new Date(
-                          firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                        ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                        {t.closes(
+                          new Date(
+                            firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
+                          ).toLocaleDateString(),
+                          new Date(
+                            firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
+                          ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                        )}
                       </span>
                     )}
                   </div>
@@ -227,18 +228,18 @@ export default async function PredictionsPage({
                 {!session ? (
                   <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-8 text-center space-y-3">
                     <p className="text-sm text-slate-300">
-                      Debes iniciar sesión para guardar tus predicciones.
+                      {t.loginRequired}
                     </p>
                     <Link
                       href="/login"
                       className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2 rounded-lg transition"
                     >
-                      Iniciar Sesión
+                      {t.loginCta}
                     </Link>
                   </div>
                 ) : activeEvent.registrations.length === 0 ? (
                   <div className="text-center py-8 text-sm text-slate-400">
-                    Aún no hay patinadores inscritos en esta prueba para hacer la predicción.
+                    {t.noSkaters}
                   </div>
                 ) : (
                   <PredictionForm
@@ -254,29 +255,29 @@ export default async function PredictionsPage({
                   <div className="border-t border-slate-800 pt-5 space-y-4">
                     <div>
                       <span className="text-[11px] font-mono font-bold tracking-wider text-indigo-400 uppercase bg-indigo-950/70 border border-indigo-800/60 px-2 py-0.5 rounded">
-                        Consenso Público (%)
+                        {t.consensusTag}
                       </span>
-                      <h3 className="text-sm font-bold text-slate-100 mt-1.5">Favoritos del Público</h3>
+                      <h3 className="text-sm font-bold text-slate-100 mt-1.5">{t.publicFavorites}</h3>
                       <p className="text-xs text-slate-400">
-                        {activeEvent.predictions.length} predicciones enviadas para esta prueba
+                        {t.predictionsSubmitted(activeEvent.predictions.length)}
                       </p>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {[
                         {
-                          title: "🥇 Votos al Oro (1º)",
+                          title: t.goldVotes,
                           stats: statsRank1,
                           text: "text-amber-400",
                           bar: "bg-amber-400",
                         },
                         {
-                          title: "🥈 Votos a la Plata (2º)",
+                          title: t.silverVotes,
                           stats: statsRank2,
                           text: "text-slate-300",
                           bar: "bg-slate-300",
                         },
                         {
-                          title: "🥉 Votos al Bronce (3º)",
+                          title: t.bronzeVotes,
                           stats: statsRank3,
                           text: "text-amber-600",
                           bar: "bg-amber-600",
@@ -320,7 +321,7 @@ export default async function PredictionsPage({
                           : "border-transparent text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      Ranking de este evento
+                      {t.eventRanking}
                     </Link>
                     <Link
                       href={rankHref("competition")}
@@ -330,7 +331,7 @@ export default async function PredictionsPage({
                           : "border-transparent text-slate-400 hover:text-slate-200"
                       }`}
                     >
-                      Ranking global · {activeEvent.competition.name}
+                      {t.globalRanking(activeEvent.competition.name)}
                     </Link>
                   </div>
 
@@ -339,7 +340,7 @@ export default async function PredictionsPage({
                     if (ranking.length === 0) {
                       return (
                         <p className="text-xs text-slate-500 text-center py-6">
-                          Aún no hay predicciones puntuadas para mostrar este ranking.
+                          {t.noRanking}
                         </p>
                       );
                     }
@@ -349,11 +350,11 @@ export default async function PredictionsPage({
                           <thead>
                             <tr className="bg-slate-800/60 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
                               <th className="py-2.5 px-3 w-16">Rank</th>
-                              <th className="py-2.5 px-3">Usuario</th>
+                              <th className="py-2.5 px-3">{t.user}</th>
                               {rankTab === "competition" && (
-                                <th className="py-2.5 px-3 text-center">Eventos</th>
+                                <th className="py-2.5 px-3 text-center">{t.events}</th>
                               )}
-                              <th className="py-2.5 px-3 text-right font-bold text-white">Puntos</th>
+                              <th className="py-2.5 px-3 text-right font-bold text-white">{t.points}</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-slate-800/70">
@@ -371,7 +372,7 @@ export default async function PredictionsPage({
                                   </td>
                                 )}
                                 <td className="py-2.5 px-3 text-right font-bold text-blue-400">
-                                  {row.total} pts
+                                  {row.total} {t.pointsSuffix}
                                 </td>
                               </tr>
                             ))}

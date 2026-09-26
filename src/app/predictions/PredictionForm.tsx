@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 interface Skater {
   id: string;
@@ -30,6 +32,8 @@ export default function PredictionForm({
   initialPrediction,
 }: PredictionFormProps) {
   const router = useRouter();
+  const { locale } = useLocale();
+  const t = getDictionary(locale).predictions.form;
 
   const [rank1, setRank1] = useState(initialPrediction?.rank1SkaterId || "");
   const [rank2, setRank2] = useState(initialPrediction?.rank2SkaterId || "");
@@ -66,10 +70,10 @@ export default function PredictionForm({
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Error al enviar la predicción");
+        throw new Error(data.error || t.error);
       }
 
-      setMessage({ text: "¡Predicción guardada correctamente! 🎉", error: false });
+      setMessage({ text: t.saved, error: false });
       router.refresh();
     } catch (err: any) {
       setMessage({ text: err.message, error: true });
@@ -104,12 +108,12 @@ export default function PredictionForm({
           className="w-full sm:w-72 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
           required={required}
         >
-          <option value="">-- Elige un patinador --</option>
+          <option value="">{t.chooseSkater}</option>
           {skaters.map((s) => {
             const isAlreadyChosen = selectedList.includes(s.id) && s.id !== value;
             return (
               <option key={s.id} value={s.id} disabled={isAlreadyChosen}>
-                {s.firstName} {s.lastName} ({s.country}) {isAlreadyChosen ? "— Ya elegido" : ""}
+                {s.firstName} {s.lastName} ({s.country}) {isAlreadyChosen ? t.alreadyChosen : ""}
               </option>
             );
           })}
@@ -133,11 +137,11 @@ export default function PredictionForm({
       )}
 
       <div className="space-y-3">
-        {renderSelect("Medalla de Oro (1º Puesto)", "🥇 1º", rank1, setRank1, true)}
-        {renderSelect("Medalla de Plata (2º Puesto)", "🥈 2º", rank2, setRank2, true)}
-        {renderSelect("Medalla de Bronce (3º Puesto)", "🥉 3º", rank3, setRank3, true)}
-        {renderSelect("4º Puesto (Top 5)", "4º", rank4, setRank4, false)}
-        {renderSelect("5º Puesto (Top 5)", "5º", rank5, setRank5, false)}
+        {renderSelect(t.gold, "🥇 1º", rank1, setRank1, true)}
+        {renderSelect(t.silver, "🥈 2º", rank2, setRank2, true)}
+        {renderSelect(t.bronze, "🥉 3º", rank3, setRank3, true)}
+        {renderSelect(t.fourth, "4º", rank4, setRank4, false)}
+        {renderSelect(t.fifth, "5º", rank5, setRank5, false)}
       </div>
 
       {!isLocked && (
@@ -147,7 +151,7 @@ export default function PredictionForm({
             disabled={loading}
             className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-blue-800 text-white font-semibold py-3 px-6 rounded-xl transition shadow-lg shadow-blue-900/30 text-sm"
           >
-            {loading ? "Guardando predicción..." : initialPrediction ? "Actualizar mi Predicción" : "Guardar mi Predicción"}
+            {loading ? t.saving : initialPrediction ? t.update : t.save}
           </button>
         </div>
       )}
