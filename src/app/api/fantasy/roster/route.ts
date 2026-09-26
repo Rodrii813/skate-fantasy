@@ -107,29 +107,69 @@ export async function POST(req: Request) {
       );
     }
 
+    // Corto y Largo son independientes de verdad: el Largo puede ni
+    // siquiera tener su sorteo de warmup groups hecho todavía cuando el
+    // usuario ya quiere guardar el Corto (a veces se disputan en días
+    // distintos). Por eso NO basta con mirar el plazo (unlockedSlotIds) —
+    // si exigiéramos que TODOS los segmentos todavía abiertos estén
+    // completos a la vez, nunca se podría guardar el Corto en solitario
+    // mientras el Largo siga vacío.
+    //
+    // En su lugar, nos quedamos solo con los segmentos que el usuario
+    // "toca" de verdad en este guardado: aquellos de los que ha mandado al
+    // menos un pick. Un segmento abierto pero sin ningún pick en esta
+    // petición (p.ej. el Largo, todavía sin rellenar) se ignora por
+    // completo — ni se valida ni se escribe — dejando lo que ya hubiera
+    // guardado tal cual. Si el usuario empieza a rellenar un segmento pero
+    // no lo termina, sí debe fallar con el aviso de ese segmento, igual que
+    // antes.
+    const unlockedSlotsBySegment = new Map<string, { id: string; label: string; segmentId: string | null }[]>();
+    for (const slot of event.slots) {
+      if (!unlockedSlotIds.has(slot.id)) continue;
+      const key = slot.segmentId ?? "__sin_segmento__";
+      if (!unlockedSlotsBySegment.has(key)) unlockedSlotsBySegment.set(key, []);
+      unlockedSlotsBySegment.get(key)!.push(slot);
+    }
+
+    const touchedSlotIds = new Set<string>();
+    for (const slotsInSegment of unlockedSlotsBySegment.values()) {
+      const hasAnyPick = slotsInSegment.some((s) =>
+        normalizedPicks.some((p) => p.slotId === s.id)
+      );
+      if (hasAnyPick) {
+        for (const s of slotsInSegment) touchedSlotIds.add(s.id);
+      }
+    }
+
+    if (touchedSlotIds.size === 0) {
+      return NextResponse.json(
+        { error: "No se ha recibido ninguna selección para guardar." },
+        { status: 400 }
+      );
+    }
+
     // Mismas normas que ve el usuario en el formulario (grupos de
     // calentamiento, no repetir patinadora en técnica...), aplicadas aquí
     // de verdad, no solo sugeridas en el navegador. Solo se valida (y se
-    // escribe) lo que cae en slots de segmentos todavía abiertos — los
-    // picks de segmentos ya cerrados que llegue a mandar el cliente (p.ej.
-    // porque siguen en su estado local) se descartan sin más, no hace
-    // falta compararlos con lo ya guardado.
-    const unlockedSlots = event.slots.filter((s) => unlockedSlotIds.has(s.id));
+    // escribe) lo que cae en slots de segmentos "tocados" en esta
+    // petición — los picks de segmentos ya cerrados, o de segmentos
+    // todavía sin tocar, se descartan sin más.
+    const unlockedSlots = event.slots.filter((s) => touchedSlotIds.has(s.id));
     const unlockedPicksMap: Record<string, string> = {};
     for (const p of normalizedPicks) {
-      if (unlockedSlotIds.has(p.slotId)) unlockedPicksMap[p.slotId] = p.skaterId;
+      if (touchedSlotIds.has(p.slotId)) unlockedPicksMap[p.slotId] = p.skaterId;
     }
 
     // OJO: aquí se pasa event.segments COMPLETO (Corto + Largo), no filtrado
-    // a los abiertos. validateFantasyRoster decide qué segmentos validar de
-    // verdad a partir de `slots` (ya filtrado a unlockedSlots) — pero usa
-    // `segments` solo para saber el orden real (order) de cada uno y así
+    // a los abiertos ni a los tocados. validateFantasyRoster decide qué
+    // segmentos validar de verdad a partir de `slots` (ya filtrado) — pero
+    // usa `segments` solo para saber el orden real (order) de cada uno y así
     // etiquetarlo como "Corto" o "Largo" y elegir warmupGroupShort vs
-    // warmupGroupLong. Si aquí se pasara la lista ya filtrada (como se hacía
-    // antes), en cuanto el Corto cerrase y solo quedase el Largo abierto,
-    // el Largo pasaría a ser el ÚNICO elemento del array y se leería como
-    // "el primer segmento" → se validaría con las normas y los grupos de
-    // calentamiento del Corto, que es el segmento equivocado.
+    // warmupGroupLong. Si aquí se pasara la lista ya filtrada, en cuanto el
+    // Corto cerrase y solo quedase el Largo como tocado, el Largo pasaría a
+    // ser el ÚNICO elemento del array y se leería como "el primer segmento"
+    // → se validaría con las normas y los grupos de calentamiento del
+    // Corto, que es el segmento equivocado.
     const validation = validateFantasyRoster({
       slots: unlockedSlots,
       registrations: event.registrations,
@@ -156,14 +196,14 @@ export async function POST(req: Request) {
       },
     });
 
-    // 2. Reemplazar SOLO los picks de los slots de segmentos abiertos — los
-    // de segmentos ya cerrados no se tocan, así la alineación fijada de
-    // (p.ej.) el Corto sobrevive intacta aunque el usuario guarde cambios
-    // en el Largo.
-    const unlockedSlotIdList = Array.from(unlockedSlotIds);
+    // 2. Reemplazar SOLO los picks de los slots "tocados" en esta petición —
+    // los de otros segmentos (cerrados, o todavía sin rellenar) no se tocan,
+    // así la alineación fijada de (p.ej.) el Corto sobrevive intacta aunque
+    // el usuario guarde cambios en el Largo, y viceversa.
+    const touchedSlotIdList = Array.from(touchedSlotIds);
     await prisma.$transaction([
       prisma.fantasyPick.deleteMany({
-        where: { rosterId: roster.id, slotId: { in: unlockedSlotIdList } },
+        where: { rosterId: roster.id, slotId: { in: touchedSlotIdList } },
       }),
       prisma.fantasyPick.createMany({
         data: Object.entries(unlockedPicksMap).map(([slotId, skaterId]) => ({
