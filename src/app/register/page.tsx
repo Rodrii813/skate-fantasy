@@ -52,6 +52,7 @@ export default function RegisterPage() {
             onChange={(e) => setName(e.target.value)}
             className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-gold"
           />
+          <p className="mt-1 text-xs text-ice-100/50">{t.nameHint}</p>
         </div>
         <div>
           <label className="text-sm text-ice-100/70">{t.email}</label>

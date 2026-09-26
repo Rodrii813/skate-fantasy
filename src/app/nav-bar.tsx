@@ -77,41 +77,52 @@ export default function NavBar() {
 
   return (
     <header className="border-b border-white/10 relative">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
+      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 gap-4">
         <Link
           href="/"
-          className="font-display text-xl font-semibold tracking-tight text-white"
+          className="font-display text-xl font-semibold tracking-tight text-white shrink-0"
           onClick={closeMenu}
         >
           Rollart<span className="text-gold">Fantasy</span>
         </Link>
 
-        {/* Navegación de escritorio: fila horizontal completa, oculta en móvil */}
+        {/* Navegación de escritorio: fila horizontal completa, oculta en móvil.
+            Se agrupa en 3 bloques (links / idioma+zona horaria / sesión) con
+            separadores, en vez de un único "gap-6" plano, para que no se vea
+            todo apelotonado cuando hay muchos enlaces (Competiciones, Calendario,
+            Fantasy, Predicción, Normas, Admin...). */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-ice-100/80">
-          {navLinks}
-          <LanguageSwitcher />
-          <TimezoneSelector />
-          {authLinks}
+          <div className="flex items-center gap-6">{navLinks}</div>
+          <div className="flex items-center gap-3 pl-6 border-l border-white/10">
+            <LanguageSwitcher />
+            <TimezoneSelector />
+          </div>
+          <div className="flex items-center gap-4 pl-4 border-l border-white/10">{authLinks}</div>
         </nav>
 
-        {/* Botón de hamburguesa: solo visible por debajo de "md" */}
-        <button
-          type="button"
-          onClick={() => setOpen((v) => !v)}
-          aria-label={open ? t.closeMenu : t.openMenu}
-          aria-expanded={open}
-          className="md:hidden -mr-2 p-2 text-ice-100/80 hover:text-white"
-        >
-          {open ? (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
-            </svg>
-          ) : (
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          )}
-        </button>
+        {/* En móvil: selector de idioma siempre visible junto al botón de
+            hamburguesa, para no obligar a abrir el menú solo para cambiar de
+            idioma. */}
+        <div className="md:hidden flex items-center gap-2">
+          <LanguageSwitcher />
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            aria-label={open ? t.closeMenu : t.openMenu}
+            aria-expanded={open}
+            className="-mr-2 p-2 text-ice-100/80 hover:text-white"
+          >
+            {open ? (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" />
+              </svg>
+            ) : (
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" d="M4 7h16M4 12h16M4 17h16" />
+              </svg>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Menú desplegable en móvil: lista vertical con fondo sólido para
@@ -119,9 +130,6 @@ export default function NavBar() {
       {open && (
         <nav className="md:hidden flex flex-col gap-3 border-t border-white/10 bg-rink px-4 py-4 text-sm text-ice-100/80">
           {navLinks}
-          <div className="pt-1 flex items-center gap-2">
-            <LanguageSwitcher />
-          </div>
           <div className="pt-1">
             <TimezoneSelector className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-2 text-xs text-ice-100/80" />
           </div>

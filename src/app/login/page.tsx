@@ -44,7 +44,12 @@ export default function LoginPage() {
           />
         </div>
         <div>
-          <label className="text-sm text-ice-100/70">{t.password}</label>
+          <div className="flex items-center justify-between">
+            <label className="text-sm text-ice-100/70">{t.password}</label>
+            <a href="/forgot-password" className="text-xs text-gold hover:underline">
+              {t.forgotPasswordLink}
+            </a>
+          </div>
           <input
             type="password"
             required

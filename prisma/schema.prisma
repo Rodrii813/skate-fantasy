@@ -54,16 +54,36 @@ enum ShowFormat {
 }
 
 model User {
-  id                String             @id @default(cuid())
-  name              String
-  email             String             @unique
+  id                String                @id @default(cuid())
+  // Nickname público del usuario: se muestra en todos los rankings (Fantasy,
+  // Predicciones, Ligas). Es único a propósito — así en el ranking no hay
+  // ambigüedad sobre quién es quién.
+  name              String                @unique
+  email             String                @unique
   passwordHash      String
-  role              Role               @default(USER)
-  createdAt         DateTime           @default(now())
+  role              Role                  @default(USER)
+  createdAt         DateTime              @default(now())
   rosters           FantasyRoster[]
   predictions       Prediction[]
-  ownedLeagues      League[]           @relation("LeagueOwner")
+  ownedLeagues      League[]              @relation("LeagueOwner")
   leagueMemberships LeagueMembership[]
+  passwordResets    PasswordResetToken[]
+}
+
+// Recuperación de contraseña: token de un solo uso, con caducidad de 1 hora,
+// enviado por email (ver src/lib/email.ts, usa Resend). No se implementa
+// verificación de email en el registro (decisión explícita: mantenerlo
+// simple), pero SÍ hace falta poder enviar correos para este flujo.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Discipline {
