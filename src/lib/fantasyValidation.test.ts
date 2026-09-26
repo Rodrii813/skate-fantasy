@@ -232,6 +232,41 @@ describe("validateFantasyRoster — reglas por segmento, independientes", () => 
   });
 });
 
+describe("validateFantasyRoster — solo hay slots del Largo (Corto ya cerrado)", () => {
+  it("sigue etiquetando el segmento como 'Largo' y usa warmupGroupLong, aunque solo lleguen slots del Largo", () => {
+    // Reproduce el escenario real: /api/fantasy/roster solo valida los
+    // slots de segmentos todavía abiertos. Si el Corto ya cerró, `slots`
+    // aquí solo trae los del Largo — pero `segments` debe seguir llegando
+    // COMPLETO (Corto + Largo), para que el order real decida el segmento
+    // en vez de la posición dentro del array ya filtrado. Antes de este fix,
+    // pasar solo los segmentos abiertos hacía que el Largo, al ser el único
+    // elemento del array, se leyera como "el primer segmento" (Corto) y se
+    // validara con warmupGroupShort en vez de warmupGroupLong.
+    const longOnlyPicks: Record<string, string> = {
+      "long-combo1": "C", // warmupGroupLong de C = 2 (grupo top del Largo)
+      "long-combo2": "D", // warmupGroupLong de D = 2 (grupo top del Largo)
+      "long-comp1": "A", // warmupGroupLong de A = 1
+      "long-comp2": "C", // warmupGroupLong de C = 2, distinto del anterior
+    };
+
+    const result = validateFantasyRoster({
+      slots: longSlots, // solo los del Largo, como haría la API con el Corto cerrado
+      registrations,
+      segments, // Corto + Largo COMPLETO
+      picks: longOnlyPicks,
+    });
+
+    expect(result.segments).toHaveLength(1);
+    const onlyResult = result.segments[0];
+    expect(onlyResult.segmentId).toBe(LONG_SEGMENT_ID);
+    expect(onlyResult.segmentLabel).toBe("Largo");
+    // Si se hubiera colado el bug (leído como Corto -> warmupGroupShort),
+    // el grupo top habría sido 3 (el de warmupGroupShort), no 2.
+    expect(onlyResult.maxGroupNum).toBe(2);
+    expect(onlyResult.valid).toBe(true);
+  });
+});
+
 describe("validateFantasyRoster — compatibilidad con slots sin segmentId", () => {
   it("trata los slots sin segmentId como un único segmento 'Corto' por defecto", () => {
     const legacySlots: SlotInfo[] = [

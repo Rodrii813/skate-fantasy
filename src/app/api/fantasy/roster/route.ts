@@ -115,16 +115,25 @@ export async function POST(req: Request) {
     // porque siguen en su estado local) se descartan sin más, no hace
     // falta compararlos con lo ya guardado.
     const unlockedSlots = event.slots.filter((s) => unlockedSlotIds.has(s.id));
-    const unlockedSegments = event.segments.filter((seg) => !lockedSegmentIds.has(seg.id));
     const unlockedPicksMap: Record<string, string> = {};
     for (const p of normalizedPicks) {
       if (unlockedSlotIds.has(p.slotId)) unlockedPicksMap[p.slotId] = p.skaterId;
     }
 
+    // OJO: aquí se pasa event.segments COMPLETO (Corto + Largo), no filtrado
+    // a los abiertos. validateFantasyRoster decide qué segmentos validar de
+    // verdad a partir de `slots` (ya filtrado a unlockedSlots) — pero usa
+    // `segments` solo para saber el orden real (order) de cada uno y así
+    // etiquetarlo como "Corto" o "Largo" y elegir warmupGroupShort vs
+    // warmupGroupLong. Si aquí se pasara la lista ya filtrada (como se hacía
+    // antes), en cuanto el Corto cerrase y solo quedase el Largo abierto,
+    // el Largo pasaría a ser el ÚNICO elemento del array y se leería como
+    // "el primer segmento" → se validaría con las normas y los grupos de
+    // calentamiento del Corto, que es el segmento equivocado.
     const validation = validateFantasyRoster({
       slots: unlockedSlots,
       registrations: event.registrations,
-      segments: unlockedSegments,
+      segments: event.segments,
       picks: unlockedPicksMap,
     });
 
