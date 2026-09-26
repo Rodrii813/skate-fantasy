@@ -41,15 +41,49 @@ enum EventStatus {
   FINISHED   // evento cerrado, ranking definitivo
 }
 
+// Formato de un evento de disciplina "Show" (Cuartetos, Grupos Pequeños,
+// Grupos Grandes). Son competiciones separadas (inscritos y horario propio
+// cada una, cada una su propio Event), pero como las 3 comparten disciplina
+// "Show" no hay forma de saber qué plantilla de slots de Fantasy aplicar sin
+// que el evento "recuerde" su formato — ver generate-slots/route.ts. Null
+// para cualquier evento que no sea de la disciplina Show.
+enum ShowFormat {
+  QUARTET
+  SMALL_GROUP
+  LARGE_GROUP
+}
+
 model User {
-  id           String          @id @default(cuid())
-  name         String
-  email        String          @unique
-  passwordHash String
-  role         Role            @default(USER)
-  createdAt    DateTime        @default(now())
-  rosters      FantasyRoster[]
-  predictions  Prediction[]
+  id                String                @id @default(cuid())
+  // Nickname público del usuario: se muestra en todos los rankings (Fantasy,
+  // Predicciones, Ligas). Es único a propósito — así en el ranking no hay
+  // ambigüedad sobre quién es quién.
+  name              String                @unique
+  email             String                @unique
+  passwordHash      String
+  role              Role                  @default(USER)
+  createdAt         DateTime              @default(now())
+  rosters           FantasyRoster[]
+  predictions       Prediction[]
+  ownedLeagues      League[]              @relation("LeagueOwner")
+  leagueMemberships LeagueMembership[]
+  passwordResets    PasswordResetToken[]
+}
+
+// Recuperación de contraseña: token de un solo uso, con caducidad de 1 hora,
+// enviado por email (ver src/lib/email.ts, usa Resend). No se implementa
+// verificación de email en el registro (decisión explícita: mantenerlo
+// simple), pero SÍ hace falta poder enviar correos para este flujo.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
 }
 
 model Discipline {
@@ -94,11 +128,17 @@ model Event {
   rosterLocksAt DateTime        // deadline para fantasy y predicciones
   scheduledAt   DateTime?       // Fecha y hora real en que la prueba se disputa en pista (calendario público); no confundir con rosterLocksAt
   status        EventStatus     @default(UPCOMING)
+  // Solo relevante si discipline.slug === "show": qué formato es este
+  // evento en concreto (Cuartetos/Grupos Pequeños/Grupos Grandes), para que
+  // generate-slots sepa qué plantilla aplicar sin preguntar cada vez. Null
+  // en el resto de disciplinas.
+  showFormat    ShowFormat?
   segments      Segment[]
   slots         FantasySlot[]
   registrations Registration[]
   rosters       FantasyRoster[]
   predictions   Prediction[]
+  leagues       LeagueEvent[]
 
   @@index([competitionId])
 }
@@ -109,6 +149,41 @@ model Segment {
   event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
   name          String         // Style Dance, Free Dance, Short Program, Long Program...
   order         Int            @default(0)
+  // Plazo de fichaje propio de este segmento (Corto y Largo pueden cerrar en
+  // momentos distintos). Si es null, este segmento hereda el rosterLocksAt
+  // del Event — así los eventos ya existentes (creados antes de este campo)
+  // siguen funcionando exactamente igual que antes, sin migración de datos.
+  locksAt       DateTime?
+  // Hora de APERTURA propia de este segmento: antes de esta hora el estado
+  // es "Upcoming" aunque ya existan los slots (p.ej. el Largo no debería
+  // abrirse hasta que se sepa el resultado del Corto, aunque su draft ya
+  // esté generado con antelación). Si es null, el segmento se considera
+  // abierto en cuanto tiene slots generados (comportamiento de siempre).
+  opensAt       DateTime?
+  // Permite al admin abrir el segmento manualmente aunque `opensAt` todavía
+  // no haya llegado (p.ej. el Corto terminó antes de lo previsto). No
+  // afecta al cierre (`locksAt`), solo salta el requisito de `opensAt`.
+  manuallyOpened Boolean       @default(false)
+  // Hora de pista de ESTE segmento en concreto, para el calendario público.
+  // Si es null, el calendario sigue usando el scheduledAt del Event entero
+  // (comportamiento de siempre, sin romper nada ya creado). Se rellena solo
+  // cuando Corto y Largo (u otros segmentos) van a horas distintas.
+  scheduledAt      DateTime?
+  // Etiqueta opcional para ESTE bloque (el de `scheduledAt`) cuando el
+  // segmento está partido en dos sesiones — p.ej. "Less Top 10" mientras
+  // splitLabel es "Top 10". Se muestra pegada al nombre del segmento en el
+  // calendario ("Long Program Less Top 10"), sin paréntesis. Vacía si el
+  // segmento no está partido.
+  scheduleLabel    String?
+  // Split de horario dentro de este MISMO segmento: mismos inscritos, mismos
+  // picks de Fantasy y un único resultado, pero la sesión de pista se reparte
+  // en dos bloques a horas distintas (p.ej. Largo: "Top 10" más tarde y
+  // "Less Top 10"/"Resto" antes). Si splitLabel+splitScheduledAt están
+  // rellenos, el calendario muestra una fila EXTRA para este segmento con
+  // esa etiqueta y esa hora, además de la fila normal de arriba. Ambos
+  // vacíos = sin split, que es el caso de la inmensa mayoría de segmentos.
+  splitLabel       String?
+  splitScheduledAt DateTime?
   slots         FantasySlot[]
   elementScores ElementScore[]
 
@@ -218,6 +293,7 @@ model FantasyRoster {
   picks     FantasyPick[]
 
   @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 model FantasyPick {
@@ -251,4 +327,45 @@ model Prediction {
   updatedAt     DateTime @updatedAt
 
   @@unique([userId, eventId])
+  @@index([eventId])
+}
+
+// Ligas privadas: un grupo de amigos que compite en el ranking Fantasy
+// limitado a una selección de eventos elegida por quien crea la liga. El
+// creador es automáticamente el primer miembro (LeagueMembership), y
+// cualquiera puede unirse con el código de invitación mientras lo tenga.
+model League {
+  id          String             @id @default(cuid())
+  name        String
+  code        String             @unique // código de invitación, p.ej. "K7QX9P"
+  ownerId     String
+  owner       User               @relation("LeagueOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime           @default(now())
+  events      LeagueEvent[]
+  memberships LeagueMembership[]
+}
+
+// Eventos que cuentan para el ranking de esta liga (subconjunto de los
+// eventos del calendario, elegido por el creador al crear la liga).
+model LeagueEvent {
+  id       String @id @default(cuid())
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  eventId  String
+  event    Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([leagueId, eventId])
+  @@index([eventId])
+}
+
+model LeagueMembership {
+  id       String   @id @default(cuid())
+  leagueId String
+  league   League   @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt DateTime @default(now())
+
+  @@unique([leagueId, userId])
+  @@index([userId])
 }
