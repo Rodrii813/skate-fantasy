@@ -100,7 +100,7 @@ export default async function CalendarioPage() {
               return (
               <li key={`${event.id}-${i}`}>
                 <Link
-                  href={`/events/${event.id}`}
+                  href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
                   className="flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10"
                 >
                   <div className="flex items-center gap-4">

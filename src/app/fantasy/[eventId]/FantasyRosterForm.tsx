@@ -50,6 +50,11 @@ interface Props {
   slots: Slot[];
   registrations: Registration[];
   initialPicks: Record<string, string>;
+  // Pestaña con la que abrir el formulario (p.ej. llegando desde una fila
+  // del calendario que apuntaba específicamente al Largo/Freedance, no al
+  // Corto por defecto). Si no coincide con ningún segmento real, se ignora
+  // y se abre en el primero, como siempre.
+  initialSegmentId?: string;
 }
 
 const DEFAULT_TAB_ID = "__default__";
@@ -63,6 +68,7 @@ export default function FantasyRosterForm({
   slots,
   registrations,
   initialPicks,
+  initialSegmentId,
 }: Props) {
   const router = useRouter();
   const [picks, setPicks] = useState<Record<string, string>>(initialPicks || {});
@@ -113,7 +119,10 @@ export default function FantasyRosterForm({
     return map;
   }, [slots, tabs]);
 
-  const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? DEFAULT_TAB_ID);
+  const [activeTabId, setActiveTabId] = useState(
+    (initialSegmentId && tabs.some((t) => t.id === initialSegmentId) ? initialSegmentId : tabs[0]?.id) ??
+      DEFAULT_TAB_ID
+  );
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const activeSlots = slotsByTab.get(activeTab?.id ?? DEFAULT_TAB_ID) ?? [];
 

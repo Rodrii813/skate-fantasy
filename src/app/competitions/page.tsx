@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CompetitionsSearch from "./CompetitionsSearch";
 
@@ -33,6 +34,12 @@ export default async function CompetitionsPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Link
+              href="/calendario"
+              className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition inline-flex items-center gap-1.5"
+            >
+              📅 Ver Calendario general
+            </Link>
             <span className="text-xs font-mono bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
               Temporada 2026
             </span>

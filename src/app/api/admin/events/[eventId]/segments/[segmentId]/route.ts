@@ -41,9 +41,10 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { locksAt, scheduledAt, splitLabel, splitScheduledAt } = body as {
+    const { locksAt, scheduledAt, scheduleLabel, splitLabel, splitScheduledAt } = body as {
       locksAt?: string | null;
       scheduledAt?: string | null;
+      scheduleLabel?: string | null;
       splitLabel?: string | null;
       splitScheduledAt?: string | null;
     };
@@ -54,6 +55,7 @@ export async function PATCH(
     if (locksAt !== undefined) data.locksAt = locksAt ? zonedTimeToUtc(locksAt, VENUE_TIMEZONE) : null;
     if (scheduledAt !== undefined)
       data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
+    if (scheduleLabel !== undefined) data.scheduleLabel = scheduleLabel || null;
     if (splitLabel !== undefined) data.splitLabel = splitLabel || null;
     if (splitScheduledAt !== undefined)
       data.splitScheduledAt = splitScheduledAt ? zonedTimeToUtc(splitScheduledAt, VENUE_TIMEZONE) : null;

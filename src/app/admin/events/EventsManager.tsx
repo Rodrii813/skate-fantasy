@@ -187,6 +187,7 @@ export default function EventsManager({
     setStatusMessage(null);
 
     const scheduledAtValue = segmentScheduleInputs[`${segmentId}:schedule`] ?? "";
+    const scheduleLabelValue = segmentScheduleInputs[`${segmentId}:scheduleLabel`] ?? "";
     const splitLabelValue = segmentScheduleInputs[`${segmentId}:splitLabel`] ?? "";
     const splitScheduledAtValue = segmentScheduleInputs[`${segmentId}:splitSchedule`] ?? "";
 
@@ -196,6 +197,7 @@ export default function EventsManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           scheduledAt: scheduledAtValue || null,
+          scheduleLabel: scheduleLabelValue || null,
           splitLabel: splitLabelValue || null,
           splitScheduledAt: splitScheduledAtValue || null,
         }),
@@ -532,11 +534,14 @@ export default function EventsManager({
                       </p>
                       {ev.segments.map((seg: any) => {
                         const scheduleKey = `${seg.id}:schedule`;
+                        const scheduleLabelKey = `${seg.id}:scheduleLabel`;
                         const splitLabelKey = `${seg.id}:splitLabel`;
                         const splitScheduleKey = `${seg.id}:splitSchedule`;
                         const scheduleValue =
                           segmentScheduleInputs[scheduleKey] ??
                           (seg.scheduledAt ? toDatetimeLocalValue(seg.scheduledAt) : "");
+                        const scheduleLabelValue =
+                          segmentScheduleInputs[scheduleLabelKey] ?? seg.scheduleLabel ?? "";
                         const splitLabelValue = segmentScheduleInputs[splitLabelKey] ?? seg.splitLabel ?? "";
                         const splitScheduleValue =
                           segmentScheduleInputs[splitScheduleKey] ??
@@ -556,6 +561,18 @@ export default function EventsManager({
                                 className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
                               />
                               <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
+                              <input
+                                type="text"
+                                placeholder="Etiqueta Ej. Less Top 10"
+                                value={scheduleLabelValue}
+                                onChange={(e) =>
+                                  setSegmentScheduleInputs((prev) => ({
+                                    ...prev,
+                                    [scheduleLabelKey]: e.target.value,
+                                  }))
+                                }
+                                className="w-32 bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                              />
                             </div>
                             <div className="flex flex-wrap items-center gap-2 pl-[6.5rem]">
                               <span className="text-[10px] text-slate-500 shrink-0">Split (opcional):</span>

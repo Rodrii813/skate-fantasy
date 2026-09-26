@@ -136,14 +136,19 @@ model Segment {
   // (comportamiento de siempre, sin romper nada ya creado). Se rellena solo
   // cuando Corto y Largo (u otros segmentos) van a horas distintas.
   scheduledAt      DateTime?
+  // Etiqueta opcional para ESTE bloque (el de `scheduledAt`) cuando el
+  // segmento está partido en dos sesiones — p.ej. "Less Top 10" mientras
+  // splitLabel es "Top 10". Se muestra pegada al nombre del segmento en el
+  // calendario ("Long Program Less Top 10"), sin paréntesis. Vacía si el
+  // segmento no está partido.
+  scheduleLabel    String?
   // Split de horario dentro de este MISMO segmento: mismos inscritos, mismos
   // picks de Fantasy y un único resultado, pero la sesión de pista se reparte
   // en dos bloques a horas distintas (p.ej. Largo: "Top 10" más tarde y
-  // "Resto" antes). Si splitLabel+splitScheduledAt están rellenos, el
-  // calendario muestra una fila EXTRA para este segmento con esa etiqueta y
-  // esa hora, además de la fila normal (que pasa a representar el otro
-  // bloque, usando `name`+`scheduledAt` de arriba). Ambos vacíos = sin split,
-  // que es el caso de la inmensa mayoría de segmentos.
+  // "Less Top 10"/"Resto" antes). Si splitLabel+splitScheduledAt están
+  // rellenos, el calendario muestra una fila EXTRA para este segmento con
+  // esa etiqueta y esa hora, además de la fila normal de arriba. Ambos
+  // vacíos = sin split, que es el caso de la inmensa mayoría de segmentos.
   splitLabel       String?
   splitScheduledAt DateTime?
   slots         FantasySlot[]

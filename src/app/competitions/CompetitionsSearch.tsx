@@ -219,6 +219,13 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                           </Link>
 
                           <Link
+                            href={`/competitions/${comp.id}?cal=1`}
+                            className="flex-1 min-w-[140px] md:flex-none text-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold px-3.5 py-2 rounded-lg border border-slate-700 transition"
+                          >
+                            📅 Calendario
+                          </Link>
+
+                          <Link
                             href={`/predictions?event=${event.id}`}
                             className="flex-1 min-w-[140px] md:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition shadow-sm"
                           >

@@ -198,7 +198,7 @@ export default async function CompetitionDetailPage({
                                 Predicción →
                               </Link>
                               <Link
-                                href={`/events/${event.id}`}
+                                href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
                                 className="text-indigo-400 hover:text-indigo-300 underline underline-offset-2"
                               >
                                 Draft →

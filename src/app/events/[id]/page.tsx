@@ -5,7 +5,13 @@ import { notFound, redirect } from "next/navigation";
 import FantasyRosterForm from "@/app/fantasy/[eventId]/FantasyRosterForm";
 import { effectiveLocksAt, isSegmentLocked } from "@/lib/segments";
 
-export default async function EventPage({ params }: { params: { id: string } }) {
+export default async function EventPage({
+  params,
+  searchParams,
+}: {
+  params: { id: string };
+  searchParams: { segment?: string };
+}) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     redirect(`/login?callbackUrl=/events/${params.id}`);
@@ -76,6 +82,7 @@ export default async function EventPage({ params }: { params: { id: string } }) 
         slots={event.slots}
         registrations={event.registrations}
         initialPicks={initialPicks}
+        initialSegmentId={searchParams.segment}
       />
     </div>
   );
