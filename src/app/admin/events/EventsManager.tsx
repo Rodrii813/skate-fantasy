@@ -581,6 +581,80 @@ export default function EventsManager({
                     </div>
                   )}
 
+                  {/* Hora de APERTURA propia por segmento (Corto/Largo).
+                      Antes de esta hora el segmento sale como "Upcoming" en
+                      /fantasy aunque ya tenga slots generados — pensado para
+                      el Largo, que puede generarse con antelación pero no
+                      debe abrirse hasta que se sepa el resultado del Corto
+                      (a veces al día siguiente). Vacío = se abre en cuanto
+                      tiene slots (comportamiento de siempre). El botón de
+                      abrir/cerrar a mano salta esta hora sin borrarla. */}
+                  {ev.segments && ev.segments.length > 0 && (
+                    <div className="mt-3 space-y-1.5 bg-slate-950/50 border border-slate-800/80 rounded-xl p-3">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Apertura del draft por segmento{" "}
+                        <span className="font-normal normal-case text-slate-600">
+                          — vacío = se abre en cuanto haya slots generados
+                        </span>
+                      </p>
+                      {ev.segments.map((seg: any) => {
+                        const currentOpensValue =
+                          segmentOpensInputs[seg.id] ?? (seg.opensAt ? toDatetimeLocalValue(seg.opensAt) : "");
+                        return (
+                          <div key={seg.id} className="flex flex-wrap items-center gap-2">
+                            <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">
+                              {seg.name}
+                            </span>
+                            <input
+                              type="datetime-local"
+                              value={currentOpensValue}
+                              onChange={(e) =>
+                                setSegmentOpensInputs((prev) => ({ ...prev, [seg.id]: e.target.value }))
+                              }
+                              className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                            />
+                            <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
+                            <button
+                              type="button"
+                              onClick={() => handleSaveSegmentOpensAt(ev.id, seg.id)}
+                              disabled={segmentOpenSavingId === seg.id}
+                              className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-indigo-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                            >
+                              {segmentOpenSavingId === seg.id ? "Guardando…" : "Guardar"}
+                            </button>
+                            {seg.opensAt && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSegmentOpensInputs((prev) => ({ ...prev, [seg.id]: "" }));
+                                  handleSaveSegmentOpensAt(ev.id, seg.id, "");
+                                }}
+                                disabled={segmentOpenSavingId === seg.id}
+                                className="text-[11px] text-slate-500 hover:text-slate-300 underline"
+                              >
+                                Quitar override
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleToggleSegmentManualOpen(ev.id, seg.id, !seg.manuallyOpened)
+                              }
+                              disabled={segmentOpenSavingId === seg.id}
+                              className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition disabled:opacity-50 ${
+                                seg.manuallyOpened
+                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                  : "bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600"
+                              }`}
+                            >
+                              {seg.manuallyOpened ? "🔓 Abierto a mano" : "Abrir ahora"}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {/* Hora de pista propia por segmento, para el calendario
                       (/calendario y /competitions/[id]). Vacío = el
                       calendario sigue usando la hora general del evento de
