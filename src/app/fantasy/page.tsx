@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isSegmentLocked } from "@/lib/segments";
+import { getSegmentDraftStatus } from "@/lib/segments";
 import { computeEventLeaderboard, computeCompetitionFantasyLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
@@ -113,9 +113,13 @@ export default async function FantasyHubPage({
         if (!segment) return null;
 
         const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
-        const locked = isSegmentLocked(segment, ev.rosterLocksAt);
+        const draftStatus = getSegmentDraftStatus(
+          segment,
+          ev.rosterLocksAt,
+          slotsForSegment.length > 0
+        );
         const state: CellEvent["state"] =
-          slotsForSegment.length === 0 ? "proximamente" : locked ? "cerrado" : "abierto";
+          draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
         const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
 
         return {
@@ -248,9 +252,13 @@ export default async function FantasyHubPage({
                                       >
                                         {badge.label}
                                       </span>
-                                      {ce.drafted && (
-                                        <span className="ml-1.5 text-[11px] text-indigo-400 font-semibold">
-                                          {t.alreadyDrafted}
+                                      {session && ce.state !== "proximamente" && (
+                                        <span
+                                          className={`ml-1.5 text-[11px] font-semibold ${
+                                            ce.drafted ? "text-indigo-400" : "text-slate-500"
+                                          }`}
+                                        >
+                                          {ce.drafted ? t.alreadyDrafted : t.notDrafted}
                                         </span>
                                       )}
                                     </div>

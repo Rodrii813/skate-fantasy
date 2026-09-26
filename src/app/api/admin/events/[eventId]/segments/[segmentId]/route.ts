@@ -7,6 +7,13 @@ import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
 // Permite al admin fijar (o quitar):
 // - El plazo de fichaje propio de UN segmento (locksAt), independiente del
 //   rosterLocksAt general del Event — ver src/lib/segments.ts.
+// - La hora de APERTURA propia de ese segmento (opensAt): antes de esa hora
+//   el estado es "Upcoming" aunque ya existan los slots — pensado para el
+//   Largo, que puede tener el draft generado con antelación pero no debe
+//   abrirse hasta que se sepa el resultado del Corto (a veces al día
+//   siguiente). Si es null, se abre en cuanto tiene slots (de siempre).
+// - Un override manual (manuallyOpened) para abrir el segmento a mano
+//   aunque `opensAt` todavía no haya llegado.
 // - La hora de pista propia de ese segmento para el calendario
 //   (scheduledAt), si va a horas distintas del resto del evento.
 // - Un split de horario dentro del MISMO segmento (splitLabel +
@@ -41,8 +48,18 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { locksAt, scheduledAt, scheduleLabel, splitLabel, splitScheduledAt } = body as {
+    const {
+      locksAt,
+      opensAt,
+      manuallyOpened,
+      scheduledAt,
+      scheduleLabel,
+      splitLabel,
+      splitScheduledAt,
+    } = body as {
       locksAt?: string | null;
+      opensAt?: string | null;
+      manuallyOpened?: boolean;
       scheduledAt?: string | null;
       scheduleLabel?: string | null;
       splitLabel?: string | null;
@@ -53,6 +70,10 @@ export async function PATCH(
     // locksAt vacío/null -> quita el override y el segmento vuelve a
     // heredar el rosterLocksAt del evento.
     if (locksAt !== undefined) data.locksAt = locksAt ? zonedTimeToUtc(locksAt, VENUE_TIMEZONE) : null;
+    // opensAt vacío/null -> el segmento vuelve a abrirse en cuanto tenga
+    // slots generados, sin hora de apertura propia.
+    if (opensAt !== undefined) data.opensAt = opensAt ? zonedTimeToUtc(opensAt, VENUE_TIMEZONE) : null;
+    if (manuallyOpened !== undefined) data.manuallyOpened = Boolean(manuallyOpened);
     if (scheduledAt !== undefined)
       data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
     if (scheduleLabel !== undefined) data.scheduleLabel = scheduleLabel || null;

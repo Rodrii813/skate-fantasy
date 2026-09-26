@@ -24,7 +24,7 @@ export const dictionaries = {
       betaTag: "BETA",
       panel: "Panel",
       login: "Entrar",
-      liveBanner: "DRAFTS Y PORRAS ABIERTOS",
+      liveBanner: "DRAFTS Y PREDICCIONES ABIERTAS",
       picksClose: "Cierre de picks",
       predictPodium: "🎯 Predecir Podio",
       createRoster: "✨ Crear Roster",
