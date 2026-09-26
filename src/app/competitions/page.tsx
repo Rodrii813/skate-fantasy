@@ -23,34 +23,39 @@ export default async function CompetitionsPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
+    // Antes: "bg-slate-950" tapaba con un gris plano el degradado de fondo
+    // (rink + halos teal/dorado) que ya pone globals.css en el <body> para
+    // el resto de la web — por eso esta pantalla se veía distinta al menú y
+    // a la home. Quitando el color de fondo propio, se deja ver el mismo
+    // fondo de siempre y solo se ajustan las tarjetas/textos a la paleta
+    // rink/gold/ice.
+    <div className="min-h-screen text-ice-50 p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-8">
-        {/* Encabezado estilo Rocker Skating */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-800 pb-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-white/10 pb-6">
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl">🏆</span>
-              <h1 className="text-3xl font-extrabold tracking-tight">{t.title}</h1>
+              <h1 className="text-3xl font-display font-extrabold tracking-tight text-white">{t.title}</h1>
             </div>
-            <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
+            <p className="text-ice-100/60 text-sm mt-1">{t.subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/calendario"
-              className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition inline-flex items-center gap-1.5"
+              className="text-xs font-semibold bg-white/5 border border-white/15 text-ice-100/80 px-3 py-1.5 rounded-lg hover:border-white/30 hover:text-white transition inline-flex items-center gap-1.5"
             >
               {t.viewCalendar}
             </Link>
-            <span className="text-xs font-mono bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
+            <span className="text-xs font-mono bg-gold/10 border border-gold/30 px-3 py-1.5 rounded-lg text-gold">
               {t.season}
             </span>
           </div>
         </div>
 
         {competitions.length === 0 ? (
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
-            <p className="text-slate-400 text-base">{t.empty}</p>
-            <p className="text-slate-500 text-xs mt-2">{t.emptyHint}</p>
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center">
+            <p className="text-ice-100/60 text-base">{t.empty}</p>
+            <p className="text-ice-100/40 text-xs mt-2">{t.emptyHint}</p>
           </div>
         ) : (
           <CompetitionsSearch competitions={competitions} />

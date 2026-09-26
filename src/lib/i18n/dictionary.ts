@@ -104,6 +104,11 @@ export const dictionaries = {
         RESULTS_IN: "Resultados Parciales",
         FINISHED: "Finalizado",
       },
+      filterStatusLabel: "Estado:",
+      filterYearLabel: "Temporada:",
+      filterAll: "Todas",
+      loadMore: "Cargar más competiciones",
+      showingCount: (shown: number, total: number) => `Mostrando ${shown} de ${total} competiciones`,
     },
     competitionDetail: {
       back: "← Volver a Competiciones",
@@ -535,6 +540,11 @@ export const dictionaries = {
         RESULTS_IN: "Partial Results",
         FINISHED: "Finished",
       },
+      filterStatusLabel: "Status:",
+      filterYearLabel: "Season:",
+      filterAll: "All",
+      loadMore: "Load more competitions",
+      showingCount: (shown: number, total: number) => `Showing ${shown} of ${total} competitions`,
     },
     competitionDetail: {
       back: "← Back to Competitions",
