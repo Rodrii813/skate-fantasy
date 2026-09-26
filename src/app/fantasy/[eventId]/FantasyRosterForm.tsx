@@ -3,9 +3,6 @@
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
-import LocalDateTime from "@/app/_components/LocalDateTime";
-import { useLocale } from "@/lib/i18n/LocaleContext";
-import { getDictionary } from "@/lib/i18n/dictionary";
 
 interface Skater {
   id: string;
@@ -33,30 +30,16 @@ interface Segment {
   id: string;
   name: string;
   order: number;
-  // Plazo efectivo (ya resuelto en el servidor: el propio del segmento, o
-  // el general del evento si no tiene uno) y si ya está cerrado — ver
-  // src/lib/segments.ts. Calculado en el servidor para que SSR e
-  // hidratación vean siempre el mismo "ahora".
-  locksAt: string;
-  locked: boolean;
 }
 
 interface Props {
   eventId: string;
   eventName: string;
   rosterLocksAt: string;
-  // Si el evento no tiene segmentos configurados (caso legado), se usa este
-  // flag para bloquear/desbloquear la única pestaña "Roster".
-  eventLocked?: boolean;
   segments: Segment[];
   slots: Slot[];
   registrations: Registration[];
   initialPicks: Record<string, string>;
-  // Pestaña con la que abrir el formulario (p.ej. llegando desde una fila
-  // del calendario que apuntaba específicamente al Largo/Freedance, no al
-  // Corto por defecto). Si no coincide con ningún segmento real, se ignora
-  // y se abre en el primero, como siempre.
-  initialSegmentId?: string;
 }
 
 const DEFAULT_TAB_ID = "__default__";
@@ -65,16 +48,12 @@ export default function FantasyRosterForm({
   eventId,
   eventName,
   rosterLocksAt,
-  eventLocked = false,
   segments,
   slots,
   registrations,
   initialPicks,
-  initialSegmentId,
 }: Props) {
   const router = useRouter();
-  const { locale } = useLocale();
-  const t = getDictionary(locale).fantasyRoster;
   const [picks, setPicks] = useState<Record<string, string>>(initialPicks || {});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -86,16 +65,7 @@ export default function FantasyRosterForm({
 
   const tabs = useMemo(() => {
     if (orderedSegments.length === 0) {
-      return [
-        {
-          id: DEFAULT_TAB_ID,
-          name: "Roster",
-          order: 0,
-          groupField: "warmupGroupShort" as const,
-          locksAt: rosterLocksAt,
-          locked: eventLocked,
-        },
-      ];
+      return [{ id: DEFAULT_TAB_ID, name: "Roster", order: 0, groupField: "warmupGroupShort" as const }];
     }
     return orderedSegments.map((seg, index) => ({
       id: seg.id,
@@ -107,10 +77,8 @@ export default function FantasyRosterForm({
       groupField: (index === 0 ? "warmupGroupShort" : "warmupGroupLong") as
         | "warmupGroupShort"
         | "warmupGroupLong",
-      locksAt: seg.locksAt,
-      locked: seg.locked,
     }));
-  }, [orderedSegments, rosterLocksAt, eventLocked]);
+  }, [orderedSegments]);
 
   const slotsByTab = useMemo(() => {
     const map = new Map<string, Slot[]>();
@@ -123,10 +91,7 @@ export default function FantasyRosterForm({
     return map;
   }, [slots, tabs]);
 
-  const [activeTabId, setActiveTabId] = useState(
-    (initialSegmentId && tabs.some((t) => t.id === initialSegmentId) ? initialSegmentId : tabs[0]?.id) ??
-      DEFAULT_TAB_ID
-  );
+  const [activeTabId, setActiveTabId] = useState(tabs[0]?.id ?? DEFAULT_TAB_ID);
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const activeSlots = slotsByTab.get(activeTab?.id ?? DEFAULT_TAB_ID) ?? [];
 
@@ -139,11 +104,8 @@ export default function FantasyRosterForm({
     [activeSlots]
   );
 
-  // Agrupar registros por Warmup Group en orden ASCENDENTE (Grupo 1 primero,
-  // que es quien sale a patinar primero), usando el campo de grupo que
+  // Agrupar registros por Warmup Group desc, usando el campo de grupo que
   // corresponde a la pestaña activa (Corto/Largo tienen sorteos distintos).
-  // Antes se ordenaba al revés (b - a) y el picker mostraba el último grupo
-  // de calentamiento arriba del todo, en vez del orden real de salida.
   const groupedRegistrations = useMemo(() => {
     const groupField = activeTab?.groupField ?? "warmupGroupShort";
     const groups: Record<number, Registration[]> = {};
@@ -159,7 +121,7 @@ export default function FantasyRosterForm({
 
     return Object.keys(groups)
       .map(Number)
-      .sort((a, b) => a - b)
+      .sort((a, b) => b - a)
       .map((groupNum) => ({
         group: groupNum,
         skaters: groups[groupNum],
@@ -212,9 +174,9 @@ export default function FantasyRosterForm({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || t.saveError);
+      if (!res.ok) throw new Error(data.error || "Error al guardar el equipo");
 
-      setMsg({ type: "success", text: t.saveSuccess });
+      setMsg({ type: "success", text: "✅ ¡Alineación guardada con éxito!" });
       router.refresh();
     } catch (err: any) {
       setMsg({ type: "error", text: `❌ ${err.message}` });
@@ -232,9 +194,9 @@ export default function FantasyRosterForm({
           onChange={(e) => handleSelect(slot.id, e.target.value)}
           className={`w-full bg-[#0d162e] border border-slate-800 hover:border-slate-700 text-slate-200 text-xs rounded-xl p-3 appearance-none focus:outline-none focus:ring-1 ${ringColor} transition`}
         >
-          <option value="">{t.selectSkater(slot.label)}</option>
+          <option value="">Select skater for {slot.label}</option>
           {groupedRegistrations.map(({ group, skaters }) => (
-            <optgroup key={group} label={t.warmupGroupLabel(group)}>
+            <optgroup key={group} label={`── Warmup Group ${group} ──`}>
               {skaters.map((reg) => (
                 <option key={reg.skater.id} value={reg.skater.id}>
                   {reg.skater.firstName} {reg.skater.lastName}
@@ -255,17 +217,10 @@ export default function FantasyRosterForm({
     <div className="space-y-6 max-w-2xl mx-auto">
       <div>
         <span className="text-xs text-slate-400 font-semibold">
-          {t.deadline} {activeTab?.name ? `(${activeTab.name})` : ""}:{" "}
-          <LocalDateTime
-            value={activeTab?.locksAt ?? rosterLocksAt}
-            options={{ dateStyle: "medium", timeStyle: "short" }}
-          />
-          {activeTab?.locked && (
-            <span className="ml-2 text-amber-400 font-bold">{t.closed}</span>
-          )}
+          Deadline: {new Date(rosterLocksAt).toLocaleString("es-ES")}
         </span>
         <h1 className="text-xl font-black text-slate-100 mt-1">
-          {t.formTitle}
+          Technical Elements & Components: Draft Constraints
         </h1>
         <a
           href="/fantasy/normas"
@@ -273,13 +228,7 @@ export default function FantasyRosterForm({
           rel="noopener noreferrer"
           className="mt-1 inline-block text-[11px] text-indigo-400 underline hover:text-indigo-300"
         >
-          {t.viewRules}
-        </a>
-        <a
-          href={`/fantasy/${eventId}/leaderboard`}
-          className="mt-1 ml-3 inline-block text-[11px] text-amber-400 underline hover:text-amber-300"
-        >
-          {t.liveRanking}
+          Ver normas completas del Fantasy →
         </a>
       </div>
 
@@ -312,7 +261,7 @@ export default function FantasyRosterForm({
                     : "border-transparent text-slate-500 hover:text-slate-300"
                 }`}
               >
-                {tab.name} {tab.locked ? "🔒" : segValid === false ? "⚠️" : segValid === true ? "✅" : ""}
+                {tab.name} {segValid === false ? "⚠️" : segValid === true ? "✅" : ""}
               </button>
             );
           })}
@@ -321,52 +270,21 @@ export default function FantasyRosterForm({
 
       {activeSlots.length === 0 ? (
         <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-6 text-xs text-slate-400 text-center">
-          {t.noSlots(activeTab?.name || t.defaultSegment)}
-        </div>
-      ) : activeTab?.locked ? (
-        // Segmento cerrado: solo lectura. No se muestran los <select> — el
-        // usuario ya no puede tocar estos picks, aunque otro segmento del
-        // mismo evento (p.ej. el Largo) pueda seguir abierto en su propia
-        // pestaña.
-        <div className="space-y-4">
-          <div className="bg-amber-950/30 border border-amber-800/50 rounded-2xl p-4 text-xs text-amber-300 font-semibold">
-            {t.segmentLocked(activeTab.name)}
-          </div>
-          <div className="space-y-3">
-            {activeSlots.map((slot) => {
-              const skaterId = picks[slot.id];
-              const reg = registrations.find((r) => r.skaterId === skaterId);
-              return (
-                <div
-                  key={slot.id}
-                  className="bg-[#0b1329] border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"
-                >
-                  <span className="text-xs font-bold text-slate-300">{slot.label}</span>
-                  <span className="text-xs text-slate-400">
-                    {reg
-                      ? `${reg.skater.firstName} ${reg.skater.lastName}${
-                          reg.skater.country ? ` (${reg.skater.country})` : ""
-                        }`
-                      : t.unassigned}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          Todavía no hay slots generados para {activeTab?.name || "este segmento"}.
         </div>
       ) : (
         <>
           {/* Reglas + contadores del segmento activo */}
           <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-5 space-y-3">
             <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
-              {t.technicalRulesTitle(activeTab?.name ?? "")}
+              Normas Técnicas (Technical Elements) — {activeTab?.name}
             </h2>
             <div className="space-y-1 text-xs text-slate-300">
               <p className="flex items-center gap-1.5 font-medium">
-                <span>⚠️</span> {t.rule1}
+                <span>⚠️</span> 1) Max 1 element per skater
               </p>
               <p className="flex items-center gap-1.5 font-medium">
-                <span className="opacity-0">⚠️</span> {t.rule2}
+                <span className="opacity-0">⚠️</span> 2) Max 2 elements in last 2 warmup groups
               </p>
             </div>
 
@@ -374,7 +292,7 @@ export default function FantasyRosterForm({
               <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">
-                    {t.warmupGroup} {activeSegmentValidation.maxGroupNum}:
+                    Warmup Group {activeSegmentValidation.maxGroupNum}:
                   </span>
                   <span
                     className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${
@@ -390,7 +308,7 @@ export default function FantasyRosterForm({
                 {activeSegmentValidation.secondMaxGroupNum > 0 && (
                   <div className="flex items-center gap-2">
                     <span className="text-slate-400">
-                      {t.warmupGroup} {activeSegmentValidation.secondMaxGroupNum}:
+                      Warmup Group {activeSegmentValidation.secondMaxGroupNum}:
                     </span>
                     <span
                       className={`font-mono font-bold px-2 py-0.5 rounded text-xs ${
@@ -409,10 +327,11 @@ export default function FantasyRosterForm({
             {/* Reglas Componentes */}
             <div className="pt-2 border-t border-slate-800/80">
               <h2 className="text-xs font-bold text-emerald-400 uppercase tracking-wider mb-1">
-                {t.componentRulesTitle}
+                Normas de Componentes (Program Components)
               </h2>
               <p className="text-xs text-slate-300">
-                ⭐ <strong>{t.maxOnePerGroup}:</strong> {t.componentRuleBody}
+                ⭐ <strong>Max 1 element per warmup group:</strong> Cada componente debe ser de un
+                grupo distinto. Puedes repetir patinadoras de la parte técnica.
               </p>
             </div>
           </div>
@@ -420,7 +339,7 @@ export default function FantasyRosterForm({
           {/* 1. SECCIÓN ELEMENTOS TÉCNICOS */}
           <div className="space-y-4">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2">
-              {t.technicalElements}
+              Technical Elements
             </h2>
             {technicalSlots.map((slot) => (
               <div key={slot.id} className="space-y-1.5">
@@ -436,7 +355,7 @@ export default function FantasyRosterForm({
           {componentSlots.length > 0 && (
             <div className="space-y-4 pt-4">
               <h2 className="text-sm font-bold uppercase tracking-wider text-emerald-400 border-b border-slate-800 pb-2">
-                {t.programComponents}
+                Program Components
               </h2>
               {componentSlots.map((slot) => (
                 <div key={slot.id} className="space-y-1.5">
@@ -445,7 +364,7 @@ export default function FantasyRosterForm({
                       {slot.label}
                     </label>
                     <span className="text-[10px] bg-emerald-950/80 text-emerald-300 px-2 py-0.5 rounded font-medium border border-emerald-900">
-                      {t.maxOnePerGroup}
+                      Max 1 por grupo
                     </span>
                   </div>
                   {renderSlotSelect(slot, "focus:ring-emerald-500")}
@@ -456,36 +375,30 @@ export default function FantasyRosterForm({
         </>
       )}
 
-      {/* Botón y estado — solo si el segmento activo sigue abierto. Se
-          guarda con el estado `picks` completo (todos los segmentos), pero
-          la API solo escribe los slots de segmentos abiertos e ignora el
-          resto, así que basta con un único botón aunque haya varios
-          segmentos y alguno ya esté cerrado. */}
-      {!activeTab?.locked && (
-        <div className="space-y-2 pt-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || !activeSegmentValidation?.valid}
-            className={`w-full py-3.5 rounded-xl text-xs font-bold transition shadow-lg ${
-              activeSegmentValidation?.valid
-                ? "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
-                : "bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700/50"
-            }`}
-          >
-            {saving
-              ? t.saving
-              : activeSegmentValidation?.valid
-              ? t.saveOfficial
-              : activeSegmentValidation?.errorMessage || t.completeRoster}
-          </button>
-          {!activeSegmentValidation?.valid && (
-            <p className="text-center text-[11px] text-amber-400 font-medium">
-              ℹ️ {activeSegmentValidation?.errorMessage}
-            </p>
-          )}
-        </div>
-      )}
+      {/* Botón y estado */}
+      <div className="space-y-2 pt-2">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || !validationResult.valid}
+          className={`w-full py-3.5 rounded-xl text-xs font-bold transition shadow-lg ${
+            validationResult.valid
+              ? "bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
+              : "bg-slate-800 text-slate-400 cursor-not-allowed border border-slate-700/50"
+          }`}
+        >
+          {saving
+            ? "Guardando..."
+            : validationResult.valid
+            ? "Guardar Alineación Oficial"
+            : validationResult.errorMessage}
+        </button>
+        {!validationResult.valid && (
+          <p className="text-center text-[11px] text-amber-400 font-medium">
+            ℹ️ {validationResult.errorMessage}
+          </p>
+        )}
+      </div>
     </div>
   );
 }
