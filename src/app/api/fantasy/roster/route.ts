@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateFantasyRoster } from "@/lib/fantasyValidation";
-import { isSegmentLocked } from "@/lib/segments";
+import { isSegmentLocked, isSegmentOpenByTime } from "@/lib/segments";
 
 export async function POST(req: Request) {
   try {
@@ -93,10 +93,20 @@ export async function POST(req: Request) {
     const lockedSegmentIds = new Set(
       event.segments.filter((seg) => isSegmentLocked(seg, event.rosterLocksAt, now)).map((s) => s.id)
     );
+    // Un segmento puede tener sus slots ya generados con antelación pero no
+    // haberse abierto todavía (opensAt futuro y sin abrir a mano) — p.ej. el
+    // Largo, preparado antes de saber el resultado del Corto. El formulario
+    // ya oculta la edición en ese caso, pero hay que rechazarlo también aquí
+    // por si alguien manda la petición directamente saltándose la interfaz.
+    const notYetOpenSegmentIds = new Set(
+      event.segments.filter((seg) => !isSegmentOpenByTime(seg, now)).map((s) => s.id)
+    );
     const eventLevelLocked = now > event.rosterLocksAt;
 
     const isSlotLocked = (segmentId: string | null) =>
-      segmentId ? lockedSegmentIds.has(segmentId) : eventLevelLocked;
+      segmentId
+        ? lockedSegmentIds.has(segmentId) || notYetOpenSegmentIds.has(segmentId)
+        : eventLevelLocked;
 
     const unlockedSlotIds = new Set(event.slots.filter((s) => !isSlotLocked(s.segmentId)).map((s) => s.id));
 

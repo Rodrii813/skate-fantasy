@@ -38,7 +38,12 @@ interface Segment {
   // src/lib/segments.ts. Calculado en el servidor para que SSR e
   // hidratación vean siempre el mismo "ahora".
   locksAt: string;
+  // `locked` cubre DOS casos que se tratan igual de cara a bloquear la
+  // edición: el plazo ya cerró, o el segmento todavía no se ha abierto
+  // (opensAt futuro y sin abrir a mano) — ver src/lib/segments.ts. `upcoming`
+  // distingue el segundo caso solo para mostrar el mensaje correcto.
   locked: boolean;
+  upcoming?: boolean;
 }
 
 interface Props {
@@ -109,6 +114,7 @@ export default function FantasyRosterForm({
         | "warmupGroupLong",
       locksAt: seg.locksAt,
       locked: seg.locked,
+      upcoming: seg.upcoming,
     }));
   }, [orderedSegments, rosterLocksAt, eventLocked]);
 
@@ -269,7 +275,9 @@ export default function FantasyRosterForm({
             options={{ dateStyle: "medium", timeStyle: "short" }}
           />
           {activeTab?.locked && (
-            <span className="ml-2 text-amber-400 font-bold">{t.closed}</span>
+            <span className="ml-2 text-amber-400 font-bold">
+              {activeTab.upcoming ? t.notYetOpen : t.closed}
+            </span>
           )}
         </span>
         <h1 className="text-xl font-black text-slate-100 mt-1">
@@ -330,6 +338,15 @@ export default function FantasyRosterForm({
       {activeSlots.length === 0 ? (
         <div className="bg-[#0b1329] border border-slate-800 rounded-2xl p-6 text-xs text-slate-400 text-center">
           {t.noSlots(activeTab?.name || t.defaultSegment)}
+        </div>
+      ) : activeTab?.locked && activeTab.upcoming ? (
+        // Segmento con slots ya generados pero que todavía no se ha
+        // abierto (opensAt futuro y sin abrir a mano) — p.ej. el Largo,
+        // preparado con antelación pero que no debe poder tocarse hasta
+        // que se sepa el resultado del Corto. No se muestra nada de la
+        // lista de picks todavía, solo el aviso.
+        <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 text-center">
+          <p className="text-sm font-semibold text-slate-300">{t.segmentUpcoming(activeTab.name)}</p>
         </div>
       ) : activeTab?.locked ? (
         // Segmento cerrado: solo lectura. No se muestran los <select> — el
