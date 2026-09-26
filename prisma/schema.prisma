@@ -283,6 +283,7 @@ model FantasyRoster {
   picks     FantasyPick[]
 
   @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 model FantasyPick {
@@ -316,6 +317,7 @@ model Prediction {
   updatedAt     DateTime @updatedAt
 
   @@unique([userId, eventId])
+  @@index([eventId])
 }
 
 // Ligas privadas: un grupo de amigos que compite en el ranking Fantasy

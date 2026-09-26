@@ -85,8 +85,14 @@ export async function computeGlobalLeaderboard() {
   const events = await prisma.event.findMany({ select: { id: true, name: true } });
   const totalsByUser = new Map<string, { userName: string; total: number }>();
 
-  for (const event of events) {
-    const board = await computeEventLeaderboard(event.id);
+  // Antes se pedía el leaderboard de cada evento uno detrás de otro
+  // (await dentro de un for), lo que son N idas y vueltas seguidas a la
+  // base de datos. Con muchos eventos eso se notaba como lentitud real,
+  // sobre todo con la latencia añadida de una base de datos serverless
+  // (Neon). Promise.all lanza todas las consultas a la vez.
+  const boards = await Promise.all(events.map((event) => computeEventLeaderboard(event.id)));
+
+  for (const board of boards) {
     for (const row of board) {
       const existing = totalsByUser.get(row.userId);
       if (existing) {
@@ -125,8 +131,9 @@ export async function computeCompetitionFantasyLeaderboard(
 
   const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
 
-  for (const event of events) {
-    const board = await computeEventLeaderboard(event.id);
+  const boards = await Promise.all(events.map((event) => computeEventLeaderboard(event.id)));
+
+  for (const board of boards) {
     for (const row of board) {
       const existing = totalsByUser.get(row.userId);
       if (existing) {
@@ -175,8 +182,9 @@ export async function computeLeagueLeaderboard(leagueId: string): Promise<League
     totalsByUser.set(m.userId, { userName: m.user.name, total: 0, eventsPlayed: 0 });
   }
 
-  for (const { eventId } of league.events) {
-    const board = await computeEventLeaderboard(eventId);
+  const boards = await Promise.all(league.events.map(({ eventId }) => computeEventLeaderboard(eventId)));
+
+  for (const board of boards) {
     for (const row of board) {
       const existing = totalsByUser.get(row.userId);
       if (!existing) continue; // solo cuentan los miembros de la liga
