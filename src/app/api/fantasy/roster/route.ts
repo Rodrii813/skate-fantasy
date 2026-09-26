@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       include: {
         slots: { select: { id: true, label: true, segmentId: true } },
         registrations: { select: { skaterId: true, warmupGroupShort: true, warmupGroupLong: true } },
-        segments: { select: { id: true, order: true, locksAt: true } },
+        segments: { select: { id: true, order: true, locksAt: true, opensAt: true, manuallyOpened: true } },
       },
     });
 
