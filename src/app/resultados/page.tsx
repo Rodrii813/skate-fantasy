@@ -162,7 +162,7 @@ export default async function ResultadosPage() {
                       {/* Desglose Corto / Largo / Total, colapsado por defecto para no saturar esta vista general */}
                       {hasResults && (
                         <div className="border-t border-slate-800/80 -mx-5 -mb-5">
-                          <SegmentResultsTables blocks={resultBlocks} defaultOpen={false} />
+                          <SegmentResultsTables blocks={resultBlocks} defaultOpen={false} gender={event.gender} />
                         </div>
                       )}
                     </div>

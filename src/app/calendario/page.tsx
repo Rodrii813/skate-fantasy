@@ -147,12 +147,25 @@ export default async function CalendarioPage() {
                   >
                     ✨ Draft
                   </Link>
-                  <Link
-                    href={`/competitions/${event.competitionId}?event=${event.id}&view=results`}
-                    className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
-                  >
-                    📊 Resultados
-                  </Link>
+                  {/* Mientras el evento no tiene resultados publicados (aún
+                      no ha empezado o está en pista) se ofrece el Orden de
+                      Salida; el botón de Resultados solo aparece cuando el
+                      admin ya subió las puntuaciones. */}
+                  {event.status === "RESULTS_IN" || event.status === "FINISHED" ? (
+                    <Link
+                      href={`/competitions/${event.competitionId}?event=${event.id}&view=results`}
+                      className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
+                    >
+                      📊 Resultados
+                    </Link>
+                  ) : (
+                    <Link
+                      href={`/competitions/${event.competitionId}?event=${event.id}&view=entries`}
+                      className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
+                    >
+                      🔢 Orden de Salida
+                    </Link>
+                  )}
                 </div>
               </li>
               );

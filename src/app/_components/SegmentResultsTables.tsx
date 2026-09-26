@@ -11,10 +11,19 @@ const numberOrDash = (n: number | null) => (n !== null && n !== undefined ? n.to
 export default function SegmentResultsTables({
   blocks,
   defaultOpen = true,
+  gender = null,
 }: {
   blocks: SegmentResultBlock[];
   defaultOpen?: boolean;
+  // Género del EVENTO (no de cada patinador/a individual): "FEMALE" rotula
+  // como "Patinadora(s)", cualquier otro valor (MALE o mixto/null) como
+  // "Patinador(es)" — igual que en la pestaña de Orden de Salida.
+  gender?: "MALE" | "FEMALE" | null;
 }) {
+  const isFemale = gender === "FEMALE";
+  const skaterWord = isFemale ? "Patinadora" : "Patinador";
+  const skaterWordPlural = isFemale ? "patinadoras" : "patinadores";
+
   return (
     <div className="divide-y divide-slate-800">
       {blocks.map((block) => (
@@ -25,7 +34,7 @@ export default function SegmentResultsTables({
               <h3 className="text-sm font-bold text-slate-100">{block.title}</h3>
             </div>
             <span className="text-xs font-mono bg-slate-800 text-slate-300 px-2.5 py-1 rounded-lg border border-slate-700">
-              {block.rows.length} {block.rows.length === 1 ? "patinadora" : "patinadoras"}
+              {block.rows.length} {block.rows.length === 1 ? skaterWord.toLowerCase() : skaterWordPlural}
             </span>
           </summary>
 
@@ -43,7 +52,7 @@ export default function SegmentResultsTables({
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-y border-slate-700/80 text-xs uppercase tracking-wider">
                     <th className="py-2.5 px-5 w-16">Puesto</th>
-                    <th className="py-2.5 px-4">Patinadora</th>
+                    <th className="py-2.5 px-4">{skaterWord}</th>
                     <th className="py-2.5 px-4 text-right">Corto</th>
                     <th className="py-2.5 px-4 text-right">Largo</th>
                     <th className="py-2.5 px-4 text-right">Total</th>
@@ -99,7 +108,7 @@ export default function SegmentResultsTables({
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-y border-slate-700/80 text-xs uppercase tracking-wider">
                     <th className="py-2.5 px-5 w-16">Puesto</th>
-                    <th className="py-2.5 px-4">Patinadora</th>
+                    <th className="py-2.5 px-4">{skaterWord}</th>
                     <th className="py-2.5 px-4 text-right">Total</th>
                     <th className="py-2.5 px-4 text-right">TES</th>
                     <th className="py-2.5 px-4 text-right">PCS</th>

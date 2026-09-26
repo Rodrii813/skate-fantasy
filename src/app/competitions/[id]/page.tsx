@@ -78,6 +78,49 @@ export default async function CompetitionDetailPage({
   const tabHref = (eventId: string, forView?: "entries" | "results") =>
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
 
+  // El Orden de Salida real depende del GRUPO de calentamiento (el sorteo
+  // reparte a las/los patinadoras/es en grupos, y dentro de cada grupo salen
+  // en su propio orden 1,2,3...) — no basta con ordenar por startOrder a
+  // secas, porque ese número se repite entre grupos y antes salía todo
+  // mezclado (parecía "al revés"). Corto y Largo tienen sorteos de grupo
+  // INDEPENDIENTES (ver warmupGroupShort/warmupGroupLong en schema.prisma),
+  // así que si el evento tiene ambos se muestran dos tablas separadas; si
+  // solo tiene el grupo "legado" (warmupGroup, disciplinas sin Corto/Largo
+  // como Show o Precisión) se muestra una sola tabla con ese grupo.
+  type RegistrationRow = (typeof events)[number]["registrations"][number];
+  type GroupField = "warmupGroupShort" | "warmupGroupLong" | "warmupGroup" | null;
+
+  const sortEntries = (regs: RegistrationRow[], groupField: GroupField) =>
+    [...regs].sort((a, b) => {
+      const ga = groupField ? a[groupField] ?? Number.MAX_SAFE_INTEGER : 0;
+      const gb = groupField ? b[groupField] ?? Number.MAX_SAFE_INTEGER : 0;
+      if (ga !== gb) return ga - gb;
+      const oa = a.startOrder ?? Number.MAX_SAFE_INTEGER;
+      const ob = b.startOrder ?? Number.MAX_SAFE_INTEGER;
+      return oa - ob;
+    });
+
+  const buildEntryTables = (
+    ev: (typeof events)[number]
+  ): { title: string | null; groupField: GroupField; rows: RegistrationRow[] }[] => {
+    const hasShort = ev.registrations.some((r) => r.warmupGroupShort != null);
+    const hasLong = ev.registrations.some((r) => r.warmupGroupLong != null);
+    if (hasShort || hasLong) {
+      const tables: { title: string | null; groupField: GroupField; rows: RegistrationRow[] }[] = [];
+      if (hasShort) tables.push({ title: "Programa Corto", groupField: "warmupGroupShort", rows: sortEntries(ev.registrations, "warmupGroupShort") });
+      if (hasLong) tables.push({ title: "Programa Largo", groupField: "warmupGroupLong", rows: sortEntries(ev.registrations, "warmupGroupLong") });
+      return tables;
+    }
+    const hasLegacy = ev.registrations.some((r) => r.warmupGroup != null);
+    return [
+      {
+        title: null,
+        groupField: hasLegacy ? "warmupGroup" : null,
+        rows: sortEntries(ev.registrations, hasLegacy ? "warmupGroup" : null),
+      },
+    ];
+  };
+
   const showCalendar = searchParams.cal === "1";
   // Una fila del calendario normalmente es "el evento entero", pero cuando
   // sus segmentos tienen hora de pista propia (Corto/Largo a horas
@@ -211,12 +254,26 @@ export default async function CompetitionDetailPage({
                               >
                                 ✨ Draft
                               </Link>
-                              <Link
-                                href={tabHref(event.id, "results")}
-                                className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
-                              >
-                                📊 Resultados
-                              </Link>
+                              {/* Mientras el evento no tiene resultados
+                                  publicados (aún no ha empezado o está en
+                                  pista) se ofrece el Orden de Salida; el
+                                  botón de Resultados solo aparece cuando el
+                                  admin ya subió las puntuaciones. */}
+                              {event.status === "RESULTS_IN" || event.status === "FINISHED" ? (
+                                <Link
+                                  href={tabHref(event.id, "results")}
+                                  className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
+                                >
+                                  📊 Resultados
+                                </Link>
+                              ) : (
+                                <Link
+                                  href={tabHref(event.id, "entries")}
+                                  className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
+                                >
+                                  🔢 Orden de Salida
+                                </Link>
+                              )}
                             </div>
                           </li>
                           );
@@ -363,40 +420,59 @@ export default async function CompetitionDetailPage({
                     </div>
                   ) : view === "results" ? (
                     isLocked ? (
-                      <SegmentResultsTables blocks={resultBlocks} defaultOpen />
+                      <SegmentResultsTables blocks={resultBlocks} defaultOpen gender={activeEvent.gender} />
                     ) : (
                       <div className="p-12 text-center text-slate-400 text-sm">
                         Los resultados se publican cuando cierre el plazo de picks de esta prueba.
                       </div>
                     )
                   ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left border-collapse text-sm">
-                        <thead>
-                          <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                            <th className="py-3 px-4 w-24">Orden de Salida</th>
-                            <th className="py-3 px-4">{skaterWord(activeEvent, false)}</th>
-                            <th className="py-3 px-4">País</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/80">
-                          {activeEvent.registrations.map((reg, index) => (
-                            <tr key={reg.id} className="hover:bg-slate-800/30 transition font-mono">
-                              <td className="py-3.5 px-4 font-bold text-slate-400">
-                                {reg.startOrder ?? index + 1}
-                              </td>
-                              <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
-                                {reg.skater.firstName} {reg.skater.lastName}
-                              </td>
-                              <td className="py-3.5 px-4 font-sans text-xs text-slate-400">
-                                <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-slate-300">
-                                  {reg.skater.country}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    <div className="divide-y divide-slate-800/80">
+                      {buildEntryTables(activeEvent).map((table, tIdx) => (
+                        <div key={table.title ?? "single"} className={tIdx > 0 ? "pt-2" : undefined}>
+                          {table.title && (
+                            <h3 className="px-5 pt-4 pb-1 text-xs font-bold uppercase tracking-wider text-indigo-300">
+                              {table.title}
+                            </h3>
+                          )}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse text-sm">
+                              <thead>
+                                <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
+                                  {table.groupField && <th className="py-3 px-4 w-20">Grupo</th>}
+                                  <th className="py-3 px-4 w-24">Orden de Salida</th>
+                                  <th className="py-3 px-4">{skaterWord(activeEvent, false)}</th>
+                                  <th className="py-3 px-4">País</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-800/80">
+                                {table.rows.map((reg, index) => (
+                                  <tr key={reg.id} className="hover:bg-slate-800/30 transition font-mono">
+                                    {table.groupField && (
+                                      <td className="py-3.5 px-4 text-slate-400">
+                                        <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-indigo-300 text-xs">
+                                          {reg[table.groupField] ?? "—"}
+                                        </span>
+                                      </td>
+                                    )}
+                                    <td className="py-3.5 px-4 font-bold text-slate-400">
+                                      {reg.startOrder ?? index + 1}
+                                    </td>
+                                    <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
+                                      {reg.skater.firstName} {reg.skater.lastName}
+                                    </td>
+                                    <td className="py-3.5 px-4 font-sans text-xs text-slate-400">
+                                      <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-slate-300">
+                                        {reg.skater.country}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
