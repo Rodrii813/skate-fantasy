@@ -1,4 +1,6 @@
 import type { SegmentResultBlock } from "@/lib/segmentResults";
+import { getDictionary } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/lib/i18n/config";
 
 // 3 bloques colapsables por evento — "Programa Corto" / "Programa Largo" /
 // "Total" — inspirado en el patrón de rockerskating.com ("Short Program
@@ -12,6 +14,7 @@ export default function SegmentResultsTables({
   blocks,
   defaultOpen = true,
   gender = null,
+  locale = "es",
 }: {
   blocks: SegmentResultBlock[];
   defaultOpen?: boolean;
@@ -19,10 +22,13 @@ export default function SegmentResultsTables({
   // como "Patinadora(s)", cualquier otro valor (MALE o mixto/null) como
   // "Patinador(es)" — igual que en la pestaña de Orden de Salida.
   gender?: "MALE" | "FEMALE" | null;
+  locale?: Locale;
 }) {
   const isFemale = gender === "FEMALE";
-  const skaterWord = isFemale ? "Patinadora" : "Patinador";
-  const skaterWordPlural = isFemale ? "patinadoras" : "patinadores";
+  const dict = getDictionary(locale);
+  const skaterWord = dict.common.skater(false, isFemale);
+  const skaterWordPlural = dict.common.skater(true, isFemale);
+  const t = dict.segmentResults;
 
   return (
     <div className="divide-y divide-slate-800">
@@ -40,7 +46,7 @@ export default function SegmentResultsTables({
 
           {block.rows.length === 0 ? (
             <div className="px-5 pb-5 text-xs text-slate-500">
-              Todavía sin puntuaciones oficiales cargadas para {block.title}.
+              {t.noScores(block.title)}
             </div>
           ) : block.key === "total" ? (
             // El bloque Total no repite el desglose técnico (TES/PCS/
@@ -51,11 +57,11 @@ export default function SegmentResultsTables({
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-y border-slate-700/80 text-xs uppercase tracking-wider">
-                    <th className="py-2.5 px-5 w-16">Puesto</th>
+                    <th className="py-2.5 px-5 w-16">{t.rank}</th>
                     <th className="py-2.5 px-4">{skaterWord}</th>
-                    <th className="py-2.5 px-4 text-right">Corto</th>
-                    <th className="py-2.5 px-4 text-right">Largo</th>
-                    <th className="py-2.5 px-4 text-right">Total</th>
+                    <th className="py-2.5 px-4 text-right">{t.short}</th>
+                    <th className="py-2.5 px-4 text-right">{t.long}</th>
+                    <th className="py-2.5 px-4 text-right">{t.total}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
@@ -107,12 +113,12 @@ export default function SegmentResultsTables({
               <table className="w-full text-left border-collapse text-sm">
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-300 font-semibold border-y border-slate-700/80 text-xs uppercase tracking-wider">
-                    <th className="py-2.5 px-5 w-16">Puesto</th>
+                    <th className="py-2.5 px-5 w-16">{t.rank}</th>
                     <th className="py-2.5 px-4">{skaterWord}</th>
-                    <th className="py-2.5 px-4 text-right">Total</th>
-                    <th className="py-2.5 px-4 text-right">TES</th>
-                    <th className="py-2.5 px-4 text-right">PCS</th>
-                    <th className="py-2.5 px-4 text-right">Deducciones</th>
+                    <th className="py-2.5 px-4 text-right">{t.total}</th>
+                    <th className="py-2.5 px-4 text-right">{t.tes}</th>
+                    <th className="py-2.5 px-4 text-right">{t.pcs}</th>
+                    <th className="py-2.5 px-4 text-right">{t.deductions}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">

@@ -5,20 +5,10 @@ import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
-
-const statusLabel: Record<string, string> = {
-  UPCOMING: "Picks abiertos",
-  LOCKED: "En pista",
-  RESULTS_IN: "Resultados parciales",
-  FINISHED: "Finalizado",
-};
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
-
-const genderLabel: Record<string, string> = {
-  FEMALE: "Femenino",
-  MALE: "Masculino",
-};
 
 // params.id es el id de la Competición (torneo), no de un Event concreto.
 // Dentro se navega por pestañas, una por cada Event (disciplina · categoría)
@@ -30,6 +20,13 @@ export default async function CompetitionDetailPage({
   params: { id: string };
   searchParams: { event?: string; view?: string; cal?: string };
 }) {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.competitionDetail;
+  const statusLabel = dict.common.status;
+  const genderLabel = dict.common.gender;
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
+
   const competition = await prisma.competition.findUnique({
     where: { id: params.id },
     include: {
@@ -69,11 +66,8 @@ export default async function CompetitionDetailPage({
   // Género de las patinadoras/patinadores de ESTE evento concreto, para
   // rotular la tabla de orden de salida — "Patinadoras" si el evento es
   // Ladies, "Patinadores" si es Men o si el evento es mixto (gender null).
-  const skaterWord = (ev: { gender: string | null } | undefined, plural: boolean) => {
-    const isFemale = ev?.gender === "FEMALE";
-    if (plural) return isFemale ? "Patinadoras" : "Patinadores";
-    return isFemale ? "Patinadora" : "Patinador";
-  };
+  const skaterWord = (ev: { gender: string | null } | undefined, plural: boolean) =>
+    dict.common.skater(plural, ev?.gender === "FEMALE");
 
   const tabHref = (eventId: string, forView?: "entries" | "results") =>
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
@@ -107,8 +101,8 @@ export default async function CompetitionDetailPage({
     const hasLong = ev.registrations.some((r) => r.warmupGroupLong != null);
     if (hasShort || hasLong) {
       const tables: { title: string | null; groupField: GroupField; rows: RegistrationRow[] }[] = [];
-      if (hasShort) tables.push({ title: "Programa Corto", groupField: "warmupGroupShort", rows: sortEntries(ev.registrations, "warmupGroupShort") });
-      if (hasLong) tables.push({ title: "Programa Largo", groupField: "warmupGroupLong", rows: sortEntries(ev.registrations, "warmupGroupLong") });
+      if (hasShort) tables.push({ title: t.shortProgram, groupField: "warmupGroupShort", rows: sortEntries(ev.registrations, "warmupGroupShort") });
+      if (hasLong) tables.push({ title: t.longProgram, groupField: "warmupGroupLong", rows: sortEntries(ev.registrations, "warmupGroupLong") });
       return tables;
     }
     const hasLegacy = ev.registrations.some((r) => r.warmupGroup != null);
@@ -137,7 +131,7 @@ export default async function CompetitionDetailPage({
             href="/competitions"
             className="text-xs font-semibold text-slate-400 hover:text-slate-200 transition inline-flex items-center gap-1.5"
           >
-            ← Volver a Competiciones
+            {t.back}
           </Link>
         </div>
 
@@ -145,11 +139,11 @@ export default async function CompetitionDetailPage({
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8 space-y-2">
           <h1 className="text-3xl font-extrabold text-slate-50 tracking-tight">{competition.name}</h1>
           <p className="text-sm text-slate-400 flex flex-wrap items-center gap-3">
-            <span>📍 {competition.location || "Sede oficial"}</span>
+            <span>📍 {competition.location || t.officialSite}</span>
             <span>•</span>
             <span>
-              📅 {new Date(competition.startDate).toLocaleDateString("es-ES")} –{" "}
-              {new Date(competition.endDate).toLocaleDateString("es-ES")}
+              📅 {new Date(competition.startDate).toLocaleDateString(dateLocale)} –{" "}
+              {new Date(competition.endDate).toLocaleDateString(dateLocale)}
             </span>
             {competition.website && (
               <>
@@ -160,7 +154,7 @@ export default async function CompetitionDetailPage({
                   rel="noopener noreferrer"
                   className="text-indigo-400 hover:text-indigo-300 underline underline-offset-4"
                 >
-                  Web oficial / Stream ↗
+                  {t.website}
                 </a>
               </>
             )}
@@ -170,7 +164,7 @@ export default async function CompetitionDetailPage({
         {events.length === 0 ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
             <p className="text-slate-400 text-base">
-              Esta competición todavía no tiene pruebas (Events) creadas.
+              {t.noEvents}
             </p>
           </div>
         ) : (
@@ -186,7 +180,7 @@ export default async function CompetitionDetailPage({
                 }
                 className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition inline-flex items-center gap-1.5"
               >
-                {showCalendar ? "← Volver a las pruebas" : "📅 Ver Calendario de la competición"}
+                {showCalendar ? t.backToEvents : t.viewCalendar}
               </Link>
             </div>
 
@@ -195,7 +189,7 @@ export default async function CompetitionDetailPage({
                 {dayGroups.length === 0 ? (
                   <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
                     <p className="text-slate-400 text-base">
-                      Ninguna prueba de esta competición tiene todavía horario confirmado.
+                      {t.noScheduled}
                     </p>
                   </div>
                 ) : (
@@ -246,13 +240,13 @@ export default async function CompetitionDetailPage({
                                 href={`/predictions?event=${event.id}`}
                                 className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
                               >
-                                🎯 Predicción
+                                {t.prediction}
                               </Link>
                               <Link
                                 href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
                                 className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
                               >
-                                ✨ Draft
+                                {t.draft}
                               </Link>
                               {/* Mientras el evento no tiene resultados
                                   publicados (aún no ha empezado o está en
@@ -264,14 +258,14 @@ export default async function CompetitionDetailPage({
                                   href={tabHref(event.id, "results")}
                                   className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
                                 >
-                                  📊 Resultados
+                                  {t.results}
                                 </Link>
                               ) : (
                                 <Link
                                   href={tabHref(event.id, "entries")}
                                   className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
                                 >
-                                  🔢 Orden de Salida
+                                  {t.startOrder}
                                 </Link>
                               )}
                             </div>
@@ -344,13 +338,13 @@ export default async function CompetitionDetailPage({
                         href={`/predictions?event=${activeEvent.id}`}
                         className="flex-1 md:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-blue-900/20"
                       >
-                        🎯 Predicción Top 3 / Top 5
+                        {t.predictionTop}
                       </Link>
                       <Link
                         href={`/events/${activeEvent.id}`}
                         className="flex-1 md:flex-none text-center bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition shadow-md shadow-indigo-900/20"
                       >
-                        ✨ Mi Roster Fantasy
+                        {t.myRoster}
                       </Link>
                     </div>
                   </div>
@@ -358,25 +352,25 @@ export default async function CompetitionDetailPage({
                   {/* Tarjetas de métricas rápidas */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-4 border-t border-slate-800">
                     <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-slate-400 text-xs">Inscritos</span>
+                      <span className="text-slate-400 text-xs">{t.registered}</span>
                       <p className="text-lg font-bold text-slate-200 mt-0.5">
                         {activeEvent.registrations.length}
                       </p>
                     </div>
                     <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-slate-400 text-xs">Segmentos</span>
+                      <span className="text-slate-400 text-xs">{t.segments}</span>
                       <p className="text-lg font-bold text-slate-200 mt-0.5">
                         {activeEvent.segments.map((s) => s.name).join(" / ") || "—"}
                       </p>
                     </div>
                     <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-slate-400 text-xs">Predicciones Realizadas</span>
+                      <span className="text-slate-400 text-xs">{t.predictionsMade}</span>
                       <p className="text-lg font-bold text-slate-200 mt-0.5">
                         {activeEvent._count.predictions}
                       </p>
                     </div>
                     <div className="bg-slate-950/50 p-3 rounded-xl border border-slate-800/80">
-                      <span className="text-slate-400 text-xs">Rosters Fantasy</span>
+                      <span className="text-slate-400 text-xs">{t.fantasyRosters}</span>
                       <p className="text-lg font-bold text-slate-200 mt-0.5">
                         {activeEvent._count.rosters}
                       </p>
@@ -396,7 +390,7 @@ export default async function CompetitionDetailPage({
                             : "bg-slate-950 text-slate-400 hover:text-slate-200"
                         }`}
                       >
-                        Orden de Salida
+                        {t.entriesTab}
                       </Link>
                       <Link
                         href={tabHref(activeEvent.id, "results")}
@@ -406,7 +400,7 @@ export default async function CompetitionDetailPage({
                             : "bg-slate-950 text-slate-400 hover:text-slate-200"
                         }`}
                       >
-                        Resultados
+                        {t.resultsTab}
                       </Link>
                     </div>
                     <span className="text-xs font-mono bg-slate-800 text-slate-300 px-3 py-1 rounded-lg border border-slate-700">
@@ -416,14 +410,14 @@ export default async function CompetitionDetailPage({
 
                   {activeEvent.registrations.length === 0 ? (
                     <div className="p-12 text-center text-slate-400 text-sm">
-                      No hay {skaterWord(activeEvent, true).toLowerCase()} registrados todavía en esta prueba.
+                      {t.noRegistrations(skaterWord(activeEvent, true).toLowerCase())}
                     </div>
                   ) : view === "results" ? (
                     isLocked ? (
-                      <SegmentResultsTables blocks={resultBlocks} defaultOpen gender={activeEvent.gender} />
+                      <SegmentResultsTables blocks={resultBlocks} defaultOpen gender={activeEvent.gender} locale={locale} />
                     ) : (
                       <div className="p-12 text-center text-slate-400 text-sm">
-                        Los resultados se publican cuando cierre el plazo de picks de esta prueba.
+                        {t.resultsPending}
                       </div>
                     )
                   ) : (
@@ -439,10 +433,10 @@ export default async function CompetitionDetailPage({
                             <table className="w-full text-left border-collapse text-sm">
                               <thead>
                                 <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                                  {table.groupField && <th className="py-3 px-4 w-20">Grupo</th>}
-                                  <th className="py-3 px-4 w-24">Orden de Salida</th>
+                                  {table.groupField && <th className="py-3 px-4 w-20">{t.group}</th>}
+                                  <th className="py-3 px-4 w-24">{t.startOrderCol}</th>
                                   <th className="py-3 px-4">{skaterWord(activeEvent, false)}</th>
-                                  <th className="py-3 px-4">País</th>
+                                  <th className="py-3 px-4">{t.country}</th>
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-800/80">

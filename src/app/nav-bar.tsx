@@ -4,6 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "next-auth/react";
 import TimezoneSelector from "./_components/TimezoneSelector";
+import LanguageSwitcher from "./_components/LanguageSwitcher";
+import { useLocale } from "@/lib/i18n/LocaleContext";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 // La barra de navegación NO tenía versión móvil: todos los enlaces (+ el
 // selector de zona horaria, que es ancho) iban en una única fila con
@@ -17,29 +20,31 @@ export default function NavBar() {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
   const [open, setOpen] = useState(false);
+  const { locale } = useLocale();
+  const t = getDictionary(locale).nav;
 
   const closeMenu = () => setOpen(false);
 
   const navLinks = (
     <>
       <Link href="/competitions" className="hover:text-white" onClick={closeMenu}>
-        Competiciones
+        {t.competitions}
       </Link>
       <Link href="/calendario" className="hover:text-white" onClick={closeMenu}>
-        Calendario
+        {t.calendar}
       </Link>
       <Link href="/fantasy" className="hover:text-white" onClick={closeMenu}>
-        Fantasy
+        {t.fantasy}
       </Link>
       <Link href="/predictions" className="hover:text-white" onClick={closeMenu}>
-        Predicción
+        {t.predictions}
       </Link>
       <Link href="/fantasy/normas" className="hover:text-white" onClick={closeMenu}>
-        Normas
+        {t.rules}
       </Link>
       {isAdmin && (
         <Link href="/admin" className="hover:text-white" onClick={closeMenu}>
-          Admin
+          {t.admin}
         </Link>
       )}
     </>
@@ -53,19 +58,19 @@ export default function NavBar() {
       }}
       className="hover:text-white"
     >
-      Salir ({session.user.name})
+      {t.logout(session.user.name || "")}
     </button>
   ) : (
     <>
       <Link href="/login" className="hover:text-white" onClick={closeMenu}>
-        Entrar
+        {t.login}
       </Link>
       <Link
         href="/register"
         onClick={closeMenu}
         className="rounded-full bg-gold px-4 py-1.5 font-medium text-rink hover:bg-gold/90"
       >
-        Crear cuenta
+        {t.register}
       </Link>
     </>
   );
@@ -84,6 +89,7 @@ export default function NavBar() {
         {/* Navegación de escritorio: fila horizontal completa, oculta en móvil */}
         <nav className="hidden md:flex items-center gap-6 text-sm text-ice-100/80">
           {navLinks}
+          <LanguageSwitcher />
           <TimezoneSelector />
           {authLinks}
         </nav>
@@ -92,7 +98,7 @@ export default function NavBar() {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label={open ? "Cerrar menú" : "Abrir menú"}
+          aria-label={open ? t.closeMenu : t.openMenu}
           aria-expanded={open}
           className="md:hidden -mr-2 p-2 text-ice-100/80 hover:text-white"
         >
@@ -113,6 +119,9 @@ export default function NavBar() {
       {open && (
         <nav className="md:hidden flex flex-col gap-3 border-t border-white/10 bg-rink px-4 py-4 text-sm text-ice-100/80">
           {navLinks}
+          <div className="pt-1 flex items-center gap-2">
+            <LanguageSwitcher />
+          </div>
           <div className="pt-1">
             <TimezoneSelector className="w-full rounded-lg border border-white/15 bg-transparent px-2 py-2 text-xs text-ice-100/80" />
           </div>

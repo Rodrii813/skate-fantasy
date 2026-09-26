@@ -2,36 +2,26 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
-const statusBadge: Record<string, { label: string; className: string }> = {
-  UPCOMING: {
-    label: "Picks abiertos",
-    className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-  },
-  LOCKED: {
-    label: "En pista",
-    className: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-  },
-  RESULTS_IN: {
-    label: "Resultados parciales",
-    className: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
-  },
-  FINISHED: {
-    label: "Finalizado",
-    className: "bg-slate-700 text-slate-300 border-slate-600",
-  },
-};
-
-const genderLabel: Record<string, string> = {
-  FEMALE: "Femenino",
-  MALE: "Masculino",
+const statusClassName: Record<string, string> = {
+  UPCOMING: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
+  LOCKED: "bg-amber-500/15 text-amber-400 border-amber-500/30",
+  RESULTS_IN: "bg-cyan-500/15 text-cyan-400 border-cyan-500/30",
+  FINISHED: "bg-slate-700 text-slate-300 border-slate-600",
 };
 
 const medal = ["🥇", "🥈", "🥉"];
 
 export default async function ResultadosPage() {
+  const locale = getLocale();
+  const dict = getDictionary(locale);
+  const t = dict.resultados;
+  const genderLabel = dict.common.gender;
+
   const events = await prisma.event.findMany({
     where: { status: { in: ["LOCKED", "RESULTS_IN", "FINISHED"] } },
     include: {
@@ -70,18 +60,17 @@ export default async function ResultadosPage() {
         <div className="border-b border-slate-800 pb-6">
           <div className="flex items-center gap-2">
             <span className="text-xl">🏅</span>
-            <h1 className="text-3xl font-extrabold tracking-tight">Resultados por Disciplina</h1>
+            <h1 className="text-3xl font-extrabold tracking-tight">{t.title}</h1>
           </div>
           <p className="text-slate-400 text-sm mt-1">
-            Podios y resultados oficiales, agrupados por disciplina. Se muestran las pruebas que
-            ya han empezado o terminado.
+            {t.subtitle}
           </p>
         </div>
 
         {events.length === 0 ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
             <p className="text-slate-400 text-base">
-              Aún no hay resultados disponibles — vuelve cuando empiece la competición.
+              {t.empty}
             </p>
           </div>
         ) : (
@@ -93,7 +82,8 @@ export default async function ResultadosPage() {
 
               <div className="grid gap-4">
                 {byDiscipline.get(disciplineName)!.map((event) => {
-                  const badge = statusBadge[event.status];
+                  const badgeLabel = t.status[event.status as keyof typeof t.status];
+                  const badgeClass = statusClassName[event.status];
                   const podium = event.registrations
                     .filter((r: RegistrationWithSkater) => r.finalRank !== null)
                     .slice(0, 3);
@@ -114,11 +104,11 @@ export default async function ResultadosPage() {
                               {event.category.name}
                               {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
                             </span>
-                            {badge && (
+                            {badgeLabel && (
                               <span
-                                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${badge.className}`}
+                                className={`text-xs font-semibold px-2.5 py-0.5 rounded-full border ${badgeClass}`}
                               >
-                                {badge.label}
+                                {badgeLabel}
                               </span>
                             )}
                           </div>
@@ -129,7 +119,7 @@ export default async function ResultadosPage() {
                           href={`/competitions/${event.competitionId}?event=${event.id}`}
                           className="text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-lg border border-slate-700 transition whitespace-nowrap"
                         >
-                          Ver tabla completa →
+                          {t.viewFullTable}
                         </Link>
                       </div>
 
@@ -155,14 +145,14 @@ export default async function ResultadosPage() {
                         </div>
                       ) : (
                         <p className="text-xs text-slate-500 pt-2 border-t border-slate-800/80">
-                          Todavía sin puntuaciones oficiales cargadas para esta prueba.
+                          {t.noResultsYet}
                         </p>
                       )}
 
                       {/* Desglose Corto / Largo / Total, colapsado por defecto para no saturar esta vista general */}
                       {hasResults && (
                         <div className="border-t border-slate-800/80 -mx-5 -mb-5">
-                          <SegmentResultsTables blocks={resultBlocks} defaultOpen={false} gender={event.gender} />
+                          <SegmentResultsTables blocks={resultBlocks} defaultOpen={false} gender={event.gender} locale={locale} />
                         </div>
                       )}
                     </div>

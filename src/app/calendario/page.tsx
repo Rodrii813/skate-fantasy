@@ -3,22 +3,17 @@ import { prisma } from "@/lib/prisma";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import TimezoneSelector from "@/app/_components/TimezoneSelector";
 import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
-const statusLabel: Record<string, string> = {
-  UPCOMING: "Picks abiertos",
-  LOCKED: "En pista",
-  RESULTS_IN: "Resultados parciales",
-  FINISHED: "Finalizado",
-};
-
-const genderLabel: Record<string, string> = {
-  FEMALE: "Femenino",
-  MALE: "Masculino",
-};
-
 export default async function CalendarioPage() {
+  const dict = getDictionary(getLocale());
+  const t = dict.calendario;
+  const statusLabel = dict.common.status;
+  const genderLabel = dict.common.gender;
+
   const events = await prisma.event.findMany({
     include: {
       competition: true,
@@ -45,14 +40,11 @@ export default async function CalendarioPage() {
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-display text-3xl font-semibold text-white">Calendario</h1>
-          <p className="mt-2 text-sm text-ice-100/60">
-            Programa oficial de la competición, evento a evento. Los días son los de la sede
-            (Paraguay); las horas se muestran en tu zona horaria.
-          </p>
+          <h1 className="font-display text-3xl font-semibold text-white">{t.title}</h1>
+          <p className="mt-2 text-sm text-ice-100/60">{t.subtitle}</p>
         </div>
         <div className="flex items-center gap-2 text-xs text-ice-100/60">
-          <span>Mostrar horas en:</span>
+          <span>{t.showHoursIn}</span>
           <TimezoneSelector />
         </div>
       </div>
@@ -60,7 +52,7 @@ export default async function CalendarioPage() {
       {unscheduled.length > 0 && (
         <section className="mt-8">
           <h2 className="font-display text-lg font-semibold text-ice-100/80">
-            Horario por confirmar
+            {t.unscheduled}
           </h2>
           <ul className="mt-3 space-y-2">
             {unscheduled.map((event) => (
@@ -139,13 +131,13 @@ export default async function CalendarioPage() {
                     href={`/predictions?event=${event.id}`}
                     className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
                   >
-                    🎯 Predicción
+                    {t.prediction}
                   </Link>
                   <Link
                     href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
                     className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
                   >
-                    ✨ Draft
+                    {t.draft}
                   </Link>
                   {/* Mientras el evento no tiene resultados publicados (aún
                       no ha empezado o está en pista) se ofrece el Orden de
@@ -156,14 +148,14 @@ export default async function CalendarioPage() {
                       href={`/competitions/${event.competitionId}?event=${event.id}&view=results`}
                       className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
                     >
-                      📊 Resultados
+                      {t.results}
                     </Link>
                   ) : (
                     <Link
                       href={`/competitions/${event.competitionId}?event=${event.id}&view=entries`}
                       className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
                     >
-                      🔢 Orden de Salida
+                      {t.startOrder}
                     </Link>
                   )}
                 </div>
@@ -174,7 +166,7 @@ export default async function CalendarioPage() {
         </section>
       ))}
 
-      {events.length === 0 && <p className="mt-8 text-ice-100/60">Aún no hay eventos creados.</p>}
+      {events.length === 0 && <p className="mt-8 text-ice-100/60">{t.empty}</p>}
     </div>
   );
 }

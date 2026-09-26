@@ -1,10 +1,13 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import CompetitionsSearch from "./CompetitionsSearch";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
 export default async function CompetitionsPage() {
+  const t = getDictionary(getLocale()).competitionsHub;
   const competitions = await prisma.competition.findMany({
     orderBy: { startDate: "asc" },
     include: {
@@ -27,29 +30,27 @@ export default async function CompetitionsPage() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-xl">🏆</span>
-              <h1 className="text-3xl font-extrabold tracking-tight">Competition Hub</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">{t.title}</h1>
             </div>
-            <p className="text-slate-400 text-sm mt-1">
-              Calendario oficial, pruebas de la temporada, inscripciones y actas de resultados Rollart.
-            </p>
+            <p className="text-slate-400 text-sm mt-1">{t.subtitle}</p>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href="/calendario"
               className="text-xs font-semibold bg-slate-900 border border-slate-700 text-slate-300 px-3 py-1.5 rounded-lg hover:border-slate-500 transition inline-flex items-center gap-1.5"
             >
-              📅 Ver Calendario general
+              {t.viewCalendar}
             </Link>
             <span className="text-xs font-mono bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-slate-300">
-              Temporada 2026
+              {t.season}
             </span>
           </div>
         </div>
 
         {competitions.length === 0 ? (
           <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
-            <p className="text-slate-400 text-base">No hay competiciones registradas en el calendario.</p>
-            <p className="text-slate-500 text-xs mt-2">Puedes añadir competiciones y eventos desde el panel de admin.</p>
+            <p className="text-slate-400 text-base">{t.empty}</p>
+            <p className="text-slate-500 text-xs mt-2">{t.emptyHint}</p>
           </div>
         ) : (
           <CompetitionsSearch competitions={competitions} />

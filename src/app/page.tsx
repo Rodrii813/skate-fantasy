@@ -2,11 +2,14 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { getLocale } from "@/lib/i18n/getLocale";
+import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
+  const t = getDictionary(getLocale()).home;
 
   // Consultar si hay eventos abiertos para picks/predicciones o en vivo
   const now = new Date();
@@ -32,7 +35,7 @@ export default async function HomePage() {
               SKATE<span className="text-indigo-400">HUB</span>
             </span>
             <span className="text-[10px] font-mono uppercase bg-indigo-500/20 text-indigo-400 border border-indigo-500/30 px-1.5 py-0.5 rounded tracking-widest font-semibold">
-              BETA
+              {t.betaTag}
             </span>
           </div>
 
@@ -46,7 +49,7 @@ export default async function HomePage() {
                   href="/admin"
                   className="text-xs bg-slate-900 border border-slate-700 hover:border-slate-500 text-slate-200 px-3 py-1.5 rounded-lg transition"
                 >
-                  Panel
+                  {t.panel}
                 </Link>
               </div>
             ) : (
@@ -54,7 +57,7 @@ export default async function HomePage() {
                 href="/login"
                 className="text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3.5 py-1.5 rounded-lg transition shadow-sm"
               >
-                Entrar
+                {t.login}
               </Link>
             )}
           </div>
@@ -70,7 +73,7 @@ export default async function HomePage() {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
-                  ● DRAFTS & PORRAS OPEN
+                  ● {t.liveBanner}
                 </span>
                 <span className="text-xs text-slate-400 font-mono">
                   {nextActiveEvent.competition.name}
@@ -80,7 +83,7 @@ export default async function HomePage() {
                 {nextActiveEvent.name}
               </h2>
               <p className="text-xs text-slate-400">
-                Cierre de picks: {new Date(nextActiveEvent.rosterLocksAt).toLocaleDateString()} a las{" "}
+                {t.picksClose}: {new Date(nextActiveEvent.rosterLocksAt).toLocaleDateString()}{" "}
                 {new Date(nextActiveEvent.rosterLocksAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
               </p>
             </div>
@@ -90,23 +93,23 @@ export default async function HomePage() {
                 href={`/predictions?event=${nextActiveEvent.id}`}
                 className="flex-1 sm:flex-none text-center bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition"
               >
-                🎯 Predecir Podio
+                {t.predictPodium}
               </Link>
               <Link
                 href={`/events/${nextActiveEvent.id}`}
                 className="flex-1 sm:flex-none text-center bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition"
               >
-                ✨ Crear Roster
+                {t.createRoster}
               </Link>
             </div>
           </div>
         ) : (
           <div className="text-center py-4 space-y-2">
             <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-white">
-              El Hub del Patinaje Artístico
+              {t.heroTitle}
             </h1>
             <p className="text-slate-400 text-sm max-w-xl mx-auto">
-              Sigue el calendario internacional, predice los podios de cada categoría y compite en el fantasy de Rollart.
+              {t.heroSubtitle}
             </p>
           </div>
         )}
@@ -125,15 +128,15 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100 group-hover:text-blue-400 transition">
-                  Competition Hub
+                  {t.cardHubTitle}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Calendario de competiciones, órdenes de salida y actas de resultados Rollart.
+                  {t.cardHubBody}
                 </p>
               </div>
             </div>
             <span className="text-xs font-medium text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-              Ver calendario oficial →
+              {t.cardHubCta}
             </span>
           </Link>
 
@@ -149,19 +152,19 @@ export default async function HomePage() {
               <div>
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-bold text-slate-100 group-hover:text-emerald-400 transition">
-                    Prediction Central
+                    {t.cardPredictionsTitle}
                   </h3>
                   <span className="text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full border border-emerald-500/30">
                     TOP 3/5
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Predicciones oficiales: predice los patinadores que subirán al podio en cada categoría.
+                  {t.cardPredictionsBody}
                 </p>
               </div>
             </div>
             <span className="text-xs font-medium text-emerald-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-              Hacer mis predicciones →
+              {t.cardPredictionsCta}
             </span>
           </Link>
 
@@ -176,15 +179,15 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100 group-hover:text-indigo-400 transition">
-                  Rollart Fantasy
+                  {t.cardFantasyTitle}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Configura tu equipo por slots (saltos, giros, componentes) y suma puntos con los protocolos reales.
+                  {t.cardFantasyBody}
                 </p>
               </div>
             </div>
             <span className="text-xs font-medium text-indigo-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-              Gestionar mis rosters →
+              {t.cardFantasyCta}
             </span>
           </Link>
 
@@ -199,15 +202,15 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100 group-hover:text-amber-400 transition">
-                  Normas del Fantasy
+                  {t.cardRulesTitle}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Cómo se puntúa cada slot y las reglas de draft por Warmup Group, explicadas paso a paso.
+                  {t.cardRulesBody}
                 </p>
               </div>
             </div>
             <span className="text-xs font-medium text-amber-400 group-hover:translate-x-1 transition-transform inline-flex items-center gap-1 mt-4">
-              Leer las normas →
+              {t.cardRulesCta}
             </span>
           </Link>
 
@@ -219,15 +222,15 @@ export default async function HomePage() {
               </div>
               <div>
                 <h3 className="text-lg font-bold text-slate-100">
-                  Sistema de Juego
+                  {t.cardScoringTitle}
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Top 3 exacto = 5 pts. Patinador en podio alterno = 2 pts. El fantasy suma las notas reales oficiales.
+                  {t.cardScoringBody}
                 </p>
               </div>
             </div>
             <span className="text-xs text-slate-500 mt-4">
-              Reglamento adaptado a la temporada 2026
+              {t.cardScoringFooter}
             </span>
           </div>
 
@@ -236,32 +239,32 @@ export default async function HomePage() {
             <div className="bg-gradient-to-br from-indigo-900/30 to-slate-900 border border-indigo-500/20 rounded-2xl p-6 flex flex-col justify-between min-h-[160px]">
               <div className="space-y-2">
                 <span className="text-xl">⛸️</span>
-                <h3 className="text-lg font-bold text-slate-100">¿Aún no juegas?</h3>
+                <h3 className="text-lg font-bold text-slate-100">{t.cardSignupTitle}</h3>
                 <p className="text-xs text-slate-400">
-                  Crea tu cuenta gratis en 15 segundos para guardar tus predicciones y rosters.
+                  {t.cardSignupBody}
                 </p>
               </div>
               <Link
                 href="/register"
                 className="w-full text-center bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold py-2.5 rounded-xl transition shadow-md shadow-indigo-900/30 mt-4"
               >
-                Crear Cuenta Gratis
+                {t.cardSignupCta}
               </Link>
             </div>
           ) : (
             <div className="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-6 flex flex-col justify-between min-h-[160px]">
               <div className="space-y-2">
                 <span className="text-xl">✅</span>
-                <h3 className="text-lg font-bold text-slate-100">Sesión Activa</h3>
+                <h3 className="text-lg font-bold text-slate-100">{t.cardActiveTitle}</h3>
                 <p className="text-xs text-slate-400">
-                  Conectado como <strong className="text-slate-200">{session.user?.name || session.user?.email}</strong>.
+                  {t.cardActiveBody(session.user?.name || session.user?.email || "")}
                 </p>
               </div>
               <Link
                 href="/competitions"
                 className="w-full text-center bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold py-2.5 rounded-xl border border-slate-700 transition mt-4"
               >
-                Explorar Pruebas
+                {t.cardActiveCta}
               </Link>
             </div>
           )}
@@ -271,7 +274,7 @@ export default async function HomePage() {
 
       {/* Footer minimalista */}
       <footer className="border-t border-slate-900 text-slate-600 text-xs py-6 text-center px-4">
-        <p>SkateHub — Plataforma no oficial de seguimiento, Fantasy y Predicciones de Patinaje Artístico.</p>
+        <p>{t.footer}</p>
       </footer>
     </div>
   );
