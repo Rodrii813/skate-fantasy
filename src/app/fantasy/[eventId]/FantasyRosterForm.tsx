@@ -99,6 +99,7 @@ export default function FantasyRosterForm({
           groupField: "warmupGroupShort" as const,
           locksAt: rosterLocksAt,
           locked: eventLocked,
+          upcoming: false,
         },
       ];
     }
