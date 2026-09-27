@@ -19,9 +19,18 @@ export default function RegisterPage() {
   // con la opción de reenviar el correo si no llega.
   const [registered, setRegistered] = useState(false);
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
+  // Antes esto era solo un aviso pasivo ("al crear una cuenta aceptas...")
+  // debajo del botón. Una casilla que el usuario tiene que marcar a
+  // propósito es la forma correcta de que cuente como aceptación real de
+  // los Términos/Privacidad (y no solo un texto que nadie lee).
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!acceptedTerms) {
+      setError(t.mustAcceptTerms);
+      return;
+    }
     setLoading(true);
     setError(null);
 
@@ -103,6 +112,29 @@ export default function RegisterPage() {
             className="mt-1 w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-white outline-none focus:border-gold"
           />
         </div>
+        <label className="flex items-start gap-2 text-xs text-ice-100/70">
+          <input
+            type="checkbox"
+            required
+            checked={acceptedTerms}
+            onChange={(e) => {
+              setAcceptedTerms(e.target.checked);
+              if (e.target.checked) setError(null);
+            }}
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-white/25 bg-white/5 accent-gold"
+          />
+          <span>
+            {t.agreePrefix}{" "}
+            <Link href="/terminos" className="text-gold hover:underline">
+              {t.registerAgreementTerms}
+            </Link>{" "}
+            {t.agreeMiddle}{" "}
+            <Link href="/privacidad" className="text-gold hover:underline">
+              {t.registerAgreementPrivacy}
+            </Link>
+            .
+          </span>
+        </label>
         {error && <p className="text-sm text-red-400">{error}</p>}
         <button
           disabled={loading}
@@ -110,17 +142,6 @@ export default function RegisterPage() {
         >
           {loading ? t.creating : t.register}
         </button>
-        <p className="text-center text-xs text-ice-100/50">
-          {t.agreePrefix}{" "}
-          <Link href="/terminos" className="text-gold hover:underline">
-            {t.registerAgreementTerms}
-          </Link>{" "}
-          {t.agreeMiddle}{" "}
-          <Link href="/privacidad" className="text-gold hover:underline">
-            {t.registerAgreementPrivacy}
-          </Link>
-          .
-        </p>
       </form>
     </div>
   );
