@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import TimezoneSelector from "@/app/_components/TimezoneSelector";
 import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
+import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus } from "@/lib/segments";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -25,8 +26,39 @@ export default async function CalendarioPage() {
       discipline: true,
       category: true,
       segments: { orderBy: { order: "asc" } },
+      slots: { select: { segmentId: true } },
     },
   });
+
+  const now = new Date();
+
+  // Predicción abierta = mismo criterio real que usa /predictions para
+  // aceptar envíos (ver isLocked ahí): evento sin bloquear y todavía
+  // UPCOMING. El badge de estado del evento (statusLabel) NO sirve para
+  // esto — es el estado general del evento (En pista/Resultados/Finalizado),
+  // no si los picks siguen abiertos, así que antes este botón salía siempre
+  // en azul "activo" aunque el plazo ya hubiera pasado.
+  function isPredictionsOpen(event: (typeof events)[number]): boolean {
+    return (
+      event.status === "UPCOMING" &&
+      now <= firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt)
+    );
+  }
+
+  // Draft (Fantasy) abierto = al menos un segmento realmente OPEN ahora
+  // mismo (con slots generados, ya abierto por hora/manual, y sin bloquear)
+  // — mismo criterio que getSegmentDraftStatus usa en /fantasy. Antes el
+  // botón de Draft no comprobaba nada de esto.
+  function isDraftOpen(event: (typeof events)[number]): boolean {
+    const slotsBySegment = new Map<string, number>();
+    for (const slot of event.slots) {
+      if (slot.segmentId) slotsBySegment.set(slot.segmentId, (slotsBySegment.get(slot.segmentId) || 0) + 1);
+    }
+    return event.segments.some(
+      (seg) =>
+        getSegmentDraftStatus(seg, event.rosterLocksAt, (slotsBySegment.get(seg.id) || 0) > 0, now) === "OPEN"
+    );
+  }
 
   // Una fila del calendario normalmente es "el evento entero", pero cuando
   // sus segmentos tienen hora de pista propia (Corto/Largo a horas
@@ -134,13 +166,21 @@ export default async function CalendarioPage() {
                 <div className="mt-2.5 pl-[4.5rem] flex flex-wrap items-center gap-2">
                   <Link
                     href={`/predictions?event=${event.id}`}
-                    className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 ${
+                      isPredictionsOpen(event)
+                        ? "bg-blue-600 hover:bg-blue-500 text-white shadow-sm shadow-blue-900/30"
+                        : "bg-white/5 hover:bg-white/10 text-ice-100/40 border border-white/10"
+                    }`}
                   >
                     {t.prediction}
                   </Link>
                   <Link
                     href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
-                    className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
+                    className={`text-[11px] font-semibold px-3 py-1.5 rounded-lg transition inline-flex items-center gap-1 ${
+                      isDraftOpen(event)
+                        ? "bg-indigo-600 hover:bg-indigo-500 text-white shadow-sm shadow-indigo-900/30"
+                        : "bg-white/5 hover:bg-white/10 text-ice-100/40 border border-white/10"
+                    }`}
                   >
                     {t.draft}
                   </Link>

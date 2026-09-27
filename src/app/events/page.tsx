@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 const statusLabel: Record<string, string> = {
-  UPCOMING: "Picks abiertos",
+  UPCOMING: "Próximamente",
   LOCKED: "En pista",
   RESULTS_IN: "Resultados parciales",
   FINISHED: "Finalizado",

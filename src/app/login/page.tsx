@@ -49,7 +49,10 @@ function LoginForm() {
       setError(t.loginError);
       return;
     }
-    router.push("/events");
+    // Antes iba a /events, una lista de eventos antigua (previa al rediseño
+    // del Competition Hub) que ya no enlaza nadie desde el menú — de ahí la
+    // sensación de "aterrizar en un sitio raro" al iniciar sesión.
+    router.push("/");
     router.refresh();
   }
 

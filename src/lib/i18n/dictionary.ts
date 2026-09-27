@@ -25,9 +25,17 @@ export const dictionaries = {
       panel: "Panel",
       login: "Entrar",
       liveBanner: "DRAFTS Y PREDICCIONES ABIERTAS",
+      upcomingBanner: "PRÓXIMAMENTE",
       picksClose: "Cierre de picks",
       predictPodium: "🎯 Predecir Podio",
+      predictPodiumClosed: "🎯 Predicción (aún no abierta)",
       createRoster: "✨ Crear Roster",
+      createRosterClosed: "✨ Draft (aún no abierto)",
+      countdownPrefix: "Empieza en",
+      countdownDays: "días",
+      countdownHours: "horas",
+      countdownMinutes: "min",
+      countdownSeconds: "seg",
       heroTitle: "El Hub del Patinaje Artístico",
       heroSubtitle:
         "Sigue el calendario internacional, predice los podios de cada categoría y compite en el fantasy de Rollart.",
@@ -58,7 +66,7 @@ export const dictionaries = {
     },
     common: {
       status: {
-        UPCOMING: "Picks abiertos",
+        UPCOMING: "Próximamente",
         LOCKED: "En pista",
         RESULTS_IN: "Resultados parciales",
         FINISHED: "Finalizado",
@@ -99,7 +107,7 @@ export const dictionaries = {
       predictionBtn: "🎯 Predicción Top 3/5",
       fantasyBtn: "✨ Fantasy",
       status: {
-        UPCOMING: "Abierto",
+        UPCOMING: "Próximamente",
         LOCKED: "En Competición",
         RESULTS_IN: "Resultados Parciales",
         FINISHED: "Finalizado",
@@ -153,7 +161,7 @@ export const dictionaries = {
       viewFullTable: "Ver tabla completa →",
       noResultsYet: "Todavía sin puntuaciones oficiales cargadas para esta prueba.",
       status: {
-        UPCOMING: "Picks abiertos",
+        UPCOMING: "Próximamente",
         LOCKED: "En pista",
         RESULTS_IN: "Resultados parciales",
         FINISHED: "Finalizado",
@@ -579,9 +587,17 @@ export const dictionaries = {
       panel: "Dashboard",
       login: "Sign in",
       liveBanner: "DRAFTS & PREDICTIONS OPEN",
+      upcomingBanner: "COMING SOON",
       picksClose: "Picks close",
       predictPodium: "🎯 Predict Podium",
+      predictPodiumClosed: "🎯 Predictions (not open yet)",
       createRoster: "✨ Build Roster",
+      createRosterClosed: "✨ Draft (not open yet)",
+      countdownPrefix: "Starts in",
+      countdownDays: "days",
+      countdownHours: "hours",
+      countdownMinutes: "min",
+      countdownSeconds: "sec",
       heroTitle: "The Figure Skating Hub",
       heroSubtitle:
         "Follow the international calendar, predict each category's podium and compete in Rollart Fantasy.",
@@ -611,7 +627,7 @@ export const dictionaries = {
     },
     common: {
       status: {
-        UPCOMING: "Picks open",
+        UPCOMING: "Upcoming",
         LOCKED: "On the rink",
         RESULTS_IN: "Partial results",
         FINISHED: "Finished",
@@ -652,7 +668,7 @@ export const dictionaries = {
       predictionBtn: "🎯 Top 3/5 Prediction",
       fantasyBtn: "✨ Fantasy",
       status: {
-        UPCOMING: "Open",
+        UPCOMING: "Upcoming",
         LOCKED: "Live",
         RESULTS_IN: "Partial Results",
         FINISHED: "Finished",
@@ -705,7 +721,7 @@ export const dictionaries = {
       viewFullTable: "View full table →",
       noResultsYet: "No official scores loaded for this event yet.",
       status: {
-        UPCOMING: "Picks open",
+        UPCOMING: "Upcoming",
         LOCKED: "On the rink",
         RESULTS_IN: "Partial results",
         FINISHED: "Finished",
