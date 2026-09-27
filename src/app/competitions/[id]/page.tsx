@@ -4,7 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import LocalDateTime from "@/app/_components/LocalDateTime";
-import { buildCalendarRows, groupCalendarRowsByVenueDay } from "@/lib/calendarGrouping";
+import CalendarDayGroups, { type CalendarDayRow } from "@/app/_components/CalendarDayGroups";
+import { buildCalendarRows } from "@/lib/calendarGrouping";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -116,11 +117,83 @@ export default async function CompetitionDetailPage({
   };
 
   const showCalendar = searchParams.cal === "1";
-  // Una fila del calendario normalmente es "el evento entero", pero cuando
-  // sus segmentos tienen hora de pista propia (Corto/Largo a horas
-  // distintas, o el Largo partido en "Top 10"/"Resto"), un mismo evento
-  // aparece en varias filas — ver src/lib/calendarGrouping.ts.
-  const dayGroups = groupCalendarRowsByVenueDay(buildCalendarRows(events));
+  // Tanto la HORA de cada fila como el DÍA en el que se agrupa varían según
+  // la zona horaria de quien mira la página — ver CalendarDayGroups.tsx (un
+  // evento a las 20:00 en Paraguay ya es la madrugada del día siguiente en
+  // España). Cada fila se renderiza aquí y se le pasa a ese componente
+  // cliente solo para decidir el agrupado por día.
+  const calendarRows: CalendarDayRow[] = buildCalendarRows(events).map((row, i) => {
+    const event = row.event;
+    return {
+      key: `${event.id}-${i}`,
+      scheduledAt: row.scheduledAt.toISOString(),
+      node: (
+        <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4 min-w-0">
+              <LocalDateTime
+                value={row.scheduledAt}
+                options={{ hour: "2-digit", minute: "2-digit" }}
+                className="font-display w-14 shrink-0 text-lg font-semibold text-indigo-400"
+              />
+              <div className="min-w-0">
+                <p className="font-display text-base font-semibold text-slate-100 truncate">
+                  {event.name}
+                  {row.rowLabel && (
+                    <span className="ml-2 text-xs font-normal text-slate-400">
+                      — {row.rowLabel}
+                    </span>
+                  )}
+                </p>
+                <p className="text-xs text-slate-400">
+                  {event.discipline.name} · {event.category.name}
+                  {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                </p>
+              </div>
+            </div>
+            <span className="whitespace-nowrap rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 shrink-0">
+              {statusLabel[event.status]}
+            </span>
+          </div>
+          {/* Botones de acceso directo a Predicción, Draft y Resultados de
+              esta prueba concreta, desde la propia fila del calendario. */}
+          <div className="mt-2.5 pl-[4.5rem] flex flex-wrap items-center gap-2">
+            <Link
+              href={`/predictions?event=${event.id}`}
+              className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
+            >
+              {t.prediction}
+            </Link>
+            <Link
+              href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
+              className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
+            >
+              {t.draft}
+            </Link>
+            {/* Mientras el evento no tiene resultados publicados (aún no
+                ha empezado o está en pista) se ofrece el Orden de Salida;
+                el botón de Resultados solo aparece cuando el admin ya
+                subió las puntuaciones. */}
+            {event.status === "RESULTS_IN" || event.status === "FINISHED" ? (
+              <Link
+                href={tabHref(event.id, "results")}
+                className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
+              >
+                {t.results}
+              </Link>
+            ) : (
+              <Link
+                href={tabHref(event.id, "entries")}
+                className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
+              >
+                {t.startOrder}
+              </Link>
+            )}
+          </div>
+        </div>
+      ),
+    };
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -186,96 +259,16 @@ export default async function CompetitionDetailPage({
 
             {showCalendar ? (
               <div className="space-y-6">
-                {dayGroups.length === 0 ? (
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
-                    <p className="text-slate-400 text-base">
-                      {t.noScheduled}
-                    </p>
-                  </div>
-                ) : (
-                  dayGroups.map((group) => (
-                    <section key={group.key}>
-                      <h2 className="font-display text-lg font-semibold capitalize text-slate-100 border-b border-slate-800 pb-2">
-                        {group.label}
-                      </h2>
-                      <ul className="mt-3 space-y-2">
-                        {group.events.map((row, i) => {
-                          const event = row.event;
-                          return (
-                          <li
-                            key={`${event.id}-${i}`}
-                            className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3"
-                          >
-                            <div className="flex items-center justify-between gap-4">
-                              <div className="flex items-center gap-4 min-w-0">
-                                <LocalDateTime
-                                  value={row.scheduledAt}
-                                  options={{ hour: "2-digit", minute: "2-digit" }}
-                                  className="font-display w-14 shrink-0 text-lg font-semibold text-indigo-400"
-                                />
-                                <div className="min-w-0">
-                                  <p className="font-display text-base font-semibold text-slate-100 truncate">
-                                    {event.name}
-                                    {row.rowLabel && (
-                                      <span className="ml-2 text-xs font-normal text-slate-400">
-                                        — {row.rowLabel}
-                                      </span>
-                                    )}
-                                  </p>
-                                  <p className="text-xs text-slate-400">
-                                    {event.discipline.name} · {event.category.name}
-                                    {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
-                                  </p>
-                                </div>
-                              </div>
-                              <span className="whitespace-nowrap rounded-full border border-slate-700 px-3 py-1 text-xs text-slate-300 shrink-0">
-                                {statusLabel[event.status]}
-                              </span>
-                            </div>
-                            {/* Botones de acceso directo a Predicción, Draft
-                                y Resultados de esta prueba concreta, desde la
-                                propia fila del calendario. */}
-                            <div className="mt-2.5 pl-[4.5rem] flex flex-wrap items-center gap-2">
-                              <Link
-                                href={`/predictions?event=${event.id}`}
-                                className="text-[11px] font-semibold bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-blue-900/30 inline-flex items-center gap-1"
-                              >
-                                {t.prediction}
-                              </Link>
-                              <Link
-                                href={`/events/${event.id}${row.segmentId ? `?segment=${row.segmentId}` : ""}`}
-                                className="text-[11px] font-semibold bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-indigo-900/30 inline-flex items-center gap-1"
-                              >
-                                {t.draft}
-                              </Link>
-                              {/* Mientras el evento no tiene resultados
-                                  publicados (aún no ha empezado o está en
-                                  pista) se ofrece el Orden de Salida; el
-                                  botón de Resultados solo aparece cuando el
-                                  admin ya subió las puntuaciones. */}
-                              {event.status === "RESULTS_IN" || event.status === "FINISHED" ? (
-                                <Link
-                                  href={tabHref(event.id, "results")}
-                                  className="text-[11px] font-semibold bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-lg transition shadow-sm shadow-emerald-900/30 inline-flex items-center gap-1"
-                                >
-                                  {t.results}
-                                </Link>
-                              ) : (
-                                <Link
-                                  href={tabHref(event.id, "entries")}
-                                  className="text-[11px] font-semibold bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded-lg transition shadow-sm inline-flex items-center gap-1"
-                                >
-                                  {t.startOrder}
-                                </Link>
-                              )}
-                            </div>
-                          </li>
-                          );
-                        })}
-                      </ul>
-                    </section>
-                  ))
-                )}
+                <CalendarDayGroups
+                  rows={calendarRows}
+                  sectionClassName=""
+                  headingClassName="font-display text-lg font-semibold capitalize text-slate-100 border-b border-slate-800 pb-2"
+                  emptyMessage={
+                    <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-12 text-center">
+                      <p className="text-slate-400 text-base">{t.noScheduled}</p>
+                    </div>
+                  }
+                />
               </div>
             ) : (
               <>

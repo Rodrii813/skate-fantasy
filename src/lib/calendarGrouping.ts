@@ -139,20 +139,35 @@ export function buildCalendarRows<T extends CalendarEventInput>(events: T[]): Ca
  * Como groupEventsByVenueDay, pero a partir de filas ya aplanadas con
  * buildCalendarRows (una fila puede ser un segmento/bloque suelto, no
  * necesariamente "el evento entero").
+ *
+ * IMPORTANTE — a diferencia de lo que dice el nombre, ahora acepta CUALQUIER
+ * zona horaria, no solo la de la sede: un evento a las 20:00 en Paraguay cae
+ * al día siguiente pasada la medianoche para quien mire desde España, así
+ * que agrupar siempre por el día de Paraguay hacía que esas filas salieran
+ * "en el día equivocado" para quien vea el calendario en su propia hora. La
+ * agrupación por día debe seguir la MISMA zona horaria que se usa para
+ * mostrar la hora de cada fila (ver <LocalDateTime> y CalendarDayGroups),
+ * así que se parametriza el timeZone en vez de fijarlo a VENUE_TIMEZONE.
+ * Se mantiene VENUE_TIMEZONE como valor por defecto para no romper el uso
+ * previo a esta función (p.ej. antes de que el cliente monte y se sepa la
+ * zona horaria real de quien mira la página).
  */
-export function groupCalendarRowsByVenueDay<T>(rows: CalendarRow<T>[]): DayGroup<CalendarRow<T>>[] {
+export function groupCalendarRowsByVenueDay<T>(
+  rows: CalendarRow<T>[],
+  timeZone: string = VENUE_TIMEZONE
+): DayGroup<CalendarRow<T>>[] {
   const sorted = [...rows].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 
   const dayGroups: DayGroup<CalendarRow<T>>[] = [];
   for (const row of sorted) {
-    const key = formatInTimeZone(row.scheduledAt, VENUE_TIMEZONE, {
+    const key = formatInTimeZone(row.scheduledAt, timeZone, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
     });
     let group = dayGroups.find((g) => g.key === key);
     if (!group) {
-      const label = formatInTimeZone(row.scheduledAt, VENUE_TIMEZONE, {
+      const label = formatInTimeZone(row.scheduledAt, timeZone, {
         weekday: "long",
         day: "numeric",
         month: "long",
