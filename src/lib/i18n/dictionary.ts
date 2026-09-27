@@ -512,6 +512,24 @@ export const dictionaries = {
       terms: "Términos",
       rights: (year: number) => `© ${year} Rollart Fantasy`,
     },
+    meta: {
+      competitions: {
+        title: "Competiciones",
+        description: "Consulta todas las competiciones y eventos de patinaje artístico cargados en Rollart Fantasy, con sus disciplinas y categorías.",
+      },
+      calendario: {
+        title: "Calendario",
+        description: "Calendario de todos los eventos de patinaje artístico: fechas, sedes y horas locales de cada disciplina y categoría.",
+      },
+      fantasy: {
+        title: "Fantasy",
+        description: "Draftea a tus patinadores para cada evento, consulta el estado del draft por segmento y sigue el ranking Fantasy.",
+      },
+      predictions: {
+        title: "Predicción",
+        description: "Predice el podio de cada evento de patinaje artístico y compite en el ranking de Predicción.",
+      },
+    },
   },
   en: {
     nav: {
@@ -1015,6 +1033,24 @@ export const dictionaries = {
       privacy: "Privacy",
       terms: "Terms",
       rights: (year: number) => `© ${year} Rollart Fantasy`,
+    },
+    meta: {
+      competitions: {
+        title: "Competitions",
+        description: "Browse every artistic skating competition and event loaded into Rollart Fantasy, with disciplines and categories.",
+      },
+      calendario: {
+        title: "Calendar",
+        description: "Schedule of every artistic skating event: dates, venues and local times for each discipline and category.",
+      },
+      fantasy: {
+        title: "Fantasy",
+        description: "Draft your skaters for each event, check the draft status per segment and follow the Fantasy ranking.",
+      },
+      predictions: {
+        title: "Predictions",
+        description: "Predict the podium for each artistic skating event and compete on the Predictions ranking.",
+      },
     },
   },
 } satisfies Record<Locale, Record<string, unknown>>;

@@ -10,6 +10,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const t = getDictionary(getLocale()).meta.predictions;
+  return { title: t.title, description: t.description };
+}
+
 // /predictions es ahora el hub de Predicción: selector Competición → Evento
 // (agrupado, más simple que el de /fantasy — no hace falta la tabla Draft
 // Status porque las predicciones no son por segmento), el formulario de

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 import Providers from "./providers";
 import NavBar from "./nav-bar";
@@ -6,9 +7,33 @@ import Footer from "./_components/Footer";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { LocaleProvider } from "@/lib/i18n/LocaleContext";
 
+const BASE_URL = process.env.NEXTAUTH_URL || "https://rollartfantasy.com";
+const SITE_TITLE = "Rollart Fantasy — World Skate Games";
+const SITE_DESCRIPTION =
+  "Elige a tus patinadores para cada elemento y compite en el ranking global.";
+
+// metadataBase + openGraph/twitter: sin esto, cuando alguien comparte un
+// enlace de la web en WhatsApp/Twitter/Facebook no aparece ninguna tarjeta
+// (ni imagen, ni título, ni descripción) — solo la URL pelada. La imagen
+// referenciada (opengraph-image.png, junto a este archivo) la detecta Next
+// automáticamente por convención de nombre.
 export const metadata: Metadata = {
-  title: "Rollart Fantasy — World Skate Games",
-  description: "Elige a tus patinadores para cada elemento y compite en el ranking global.",
+  metadataBase: new URL(BASE_URL),
+  title: { default: SITE_TITLE, template: `%s — Rollart Fantasy` },
+  description: SITE_DESCRIPTION,
+  openGraph: {
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: BASE_URL,
+    siteName: "Rollart Fantasy",
+    locale: "es_ES",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -36,6 +61,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Footer />
           </Providers>
         </LocaleProvider>
+        <Analytics />
       </body>
     </html>
   );

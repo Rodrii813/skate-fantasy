@@ -7,6 +7,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
+// Sin generateMetadata propio a propósito: el título/descripción por
+// defecto del layout raíz (src/app/layout.tsx) ya es exactamente el de la
+// home, y la plantilla de título ("%s — Rollart Fantasy") duplicaría la
+// marca si se repitiera aquí.
+
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
   const t = getDictionary(getLocale()).home;

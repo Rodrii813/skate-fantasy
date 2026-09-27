@@ -8,6 +8,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const t = getDictionary(getLocale()).meta.calendario;
+  return { title: t.title, description: t.description };
+}
+
 export default async function CalendarioPage() {
   const dict = getDictionary(getLocale());
   const t = dict.calendario;

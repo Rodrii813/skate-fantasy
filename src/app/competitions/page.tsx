@@ -6,6 +6,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const t = getDictionary(getLocale()).meta.competitions;
+  return { title: t.title, description: t.description };
+}
+
 export default async function CompetitionsPage() {
   const t = getDictionary(getLocale()).competitionsHub;
   const competitions = await prisma.competition.findMany({

@@ -9,6 +9,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 
 export const dynamic = "force-dynamic";
 
+export async function generateMetadata() {
+  const t = getDictionary(getLocale()).meta.fantasy;
+  return { title: t.title, description: t.description };
+}
+
 // /fantasy es el hub del modo Fantasy: selector Competición → Evento
 // presentado como tabla "Draft Status" (filas = segmento Corto/Largo,
 // columnas = combinaciones disciplina+género que existan de verdad en la
