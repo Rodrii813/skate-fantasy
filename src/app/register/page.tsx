@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -109,6 +110,17 @@ export default function RegisterPage() {
         >
           {loading ? t.creating : t.register}
         </button>
+        <p className="text-center text-xs text-ice-100/50">
+          {t.agreePrefix}{" "}
+          <Link href="/terminos" className="text-gold hover:underline">
+            {t.registerAgreementTerms}
+          </Link>{" "}
+          {t.agreeMiddle}{" "}
+          <Link href="/privacidad" className="text-gold hover:underline">
+            {t.registerAgreementPrivacy}
+          </Link>
+          .
+        </p>
       </form>
     </div>
   );

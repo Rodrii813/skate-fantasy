@@ -206,6 +206,10 @@ export const dictionaries = {
       loginNotVerified: "Todavía no has confirmado tu email. Revisa tu bandeja de entrada.",
       verifySuccess: "¡Email confirmado! Ya puedes iniciar sesión.",
       verifyInvalid: "Ese enlace de confirmación no es válido o ha caducado. Pide uno nuevo iniciando sesión.",
+      agreePrefix: "Al crear una cuenta, aceptas nuestros",
+      agreeMiddle: "y nuestra",
+      registerAgreementTerms: "Términos",
+      registerAgreementPrivacy: "Política de Privacidad",
     },
     predictions: {
       title: "Prediction Central",
@@ -451,6 +455,62 @@ export const dictionaries = {
         notFound: "Esta liga no existe.",
       },
     },
+    legal: {
+      privacyTitle: "Privacidad",
+      privacyTag: "Legal",
+      privacyIntro:
+        "Esto es lo que guardamos sobre ti en Rollart Fantasy, para qué lo usamos y cómo pedir que lo borremos.",
+      privacy: {
+        s1Title: "Qué datos guardamos",
+        s1: [
+          "Tu nombre de usuario (nickname) y tu email, para identificarte y poder contactarte si hace falta.",
+          "Tu contraseña, siempre cifrada — nunca la guardamos ni la vemos en texto plano.",
+          "Tus elecciones de Fantasy y de Predicciones (qué patinadores elegiste en cada evento), para calcular tu puntuación y los rankings.",
+          "El idioma y la zona horaria que elijas, para mostrarte la web como te resulte más cómoda.",
+        ],
+        s2Title: "Para qué las usamos",
+        s2: [
+          "Crear y proteger tu cuenta: verificar tu email al registrarte y poder restablecer tu contraseña si la olvidas.",
+          "Calcular y mostrar los rankings de Fantasy y Predicciones.",
+          "Enviarte solo los correos imprescindibles del servicio (confirmación de email, restablecimiento de contraseña). No enviamos publicidad ni usamos tu email con fines de marketing.",
+        ],
+        s3Title: "Con quién se comparten",
+        s3: [
+          "Resend, el proveedor que usamos para enviar esos correos.",
+          "Neon (base de datos) y Vercel (donde vive la aplicación), que alojan la información técnicamente.",
+          "No vendemos ni cedemos tus datos a nadie más.",
+        ],
+        s4Title: "Cookies",
+        s4: "Solo usamos cookies técnicas necesarias para que la web funcione: mantener tu sesión iniciada y recordar el idioma que elegiste. No usamos cookies de publicidad ni de seguimiento de terceros.",
+        s5Title: "Tus derechos",
+        s5: (email: string) =>
+          `Puedes pedirnos en cualquier momento acceder a tus datos, corregirlos o borrarlos por completo escribiendo a ${email}.`,
+      },
+      termsTitle: "Términos de uso",
+      termsTag: "Legal",
+      terms: {
+        intro:
+          "Rollart Fantasy es un juego de fantasy no oficial creado por un aficionado al patinaje artístico. No está afiliado ni respaldado por World Skate ni por ninguna federación.",
+        s1Title: "Qué es esto",
+        s1: "Es un servicio gratuito y sin dinero real de por medio: no hay apuestas, ni premios en metálico, ni pagos de ningún tipo. Es un juego de predicción y puntos, por diversión, dentro de la comunidad del patinaje artístico.",
+        s2Title: "Tu cuenta",
+        s2: "Eres responsable de mantener tu contraseña en secreto y de lo que ocurra en tu cuenta. Usa un nickname respetuoso: nos reservamos el derecho de suspender cuentas con nombres ofensivos o que suplanten a otra persona.",
+        s3Title: "Datos de las competiciones",
+        s3: "Los resultados oficiales que se usan para puntuar se introducen a partir de los protocolos públicos de World Skate. Rollart Fantasy no organiza las competiciones ni garantiza que esos datos estén siempre libres de errores.",
+        s4Title: "Uso aceptable",
+        s4: "No está permitido usar la web para hacer trampas, manipular resultados, crear cuentas falsas o suplantar a otra persona.",
+        s5Title: "Cambios y disponibilidad",
+        s5: "El servicio, incluidas las reglas de puntuación de cada modalidad, puede cambiar, pausarse o interrumpirse en cualquier momento.",
+        s6Title: "Contacto",
+        s6: (email: string) => `¿Dudas sobre estos términos? Escríbenos a ${email}.`,
+      },
+    },
+    footer: {
+      tagline: "Fantasy no oficial de patinaje artístico — no afiliado a World Skate.",
+      privacy: "Privacidad",
+      terms: "Términos",
+      rights: (year: number) => `© ${year} Rollart Fantasy`,
+    },
   },
   en: {
     nav: {
@@ -650,6 +710,10 @@ export const dictionaries = {
       loginNotVerified: "You haven't confirmed your email yet. Check your inbox.",
       verifySuccess: "Email confirmed! You can sign in now.",
       verifyInvalid: "That confirmation link is invalid or has expired. Sign in to request a new one.",
+      agreePrefix: "By creating an account, you agree to our",
+      agreeMiddle: "and our",
+      registerAgreementTerms: "Terms",
+      registerAgreementPrivacy: "Privacy Policy",
     },
     predictions: {
       title: "Prediction Central",
@@ -893,6 +957,62 @@ export const dictionaries = {
         noRanking: "No scoreable rosters yet to show this ranking.",
         notFound: "This league doesn't exist.",
       },
+    },
+    legal: {
+      privacyTitle: "Privacy",
+      privacyTag: "Legal",
+      privacyIntro:
+        "This is what we store about you on Rollart Fantasy, what we use it for, and how to ask us to delete it.",
+      privacy: {
+        s1Title: "What we store",
+        s1: [
+          "Your username (nickname) and email, to identify you and reach you if needed.",
+          "Your password, always encrypted — we never store or see it as plain text.",
+          "Your Fantasy and Prediction picks (which skaters you chose for each event), to calculate your score and the rankings.",
+          "Your chosen language and timezone, so the site shows up the way that's comfortable for you.",
+        ],
+        s2Title: "What we use it for",
+        s2: [
+          "Creating and protecting your account: verifying your email when you register, and letting you reset your password if you forget it.",
+          "Calculating and showing the Fantasy and Predictions rankings.",
+          "Sending you only the essential service emails (email confirmation, password reset). We don't send advertising or use your email for marketing.",
+        ],
+        s3Title: "Who we share it with",
+        s3: [
+          "Resend, the provider we use to send those emails.",
+          "Neon (database) and Vercel (where the app runs), which host the information.",
+          "We don't sell or hand over your data to anyone else.",
+        ],
+        s4Title: "Cookies",
+        s4: "We only use the technical cookies needed for the site to work: keeping you signed in and remembering your chosen language. We don't use advertising or third-party tracking cookies.",
+        s5Title: "Your rights",
+        s5: (email: string) =>
+          `You can ask us at any time to access, correct, or fully delete your data by writing to ${email}.`,
+      },
+      termsTitle: "Terms of use",
+      termsTag: "Legal",
+      terms: {
+        intro:
+          "Rollart Fantasy is an unofficial fantasy game made by an artistic skating fan. It is not affiliated with or endorsed by World Skate or any federation.",
+        s1Title: "What this is",
+        s1: "This is a free service with no real money involved: no betting, no cash prizes, no payments of any kind. It's a prediction-and-points game, for fun, within the artistic skating community.",
+        s2Title: "Your account",
+        s2: "You're responsible for keeping your password secret and for what happens under your account. Use a respectful nickname — we reserve the right to suspend accounts with offensive names or ones impersonating someone else.",
+        s3Title: "Competition data",
+        s3: "The official results used to score events are entered from World Skate's public protocols. Rollart Fantasy does not organize the competitions and doesn't guarantee that data is always free of errors.",
+        s4Title: "Acceptable use",
+        s4: "You may not use the site to cheat, manipulate results, create fake accounts, or impersonate someone else.",
+        s5Title: "Changes and availability",
+        s5: "The service, including the scoring rules for each discipline, may change, pause, or be interrupted at any time.",
+        s6Title: "Contact",
+        s6: (email: string) => `Questions about these terms? Write to us at ${email}.`,
+      },
+    },
+    footer: {
+      tagline: "Unofficial artistic skating fantasy game — not affiliated with World Skate.",
+      privacy: "Privacy",
+      terms: "Terms",
+      rights: (year: number) => `© ${year} Rollart Fantasy`,
     },
   },
 } satisfies Record<Locale, Record<string, unknown>>;

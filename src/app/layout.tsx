@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
 import NavBar from "./nav-bar";
+import Footer from "./_components/Footer";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { LocaleProvider } from "@/lib/i18n/LocaleContext";
 
@@ -27,11 +28,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           rel="stylesheet"
         />
       </head>
-      <body className="font-body min-h-screen">
+      <body className="font-body flex min-h-screen flex-col">
         <LocaleProvider initialLocale={locale}>
           <Providers>
             <NavBar />
-            <main className="mx-auto max-w-5xl px-4 pb-24 pt-8">{children}</main>
+            <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8">{children}</main>
+            <Footer />
           </Providers>
         </LocaleProvider>
       </body>
