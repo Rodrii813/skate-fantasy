@@ -637,8 +637,8 @@ export default function EventsManager({
                 </button>
 
                 {isExpanded && (
-                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 px-5 pb-5 border-t border-slate-800/80 pt-4">
-                    <div className="flex-1 min-w-0">
+                  <div className="space-y-4 px-5 pb-5 border-t border-slate-800/80 pt-4">
+                    <div>
                   {/* Plazo de fichaje propio por segmento (Corto/Largo). Si
                       se deja vacío, el segmento hereda el "Cierre de
                       Plantillas" general del evento de arriba. */}
