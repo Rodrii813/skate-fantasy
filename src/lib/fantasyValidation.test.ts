@@ -172,7 +172,49 @@ describe("validateFantasyRoster — reglas por segmento, independientes", () => 
     expect(result.errorMessage).toContain("Warmup Group 3");
   });
 
-  it("invalida solo el segmento con el componente repetido en el mismo grupo", () => {
+  it("invalida el Largo por componente repetido en el mismo grupo, cuando hay 3+ grupos de calentamiento", () => {
+    // El fixture compartido (`registrations`) solo tiene 2 valores
+    // distintos de warmupGroupLong ({1,2}) — con 2 grupos o menos ya NO se
+    // aplica ningún límite de grupo (ver el test de más abajo). Para seguir
+    // cubriendo el mecanismo de "máx 1 componente por grupo" en sí, este
+    // test usa un fixture aparte con 3 grupos distintos en el Largo.
+    const registrations3Groups: RegistrationInfo[] = [
+      { skaterId: "A", warmupGroupShort: 1, warmupGroupLong: 1 },
+      { skaterId: "B", warmupGroupShort: 1, warmupGroupLong: 1 },
+      { skaterId: "C", warmupGroupShort: 1, warmupGroupLong: 2 },
+      { skaterId: "D", warmupGroupShort: 1, warmupGroupLong: 3 },
+    ];
+    const picks: Record<string, string> = {
+      "long-combo1": "C",
+      "long-combo2": "D",
+      "long-comp1": "A",
+      "long-comp2": "A", // warmupGroupLong de A = 1, igual que long-comp1 (también A)
+    };
+
+    const result = validateFantasyRoster({
+      slots: longSlots,
+      registrations: registrations3Groups,
+      segments,
+      picks,
+    });
+
+    const longResult = result.segments[0];
+    expect(longResult.segmentId).toBe(LONG_SEGMENT_ID);
+    expect(longResult.valid).toBe(false);
+    expect(longResult.exceedsCompGroup).toBe(true);
+    expect(result.valid).toBe(false);
+    expect(result.errorMessage).toContain("Largo:");
+  });
+
+  it("no aplica ningún límite de grupo cuando el segmento solo tiene 2 grupos de calentamiento (o menos)", () => {
+    // Regla de negocio confirmada: las restricciones de grupo ("máx 2
+    // técnicos por grupo", "máx 1 componente por grupo") solo tienen
+    // sentido con 3+ grupos de sobra para repartir los slots. Con 2 grupos
+    // o menos pueden hacer IMPOSIBLE completar el roster, así que dejan de
+    // aplicarse por completo. El fixture compartido (`registrations`) solo
+    // tiene 2 valores distintos de warmupGroupLong ({1,2}), así que aquí
+    // repetir el mismo grupo en dos slots de Componentes del Largo YA NO
+    // debe invalidar el roster (antes de este cambio, sí lo hacía).
     const picks: Record<string, string> = {
       ...validPicks,
       "long-comp2": "A", // warmupGroupLong de A = 1, igual que long-comp1 (también A)
@@ -185,14 +227,11 @@ describe("validateFantasyRoster — reglas por segmento, independientes", () => 
       picks,
     });
 
-    const shortResult = result.segments.find((s) => s.segmentId === SHORT_SEGMENT_ID)!;
     const longResult = result.segments.find((s) => s.segmentId === LONG_SEGMENT_ID)!;
 
-    expect(shortResult.valid).toBe(true);
-    expect(longResult.valid).toBe(false);
-    expect(longResult.exceedsCompGroup).toBe(true);
-    expect(result.valid).toBe(false);
-    expect(result.errorMessage).toContain("Largo:");
+    expect(longResult.exceedsCompGroup).toBe(false);
+    expect(longResult.valid).toBe(true);
+    expect(result.valid).toBe(true);
   });
 
   it("invalida solo el segmento con una patinadora repetida en técnica", () => {

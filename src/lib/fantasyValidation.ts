@@ -122,6 +122,17 @@ function validateSegment(
   const maxGroupNum = groupNums[0] ?? 1;
   const secondMaxGroupNum = groupNums[1] ?? 0;
 
+  // Las reglas de grupo ("máx 2 técnicos por grupo", "máx 1 componente por
+  // grupo") solo tienen sentido cuando hay grupos de sobra para repartir los
+  // slots sin agobios — se pensaron para categorías grandes con 3+ grupos de
+  // calentamiento. Con solo 1 o 2 grupos en la categoría, esas mismas reglas
+  // pueden hacer IMPOSIBLE completar el roster (p.ej. 5 slots técnicos y
+  // solo 2 grupos ya supera el tope de 2+2; con 1 solo grupo, cualquier
+  // categoría con más de 2 slots técnicos, o más de 1 slot de Componentes,
+  // deja de poder completarse nunca). Por eso, con 2 grupos o menos, no se
+  // aplica ningún límite de grupo — ni en técnicos ni en Componentes.
+  const hasEnoughGroupsForRule = groupNums.length > 2;
+
   const techSkaterCounts: Record<string, number> = {};
   const techGroupUsage: Record<number, number> = {};
   for (const slot of technicalSlots) {
@@ -142,9 +153,9 @@ function validateSegment(
 
   const countTopGroup = techGroupUsage[maxGroupNum] || 0;
   const countSecondGroup = secondMaxGroupNum ? techGroupUsage[secondMaxGroupNum] || 0 : 0;
-  const exceedsTopTech = countTopGroup > 2;
-  const exceedsSecondTech = countSecondGroup > 2;
-  const exceedsCompGroup = Object.values(compGroupUsage).some((c) => c > 1);
+  const exceedsTopTech = hasEnoughGroupsForRule && countTopGroup > 2;
+  const exceedsSecondTech = hasEnoughGroupsForRule && countSecondGroup > 2;
+  const exceedsCompGroup = hasEnoughGroupsForRule && Object.values(compGroupUsage).some((c) => c > 1);
 
   const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > 1);
 
