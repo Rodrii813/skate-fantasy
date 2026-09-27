@@ -54,27 +54,49 @@ enum ShowFormat {
 }
 
 model User {
-  id                String                @id @default(cuid())
+  id                String                     @id @default(cuid())
   // Nickname público del usuario: se muestra en todos los rankings (Fantasy,
   // Predicciones, Ligas). Es único a propósito — así en el ranking no hay
   // ambigüedad sobre quién es quién.
-  name              String                @unique
-  email             String                @unique
+  name              String                     @unique
+  email             String                     @unique
   passwordHash      String
-  role              Role                  @default(USER)
-  createdAt         DateTime              @default(now())
+  role              Role                       @default(USER)
+  // null = todavía no ha confirmado su email (no puede iniciar sesión, ver
+  // src/lib/auth.ts); se rellena con la fecha real de verificación al pulsar
+  // el enlace del correo (ver EmailVerificationToken más abajo).
+  emailVerified     DateTime?
+  createdAt         DateTime                   @default(now())
   rosters           FantasyRoster[]
   predictions       Prediction[]
-  ownedLeagues      League[]              @relation("LeagueOwner")
+  ownedLeagues      League[]                   @relation("LeagueOwner")
   leagueMemberships LeagueMembership[]
   passwordResets    PasswordResetToken[]
+  emailVerifications EmailVerificationToken[]
 }
 
 // Recuperación de contraseña: token de un solo uso, con caducidad de 1 hora,
-// enviado por email (ver src/lib/email.ts, usa Resend). No se implementa
-// verificación de email en el registro (decisión explícita: mantenerlo
-// simple), pero SÍ hace falta poder enviar correos para este flujo.
+// enviado por email (ver src/lib/email.ts, usa Resend).
 model PasswordResetToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
+
+// Verificación de email en el registro: token de un solo uso, con caducidad
+// de 24 horas, enviado por email (ver src/lib/email.ts, usa Resend). El
+// login está bloqueado (ver src/lib/auth.ts) hasta que el usuario confirma
+// con el enlace de este token y User.emailVerified deja de ser null.
+// Estructura idéntica a PasswordResetToken a propósito, pero como modelo
+// aparte: son dos flujos independientes (uno no debe poder usarse para el
+// otro) y la caducidad es distinta (24h aquí, 1h en el reset de contraseña).
+model EmailVerificationToken {
   id        String    @id @default(cuid())
   token     String    @unique
   userId    String

@@ -46,3 +46,36 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
     `,
   });
 }
+
+export async function sendVerificationEmail(to: string, verifyUrl: string) {
+  if (!resend) {
+    console.warn(
+      "[email] RESEND_API_KEY no configurada — no se ha enviado el email de verificación. Enlace de prueba:",
+      verifyUrl
+    );
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM,
+    to,
+    subject: "Confirma tu email — Rollart Fantasy",
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+        <h2 style="margin-bottom: 4px;">¡Ya casi está!</h2>
+        <p>Confirma tu email para poder iniciar sesión en tu cuenta de Rollart Fantasy.</p>
+        <p style="margin: 24px 0;">
+          <a
+            href="${verifyUrl}"
+            style="display:inline-block;background:#facc15;color:#0f172a;padding:10px 22px;border-radius:9999px;text-decoration:none;font-weight:600;"
+          >
+            Confirmar mi email
+          </a>
+        </p>
+        <p style="color:#64748b;font-size:13px;">
+          Este enlace caduca en 24 horas. Si no has creado una cuenta en Rollart Fantasy, puedes ignorar este correo sin problema.
+        </p>
+      </div>
+    `,
+  });
+}

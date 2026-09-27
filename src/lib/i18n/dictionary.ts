@@ -197,6 +197,15 @@ export const dictionaries = {
       resetDone: "¡Contraseña actualizada! Te llevamos a iniciar sesión...",
       resetError: "No se ha podido restablecer la contraseña.",
       resetInvalidLink: "Este enlace no es válido o ha caducado. Pide uno nuevo.",
+      registerCheckEmailTitle: "Revisa tu email",
+      registerCheckEmailBody: (email: string) =>
+        `Te hemos enviado un enlace de confirmación a ${email}. Ábrelo para poder iniciar sesión. Revisa también la carpeta de spam.`,
+      resendVerification: "¿No te ha llegado? Reenviar email",
+      resendSending: "Enviando...",
+      resendSent: "Enviado. Revisa tu bandeja (y spam).",
+      loginNotVerified: "Todavía no has confirmado tu email. Revisa tu bandeja de entrada.",
+      verifySuccess: "¡Email confirmado! Ya puedes iniciar sesión.",
+      verifyInvalid: "Ese enlace de confirmación no es válido o ha caducado. Pide uno nuevo iniciando sesión.",
     },
     predictions: {
       title: "Prediction Central",
@@ -632,6 +641,15 @@ export const dictionaries = {
       resetDone: "Password updated! Taking you to sign in...",
       resetError: "Couldn't reset the password.",
       resetInvalidLink: "This link is invalid or has expired. Request a new one.",
+      registerCheckEmailTitle: "Check your email",
+      registerCheckEmailBody: (email: string) =>
+        `We've sent a confirmation link to ${email}. Open it to sign in. Check your spam folder too.`,
+      resendVerification: "Didn't get it? Resend email",
+      resendSending: "Sending...",
+      resendSent: "Sent. Check your inbox (and spam).",
+      loginNotVerified: "You haven't confirmed your email yet. Check your inbox.",
+      verifySuccess: "Email confirmed! You can sign in now.",
+      verifyInvalid: "That confirmation link is invalid or has expired. Sign in to request a new one.",
     },
     predictions: {
       title: "Prediction Central",

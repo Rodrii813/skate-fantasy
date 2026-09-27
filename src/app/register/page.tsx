@@ -1,13 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
 export default function RegisterPage() {
-  const router = useRouter();
   const { locale } = useLocale();
   const t = getDictionary(locale).auth;
   const [name, setName] = useState("");
@@ -15,6 +12,12 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // Antes, al registrarse, se iniciaba sesión automáticamente y se
+  // redirigía a /events. Ahora el login está bloqueado hasta confirmar el
+  // email (ver src/lib/auth.ts), así que en vez de eso se muestra este aviso
+  // con la opción de reenviar el correo si no llega.
+  const [registered, setRegistered] = useState(false);
+  const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -34,10 +37,34 @@ export default function RegisterPage() {
       return;
     }
 
-    await signIn("credentials", { email, password, redirect: false });
     setLoading(false);
-    router.push("/events");
-    router.refresh();
+    setRegistered(true);
+  }
+
+  async function handleResend() {
+    setResendState("sending");
+    await fetch("/api/auth/resend-verification", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    setResendState("sent");
+  }
+
+  if (registered) {
+    return (
+      <div className="mx-auto max-w-sm py-10">
+        <h1 className="font-display text-3xl font-semibold text-white">{t.registerCheckEmailTitle}</h1>
+        <p className="mt-4 text-sm text-ice-100/80">{t.registerCheckEmailBody(email)}</p>
+        <button
+          onClick={handleResend}
+          disabled={resendState !== "idle"}
+          className="mt-6 text-sm text-gold hover:underline disabled:opacity-60"
+        >
+          {resendState === "sending" ? t.resendSending : resendState === "sent" ? t.resendSent : t.resendVerification}
+        </button>
+      </div>
+    );
   }
 
   return (

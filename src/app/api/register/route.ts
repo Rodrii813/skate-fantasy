@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(req: Request) {
   const { name, email, password } = await req.json();
@@ -44,7 +46,27 @@ export async function POST(req: Request) {
     const user = await prisma.user.create({
       data: { name: trimmedName, email: normalizedEmail, passwordHash },
     });
-    return NextResponse.json({ id: user.id, name: user.name, email: user.email });
+
+    // Email de verificación: el login queda bloqueado (ver src/lib/auth.ts)
+    // hasta que confirme con este enlace, así que hay que enviarlo ya mismo
+    // — si el envío falla, no revertimos la creación de la cuenta (puede
+    // pedir que se le reenvíe desde /api/auth/resend-verification), solo lo
+    // registramos para depurar.
+    const token = crypto.randomBytes(32).toString("hex");
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    await prisma.emailVerificationToken.create({
+      data: { token, userId: user.id, expiresAt },
+    });
+
+    const baseUrl = process.env.NEXTAUTH_URL || new URL(req.url).origin;
+    const verifyUrl = `${baseUrl}/api/auth/verify-email?token=${token}`;
+    try {
+      await sendVerificationEmail(user.email, verifyUrl);
+    } catch (emailErr) {
+      console.error("Error al enviar el email de verificación:", emailErr);
+    }
+
+    return NextResponse.json({ id: user.id, name: user.name, email: user.email, needsVerification: true });
   } catch (err: any) {
     if (err?.code === "P2002") {
       return NextResponse.json(

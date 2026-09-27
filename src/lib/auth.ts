@@ -24,6 +24,16 @@ export const authOptions: NextAuthOptions = {
         const valid = await bcrypt.compare(credentials.password, user.passwordHash);
         if (!valid) return null;
 
+        // Bloquea el login hasta que confirme el email (ver
+        // EmailVerificationToken en el schema y /api/auth/verify-email).
+        // Lanzar el error (en vez de "return null") es lo que permite que el
+        // mensaje concreto "EMAIL_NOT_VERIFIED" llegue tal cual al cliente
+        // en signIn(...).error, para poder mostrar un botón de "reenviar
+        // email" en vez del genérico "credenciales incorrectas".
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED");
+        }
+
         return { id: user.id, name: user.name, email: user.email, role: user.role };
       },
     }),
