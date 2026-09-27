@@ -1,5 +1,22 @@
 export interface ElementExecution {
-  type: "COMBO_JUMP" | "SOLO_JUMP" | "AXEL" | "SPIN" | "STEP" | "CHOREO";
+  // Los 5 primeros tipos ya existían (Libre). Los siguientes son propios de
+  // Parejas/Danza — antes de este cambio, el parser no reconocía NINGUNO de
+  // sus elementos (ni "Lift", ni "Dance Step", ni "Dance Traveling", ni
+  // "Spiral" estaban en la lista de palabras clave), así que un acta de
+  // Parejas o Danza producía 0 elementos.
+  type:
+    | "COMBO_JUMP"
+    | "SOLO_JUMP"
+    | "AXEL"
+    | "SPIN"
+    | "STEP"
+    | "CHOREO"
+    | "TWIST_JUMP"
+    | "THROW_JUMP"
+    | "LIFT"
+    | "DEATH_SPIRAL"
+    | "DANCE_TRAVELING"
+    | "DANCE_STEP";
   name: string;
   score: number;
 }
@@ -44,14 +61,45 @@ export interface SkaterDetailedResult {
     choreoSequence: number;
     pcsSkatingTransitions: number;
     pcsPerformanceChoreo: number;
+    // Campos de Parejas/Danza: a diferencia de Combo/Solo Jump en Libre (que
+    // cogen el MEJOR valor de la patinadora), estos son "packs" — se suman
+    // TODOS los elementos de ese tipo ejecutados en el programa, sea cual
+    // sea su número, siguiendo la misma norma que ya se aplicaba a
+    // spinsTotal. "Traveling Couples" y "No Hold Sequence" (Danza) llevan
+    // una nota separada para Hombre y Mujer en el acta oficial (p.ej.
+    // "Traveling Couples (M)" / "Traveling Couples (L)"); esa suma queda ya
+    // hecha en cada score de `elements` antes de llegar aquí (ver el bucle
+    // principal), así que estos totales no necesitan sumar M+L aparte.
+    twistJumpTotal: number;
+    throwJumpTotal: number;
+    liftsTotal: number;
+    deathSpiralTotal: number;
+    danceTravelingTotal: number;
+    danceStepTotal: number;
   };
 }
 
 function keywordToType(keyword: string, nearbyText: string): ElementExecution["type"] {
   if (keyword === "ComboJump") return "COMBO_JUMP";
-  if (keyword === "Jump") return nearbyText.includes("Axel") ? "AXEL" : "SOLO_JUMP";
+  if (keyword === "Jump") {
+    // En Parejas hay 3 sabores de salto que comparten la misma palabra
+    // clave "Jump" en el acta ("Jump1 3 Twist Lutz...", "Jump2 Throw 3
+    // Loop...", "Jump3 2 Axel..."): el texto de la propia línea dice cuál
+    // es. Un salto por parejas simultáneo (side by side) que no sea Axel
+    // cae en SOLO_JUMP por no tener aquí un tipo propio todavía — no rompe
+    // Libre (que nunca tiene "Twist"/"Throw" en el texto) y deja repartir
+    // bien al menos Twist y Throw, los dos que de verdad hacía falta no
+    // perder al sumarlos con el resto.
+    if (nearbyText.includes("Twist")) return "TWIST_JUMP";
+    if (nearbyText.includes("Throw")) return "THROW_JUMP";
+    return nearbyText.includes("Axel") ? "AXEL" : "SOLO_JUMP";
+  }
   if (keyword === "ComboSpin" || keyword === "Spin") return "SPIN";
   if (keyword === "Step Sequence") return "STEP";
+  if (keyword === "Lift" || keyword === "ComboLift") return "LIFT";
+  if (keyword === "Dance Traveling") return "DANCE_TRAVELING";
+  if (keyword === "Dance Step") return "DANCE_STEP";
+  if (keyword === "Spiral") return "DEATH_SPIRAL";
   return "CHOREO";
 }
 
@@ -105,6 +153,12 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
         choreoSequence: 0,
         pcsSkatingTransitions: 0,
         pcsPerformanceChoreo: 0,
+        twistJumpTotal: 0,
+        throwJumpTotal: 0,
+        liftsTotal: 0,
+        deathSpiralTotal: 0,
+        danceTravelingTotal: 0,
+        danceStepTotal: 0,
       },
     };
 
@@ -164,9 +218,28 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     // marcas de jueces pegadas al final de una línea ("+1+1+1+1+11.00")
     // pueden "empalmar" con el número del inicio de la línea siguiente y
     // formar un número falso que contamina el elemento equivocado.
-    const declRegexA =
-      /^(\d+\.\d{2})\s+(\d+\.\d{2})(ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step)(\d+)/gm;
-    const declRegexB = /(ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step)(\d+)/g;
+    //
+    // "Lift"/"ComboLift"/"Dance Traveling"/"Dance Step"/"Spiral" son propias
+    // de Parejas/Danza — antes no estaban aquí, así que un acta de esas
+    // modalidades no capturaba NINGÚN elemento (quedaban todos en 0). Con
+    // "Dance Traveling" y "Dance Step" en concreto, el acta de Danza da 2
+    // notas separadas para "Traveling Couples" y "No Hold Sequence" — una
+    // para el Hombre y otra para la Mujer, cada una en su propia línea
+    // ("Traveling Couples (M)" seguida de "Traveling Couples (L)"), pero
+    // solo la primera (M) lleva la declaración con palabra clave + número;
+    // la segunda (L) es una línea de "base final" suelta, sin palabra clave
+    // propia. Eso significa que el mecanismo que ya existía para sumar las
+    // piezas de un ComboSpin (ver el flush() de más abajo) suma la nota de
+    // la Mujer dentro del MISMO elemento automáticamente, sin tocar nada
+    // más — declarar aquí la palabra clave ya basta para que M+L salgan
+    // sumados como un único valor.
+    const elementKeywords =
+      "ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step|ComboLift|Lift|Dance Traveling|Dance Step|Spiral";
+    const declRegexA = new RegExp(
+      `^(\\d+\\.\\d{2})\\s+(\\d+\\.\\d{2})(${elementKeywords})(\\d+)`,
+      "gm"
+    );
+    const declRegexB = new RegExp(`(${elementKeywords})(\\d+)`, "g");
     const pairRegex = /^(\d+\.\d{2})\s+(\d+\.\d{2})/gm;
 
     type Ev =
@@ -237,6 +310,12 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     const spins = skaterResult.elements.filter((e) => e.type === "SPIN");
     const choreos = skaterResult.elements.filter((e) => e.type === "CHOREO");
     const steps = skaterResult.elements.filter((e) => e.type === "STEP");
+    const twistJumps = skaterResult.elements.filter((e) => e.type === "TWIST_JUMP");
+    const throwJumps = skaterResult.elements.filter((e) => e.type === "THROW_JUMP");
+    const lifts = skaterResult.elements.filter((e) => e.type === "LIFT");
+    const deathSpirals = skaterResult.elements.filter((e) => e.type === "DEATH_SPIRAL");
+    const danceTravelings = skaterResult.elements.filter((e) => e.type === "DANCE_TRAVELING");
+    const danceSteps = skaterResult.elements.filter((e) => e.type === "DANCE_STEP");
 
     // Un único valor por tipo: la MEJOR combinación y el MEJOR salto suelto
     // de esta patinadora (no "el mejor" y "el segundo mejor" por separado —
@@ -256,6 +335,19 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     skaterResult.slotScores.spinsTotal = Number(spins.reduce((acc, curr) => acc + curr.score, 0).toFixed(2));
     skaterResult.slotScores.choreoSequence = choreos[0]?.score || 0;
     skaterResult.slotScores.stepSequence = steps[0]?.score || 0;
+
+    // Parejas/Danza: "pack" con la suma de TODOS los elementos de ese tipo
+    // ejecutados en el programa (mismo criterio que spinsTotal de arriba).
+    // Cada score de `elements` ya trae sumadas sus notas Hombre+Mujer
+    // cuando el elemento las tenía por separado (Traveling Couples, No Hold
+    // Sequence), así que aquí no hay que volver a sumar nada por eso.
+    const sum = (arr: ElementExecution[]) => Number(arr.reduce((acc, curr) => acc + curr.score, 0).toFixed(2));
+    skaterResult.slotScores.twistJumpTotal = sum(twistJumps);
+    skaterResult.slotScores.throwJumpTotal = sum(throwJumps);
+    skaterResult.slotScores.liftsTotal = sum(lifts);
+    skaterResult.slotScores.deathSpiralTotal = sum(deathSpirals);
+    skaterResult.slotScores.danceTravelingTotal = sum(danceTravelings);
+    skaterResult.slotScores.danceStepTotal = sum(danceSteps);
 
     // Sumar Componentes agrupados
     skaterResult.slotScores.pcsSkatingTransitions = Number(

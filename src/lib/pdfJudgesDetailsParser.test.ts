@@ -82,3 +82,126 @@ describe("parseJudgesDetailsText (fixture real: World Skate RESULTS DETAILS)", (
     }
   );
 });
+
+// Textos reproducidos tal cual los da unpdf para actas reales de Danza y
+// Parejas (Seniores_Couple_Dance_FINAL.pdf / Seniores_Pairs_FINAL.pdf) —
+// antes de este fix, "Lift", "ComboLift", "Dance Traveling", "Dance Step" y
+// "Spiral" no estaban en la lista de palabras clave del parser, así que
+// estas dos modalidades no producían NINGÚN elemento (se quedaban en 0).
+describe("parseJudgesDetailsText — Danza: elementos con nota separada Hombre/Mujer", () => {
+  const danceText = `
+JUDGES DETAILS PER SKATER
+CATERINA ARTONI - RAOUL
+ALLEGRANTI
+Rank Name
+Total
+Element
+score
+Nation
+# Executed Element QOEInfo J1 J2 J4J3
+Base
+Value
+Scores of
+Panel
+5.50 6.10Lift1 Dance Lift RotationalRtLi4 +2+2+1+10.60
+5.00 5.50Dance Step2 Hold Cluster SequenceHClSq2 +2+1+1+10.50
+4.70 5.60Dance Traveling3 Traveling Couples (M)TrC4 +3+3+3+20.90%
+4.70 5.60Traveling Couples (L)TrC4 +3+3+3+20.90%
+3.20 3.80Dance Step4 No Hold Sequence (M)NoH2 +2+2+2+10.60
+3.90 4.50No Hold Sequence (L)NoH3 +2+2+2+10.60
+6.50 7.50Lift5 Dance Lift ComboCliLi4 +3+2+2+11.00
+3.00 3.40Dance Step6 Choreo Stop/Step seq.ChStS +2+2+2+10.40
+42.0036.50 5.50
+Total
+Segment
+score
+Total
+Component
+score (factored)
+Total
+Deductions1 ITA
+42.00 46.46 0.00 88.46
+Program Components Factor
+Skating Skills 7.50 8.75 8.75 8.75 8.751.3
+Transitions/Linking Footwork/Movement 7.75 8.50 8.75 9.00 8.621.3
+Performance/Execution 7.50 9.00 9.25 9.25 9.121.3
+Choreography/Composition 7.75 9.25 9.25 9.50 9.251.3
+Judges Total Program Component Score (factored) 46.46
+Deductions 0.00
+`;
+
+  it("suma la nota (M) y la nota (L) de 'Traveling Couples' en un solo elemento", () => {
+    const [skater] = parseJudgesDetailsText(danceText);
+    const travelings = skater.elements.filter((e) => e.type === "DANCE_TRAVELING");
+    expect(travelings).toHaveLength(1);
+    expect(travelings[0].score).toBeCloseTo(5.6 + 5.6, 2);
+    expect(skater.slotScores.danceTravelingTotal).toBeCloseTo(11.2, 2);
+  });
+
+  it("suma la nota (M) y la nota (L) de 'No Hold Sequence', sin mezclarla con los otros 'Dance Step'", () => {
+    const [skater] = parseJudgesDetailsText(danceText);
+    const danceSteps = skater.elements.filter((e) => e.type === "DANCE_STEP");
+    // 3 elementos "Dance Step" en el acta: Hold Cluster Sequence (5.50),
+    // No Hold Sequence M+L (3.80+4.50=8.30) y Choreo Stop/Step seq. (3.40).
+    expect(danceSteps).toHaveLength(3);
+    expect(danceSteps.map((e) => e.score).sort((a, b) => a - b)).toEqual([3.4, 5.5, 8.3]);
+    expect(skater.slotScores.danceStepTotal).toBeCloseTo(5.5 + 8.3 + 3.4, 2);
+  });
+
+  it("suma los dos Lift (elevaciones) del programa en un solo total", () => {
+    const [skater] = parseJudgesDetailsText(danceText);
+    expect(skater.slotScores.liftsTotal).toBeCloseTo(6.1 + 7.5, 2);
+  });
+});
+
+describe("parseJudgesDetailsText — Parejas: Twist/Throw/Lift/Death Spiral ya no se pierden", () => {
+  const pairsText = `
+JUDGES DETAILS PER SKATER
+MICOL MILLS - TOMMASO CORTINI
+Rank Name
+Total
+Element
+score
+Nation
+# Executed Element QOEInfo J1 J2 J5J4J3
+Base
+Value
+Scores of
+Panel
+7.00 7.47Jump1 3 Twist Lutz3TwB 0+1+1+100.47
+8.50 8.50Jump2 Throw 3 Loop3TL +200000.00
+1.30 0.90Jump3 2 Axel2A <<< -3-3-3-3-3-0.40
+9.48 10.58ComboLift4 Spin Pancake LiftSpPan4 +1+20+1+11.10
+6.30 7.17Spiral6 Death SpiralDS4 +2+2+1+1+10.87
+3.00 3.30Step Sequence7 Choreo StepChSt1 +1+20+1+10.30
+2.30 2.30Jump8 Throw 2 Flip2TF -10-1+1+10.00
+7.40 7.40Lift11 Reversed MilitanoRMil3 -100000.00
+61.9560.31 1.64
+Total
+Segment
+score
+Total
+Component
+score (factored)
+Total
+Deductions1 ITA
+61.95 53.26 -1.00 114.21
+Program Components Factor
+Skating Skills 7.25 7.50 7.00 7.50 7.00 7.251.8
+Judges Total Program Component Score (factored) 53.26
+Deductions -1.00 Falls: -1.0
+`;
+
+  it("clasifica los saltos de Parejas por tipo (Twist / Throw / Axel) en vez de perderlos todos en 'salto individual'", () => {
+    const [skater] = parseJudgesDetailsText(pairsText);
+    expect(skater.slotScores.twistJumpTotal).toBeCloseTo(7.47, 2);
+    expect(skater.slotScores.throwJumpTotal).toBeCloseTo(8.5 + 2.3, 2);
+    expect(skater.slotScores.axel).toBeCloseTo(0.9, 2);
+  });
+
+  it("suma Lift/ComboLift en un único total y reconoce Death Spiral (antes no capturaba ninguno de los dos)", () => {
+    const [skater] = parseJudgesDetailsText(pairsText);
+    expect(skater.slotScores.liftsTotal).toBeCloseTo(10.58 + 7.4, 2);
+    expect(skater.slotScores.deathSpiralTotal).toBeCloseTo(7.17, 2);
+  });
+});
