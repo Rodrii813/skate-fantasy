@@ -47,11 +47,11 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
-// Destino del formulario de /contacto. Configurable por variable de entorno
-// (CONTACT_EMAIL) para poder cambiarlo desde Vercel sin tocar código — por
-// ejemplo, el día que actives el reenvío de un email con tu dominio propio
-// (contacto@rollartfantasy.com) solo hay que apuntar aquí esa dirección.
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "rodgomrev@gmail.com";
+// Destino del formulario de /contacto — support@rollartfantasy.com, ya
+// configurado con Cloudflare Email Routing (reenvía al Gmail del admin).
+// Configurable por variable de entorno (CONTACT_EMAIL) para poder cambiarlo
+// desde Vercel sin tocar código si hiciera falta más adelante.
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "support@rollartfantasy.com";
 
 // El nombre/email/mensaje del formulario de contacto los escribe cualquier
 // visitante y se insertan tal cual en el HTML del email — sin esto, alguien
