@@ -47,6 +47,67 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string) {
   });
 }
 
+// Destino del formulario de /contacto. Configurable por variable de entorno
+// (CONTACT_EMAIL) para poder cambiarlo desde Vercel sin tocar código — por
+// ejemplo, el día que actives el reenvío de un email con tu dominio propio
+// (contacto@rollartfantasy.com) solo hay que apuntar aquí esa dirección.
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "rodgomrev@gmail.com";
+
+// El nombre/email/mensaje del formulario de contacto los escribe cualquier
+// visitante y se insertan tal cual en el HTML del email — sin esto, alguien
+// podría meter una etiqueta <script> o <img onerror=...> en el mensaje y
+// que se ejecutara al abrir el correo en un cliente que renderice HTML.
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+const CONTACT_REASON_LABELS: Record<string, string> = {
+  bug: "🐞 Bug / algo no funciona",
+  help: "❓ Ayuda",
+  suggestion: "💡 Sugerencia",
+  other: "Otro",
+};
+
+export async function sendContactEmail(input: {
+  name: string;
+  email: string;
+  reason: string;
+  message: string;
+}) {
+  const reasonLabel = CONTACT_REASON_LABELS[input.reason] || input.reason;
+
+  if (!resend) {
+    console.warn(
+      "[email] RESEND_API_KEY no configurada — mensaje de contacto solo registrado aquí:",
+      input
+    );
+    return;
+  }
+
+  await resend.emails.send({
+    from: FROM,
+    to: CONTACT_EMAIL,
+    // Responder directamente a este email contesta al usuario, no a
+    // "onboarding@resend.dev" (el remitente técnico).
+    replyTo: input.email,
+    subject: `[Contacto Rollart Fantasy] ${reasonLabel} — ${input.name}`,
+    html: `
+      <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+        <h2 style="margin-bottom: 4px;">Nuevo mensaje de contacto</h2>
+        <p><strong>Tipo:</strong> ${escapeHtml(reasonLabel)}</p>
+        <p><strong>Nombre:</strong> ${escapeHtml(input.name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(input.email)}</p>
+        <p style="margin-top:16px;white-space:pre-wrap;border-top:1px solid #e2e8f0;padding-top:12px;">${escapeHtml(input.message)}</p>
+      </div>
+    `,
+  });
+}
+
 export async function sendVerificationEmail(to: string, verifyUrl: string) {
   if (!resend) {
     console.warn(
