@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { utcToZonedInputValue, VENUE_TIMEZONE } from "@/lib/timezone";
@@ -93,6 +93,28 @@ function isFarFuturePlaceholderDate(value: string): boolean {
   return !Number.isNaN(year) && year >= FAR_FUTURE_PLACEHOLDER_YEAR;
 }
 
+// Parejas y Pareja-Danza son siempre equipos mixtos (un chico + una chica),
+// así que el campo "Género" no tiene sentido para esas dos disciplinas — a
+// diferencia de Libre/Inline/Solo Danza, que sí se dividen en Masculino/
+// Femenino. Se oculta el campo del formulario para esas disciplinas (ver
+// más abajo) en vez de dejarlo puesto y confundir al admin.
+const DISCIPLINES_WITHOUT_GENDER = ["parejas", "pareja-danza"];
+
+// Nombres reales de los segmentos Corto/Largo por disciplina — deben
+// coincidir exactamente con shortName/longName en
+// generate-slots/route.ts (disciplineTemplates), porque generateSlotsForSegment
+// busca/crea el Segmento por ese nombre. Solo Danza y Pareja-Danza no usan
+// "Corto"/"Largo" sino la terminología propia de la danza (Style Dance/
+// Freedance), así que los botones de "Generar Slots" deben decir eso en vez
+// del genérico "Corto"/"Largo" para no confundir al admin.
+const SEGMENT_LABELS_BY_DISCIPLINE: Record<string, { short: string; long: string }> = {
+  libre: { short: "Corto", long: "Largo" },
+  inline: { short: "Corto", long: "Largo" },
+  "solo-danza": { short: "Style Dance", long: "Freedance" },
+  parejas: { short: "Corto", long: "Largo" },
+  "pareja-danza": { short: "Style Dance", long: "Free Dance" },
+};
+
 export default function EventsManager({
   initialEvents,
   competitions,
@@ -171,6 +193,17 @@ export default function EventsManager({
   const [segmentScheduleSavingId, setSegmentScheduleSavingId] = useState<string | null>(null);
 
   const isShowDiscipline = disciplines.find((d) => d.id === disciplineId)?.slug === "show";
+  const isGenderlessDiscipline = DISCIPLINES_WITHOUT_GENDER.includes(
+    disciplines.find((d) => d.id === disciplineId)?.slug || ""
+  );
+
+  // Si el admin tenía puesto un género y cambia la disciplina a Parejas o
+  // Pareja-Danza (que no usan género), se limpia para no enviarlo sin
+  // querer con el evento — el campo desaparece del formulario, así que si
+  // no se limpia quedaría un valor "invisible" puesto por error previo.
+  useEffect(() => {
+    if (isGenderlessDiscipline && gender !== "") setGender("");
+  }, [isGenderlessDiscipline, gender]);
 
   const resetForm = () => {
     setEditingEventId(null);
@@ -516,18 +549,20 @@ export default function EventsManager({
             </select>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-slate-400 font-semibold">Género</label>
-            <select
-              value={gender}
-              onChange={(e) => setGender(e.target.value as "" | "MALE" | "FEMALE")}
-              className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
-            >
-              <option value="">Sin especificar</option>
-              <option value="FEMALE">Femenino</option>
-              <option value="MALE">Masculino</option>
-            </select>
-          </div>
+          {!isGenderlessDiscipline && (
+            <div className="space-y-1">
+              <label className="text-slate-400 font-semibold">Género</label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value as "" | "MALE" | "FEMALE")}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
+              >
+                <option value="">Sin especificar</option>
+                <option value="FEMALE">Femenino</option>
+                <option value="MALE">Masculino</option>
+              </select>
+            </div>
+          )}
 
           {isShowDiscipline && (
             <div className="space-y-1">
@@ -651,6 +686,10 @@ export default function EventsManager({
             const isPrecision = ev.discipline?.slug === "precision";
             const slotsAvailableForDiscipline =
               isShow || isPrecision || DISCIPLINES_WITH_SLOTS.includes(ev.discipline?.slug || "");
+            // Style Dance/Freedance en vez de "Corto"/"Largo" para Solo Danza
+            // y Pareja-Danza — ver SEGMENT_LABELS_BY_DISCIPLINE arriba.
+            const segmentLabels =
+              SEGMENT_LABELS_BY_DISCIPLINE[ev.discipline?.slug || ""] || { short: "Corto", long: "Largo" };
             const isExpanded = expandedEventIds.has(ev.id);
 
             return (
@@ -1018,7 +1057,7 @@ export default function EventsManager({
                           disabled={actionLoadingId === `${ev.id}-SHORT`}
                           className="bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
                         >
-                          {actionLoadingId === `${ev.id}-SHORT` ? "Cargando..." : "⚡ Slots Corto"}
+                          {actionLoadingId === `${ev.id}-SHORT` ? "Cargando..." : `⚡ Slots ${segmentLabels.short}`}
                         </button>
 
                         <button
@@ -1026,7 +1065,7 @@ export default function EventsManager({
                           disabled={actionLoadingId === `${ev.id}-LONG`}
                           className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition"
                         >
-                          {actionLoadingId === `${ev.id}-LONG` ? "Cargando..." : "⚡ Slots Largo"}
+                          {actionLoadingId === `${ev.id}-LONG` ? "Cargando..." : `⚡ Slots ${segmentLabels.long}`}
                         </button>
                       </>
                     )
