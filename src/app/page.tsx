@@ -110,7 +110,12 @@ export default async function HomePage() {
               <div className="flex items-center gap-2">
                 {somethingLiveNow ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
-                    ● {t.liveBanner}
+                    ●{" "}
+                    {predictionsOpen && draftOpen
+                      ? t.liveBanner
+                      : predictionsOpen
+                      ? t.liveBannerPredictionsOnly
+                      : t.liveBannerDraftOnly}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-white/10 text-ice-100/60 border border-white/15 px-2 py-0.5 rounded-full">

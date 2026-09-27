@@ -38,6 +38,51 @@ function rememberValue(key: string, value: string) {
   }
 }
 
+// Los <input type="datetime-local"> nativos no aceptan pegar una fecha
+// completa (el navegador solo deja pegar dígito a dígito dentro del propio
+// widget) — es una limitación del input, no de la web. Esta función intenta
+// interpretar el texto pegado (copiado, p. ej., de una hoja de cálculo con
+// el horario de ~20 eventos) en varios formatos habituales y lo convierte al
+// formato "YYYY-MM-DDTHH:mm" que espera el input. Si no reconoce el texto
+// devuelve null y se deja el comportamiento de pegado normal del navegador.
+function parsePastedDateTime(text: string): string | null {
+  const raw = text.trim();
+  if (!raw) return null;
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+
+  // YYYY-MM-DD[ T]HH:mm  (con o sin segundos, con espacio o "T")
+  let m = raw.match(/^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::\d{2})?$/);
+  if (m) {
+    const [, y, mo, d, h, mi] = m;
+    return `${y}-${mo}-${d}T${h}:${mi}`;
+  }
+
+  // DD/MM/YYYY o DD-MM-YYYY, con hora opcional
+  m = raw.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:[ T](\d{1,2}):(\d{2}))?$/);
+  if (m) {
+    const [, d, mo, y, h, mi] = m;
+    return `${y}-${pad(Number(mo))}-${pad(Number(d))}T${pad(Number(h ?? 0))}:${mi ?? "00"}`;
+  }
+
+  // Solo fecha YYYY-MM-DD (sin hora): se deja la hora a 00:00
+  m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) {
+    const [, y, mo, d] = m;
+    return `${y}-${mo}-${d}T00:00`;
+  }
+
+  // Último recurso: dejar que Date lo interprete (p. ej. "28 Sep 2026 18:30")
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())}T${pad(
+      parsed.getHours()
+    )}:${pad(parsed.getMinutes())}`;
+  }
+
+  return null;
+}
+
 // generate-slots/route.ts pone esta fecha lejana como placeholder al crear
 // un segmento nuevo, para que nazca cerrado por defecto (ver ese archivo).
 // De cara al admin, un segmento con esta fecha debe verse como "todavía sin
@@ -518,6 +563,14 @@ export default function EventsManager({
                 setRosterLocksAt(e.target.value);
                 rememberValue(LAST_VALUE_KEYS.rosterLocksAt, e.target.value);
               }}
+              onPaste={(e) => {
+                const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                if (parsed) {
+                  e.preventDefault();
+                  setRosterLocksAt(parsed);
+                  rememberValue(LAST_VALUE_KEYS.rosterLocksAt, parsed);
+                }
+              }}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
               required
             />
@@ -534,6 +587,14 @@ export default function EventsManager({
               onChange={(e) => {
                 setScheduledAt(e.target.value);
                 rememberValue(LAST_VALUE_KEYS.scheduledAt, e.target.value);
+              }}
+              onPaste={(e) => {
+                const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                if (parsed) {
+                  e.preventDefault();
+                  setScheduledAt(parsed);
+                  rememberValue(LAST_VALUE_KEYS.scheduledAt, parsed);
+                }
               }}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
             />
@@ -667,6 +728,13 @@ export default function EventsManager({
                               onChange={(e) =>
                                 setSegmentLocksInputs((prev) => ({ ...prev, [seg.id]: e.target.value }))
                               }
+                              onPaste={(e) => {
+                                const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                                if (parsed) {
+                                  e.preventDefault();
+                                  setSegmentLocksInputs((prev) => ({ ...prev, [seg.id]: parsed }));
+                                }
+                              }}
                               className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
                             />
                             <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
@@ -741,6 +809,13 @@ export default function EventsManager({
                               onChange={(e) =>
                                 setSegmentOpensInputs((prev) => ({ ...prev, [seg.id]: e.target.value }))
                               }
+                              onPaste={(e) => {
+                                const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                                if (parsed) {
+                                  e.preventDefault();
+                                  setSegmentOpensInputs((prev) => ({ ...prev, [seg.id]: parsed }));
+                                }
+                              }}
                               className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
                             />
                             <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
@@ -827,6 +902,13 @@ export default function EventsManager({
                                 onChange={(e) =>
                                   setSegmentScheduleInputs((prev) => ({ ...prev, [scheduleKey]: e.target.value }))
                                 }
+                                onPaste={(e) => {
+                                  const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                                  if (parsed) {
+                                    e.preventDefault();
+                                    setSegmentScheduleInputs((prev) => ({ ...prev, [scheduleKey]: parsed }));
+                                  }
+                                }}
                                 className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
                               />
                               <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
@@ -860,6 +942,13 @@ export default function EventsManager({
                                 onChange={(e) =>
                                   setSegmentScheduleInputs((prev) => ({ ...prev, [splitScheduleKey]: e.target.value }))
                                 }
+                                onPaste={(e) => {
+                                  const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                                  if (parsed) {
+                                    e.preventDefault();
+                                    setSegmentScheduleInputs((prev) => ({ ...prev, [splitScheduleKey]: parsed }));
+                                  }
+                                }}
                                 className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
                               />
                               <button
