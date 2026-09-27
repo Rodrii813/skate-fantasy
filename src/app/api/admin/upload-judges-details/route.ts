@@ -200,23 +200,22 @@ export async function POST(req: Request) {
         let earnedScore = 0;
         const tag = (slot.label + " " + (slot.elementCategory?.name || "")).toLowerCase();
         const scores = res.slotScores || ({} as any);
-        const isSecond = /\b2\b/.test(tag);
-
+        // "Combo Jump 1" y "Combo Jump 2" (igual con Solo Jump) son 2 slots
+        // independientes para draftear a 2 patinadoras distintas — NO "el
+        // mejor combo" vs "el segundo mejor combo" de la MISMA patinadora.
+        // Cada patinadora aporta siempre su MEJOR combo/salto sea cual sea
+        // el slot en el que la hayan drafteado, así que el "1"/"2" del label
+        // ya no distingue qué valor coger (ver el comentario en
+        // pdfJudgesDetailsParser.ts `slotScores`).
         if (tag.includes("combo jump") || tag.includes("combinacion")) {
-          earnedScore = isSecond ? scores.comboJump2 || 0 : scores.comboJump1 || 0;
+          earnedScore = scores.comboJump || 0;
         } else if (tag.includes("solo jump") || tag.includes("salto solo")) {
           // El Axel es obligatorio en los dos programas, pero solo en el
           // Corto tiene su propio slot fijo (ver más abajo); en el Largo
           // puede ir en cualquier posición y cuenta como un salto individual
           // más, así que aquí se usa el "mejor de saltos individuales +
           // Axel" (soloOrAxel) en vez de excluir el Axel como hace el Corto.
-          earnedScore = isFirstSegment
-            ? isSecond
-              ? scores.soloJump2 || 0
-              : scores.soloJump1 || 0
-            : isSecond
-              ? scores.soloOrAxel2 || 0
-              : scores.soloOrAxel1 || 0;
+          earnedScore = isFirstSegment ? scores.soloJump || 0 : scores.soloOrAxel || 0;
         } else if (tag.includes("axel")) {
           earnedScore = scores.axel || 0;
         } else if (tag.includes("spin") || tag.includes("giro") || tag.includes("pirueta")) {

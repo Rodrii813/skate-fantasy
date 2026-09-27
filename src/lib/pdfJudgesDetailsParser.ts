@@ -20,20 +20,25 @@ export interface SkaterDetailedResult {
     choreography: number;
   };
   slotScores: {
-    comboJump1: number;
-    comboJump2: number;
-    soloJump1: number;
-    soloJump2: number;
+    // Combo Jump 1/2 y Solo Jump 1/2 son 2 slots INDEPENDIENTES en Fantasy
+    // (para poder draftear a 2 patinadoras distintas, una por slot) — no una
+    // clasificación de "el mejor combo de la patinadora" vs "el segundo
+    // mejor combo de la MISMA patinadora". Cada patinadora, sea cual sea el
+    // slot en el que acabe drafteada, aporta siempre SU MEJOR combo (o su
+    // mejor salto individual): por eso aquí solo hay un valor por tipo de
+    // elemento, no uno por número de slot. El número "1"/"2" del label del
+    // slot ya no influye en qué valor se usa (ver upload-judges-details).
+    comboJump: number;
+    soloJump: number;
     axel: number;
     // El Axel es obligatorio tanto en Corto como en Largo, pero con una
     // diferencia real de reglamento: en el Corto va en posición fija y tiene
     // su propio slot en Fantasy (ver `axel` arriba); en el Largo puede ir en
     // cualquier momento del programa y cuenta simplemente como "un salto
     // individual más" — por eso aquí se mezcla con el resto de saltos
-    // individuales (soloJump) y se ordenan juntos de mayor a menor, para
-    // rellenar los slots "Solo Jump 1"/"Solo Jump 2" del Largo.
-    soloOrAxel1: number;
-    soloOrAxel2: number;
+    // individuales (soloJump) y se coge el mejor de los dos para rellenar
+    // cualquiera de los slots "Solo Jump" del Largo.
+    soloOrAxel: number;
     spinsTotal: number;
     stepSequence: number;
     choreoSequence: number;
@@ -91,13 +96,10 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
       elements: [],
       components: { skatingSkills: 0, transitions: 0, performance: 0, choreography: 0 },
       slotScores: {
-        comboJump1: 0,
-        comboJump2: 0,
-        soloJump1: 0,
-        soloJump2: 0,
+        comboJump: 0,
+        soloJump: 0,
         axel: 0,
-        soloOrAxel1: 0,
-        soloOrAxel2: 0,
+        soloOrAxel: 0,
         spinsTotal: 0,
         stepSequence: 0,
         choreoSequence: 0,
@@ -228,19 +230,21 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     const choreos = skaterResult.elements.filter((e) => e.type === "CHOREO");
     const steps = skaterResult.elements.filter((e) => e.type === "STEP");
 
-    skaterResult.slotScores.comboJump1 = combos[0]?.score || 0;
-    skaterResult.slotScores.comboJump2 = combos[1]?.score || 0;
-    skaterResult.slotScores.soloJump1 = solos[0]?.score || 0;
-    skaterResult.slotScores.soloJump2 = solos[1]?.score || 0;
+    // Un único valor por tipo: la MEJOR combinación y el MEJOR salto suelto
+    // de esta patinadora (no "el mejor" y "el segundo mejor" por separado —
+    // ver el comentario en la interfaz `slotScores` de arriba). `combos` y
+    // `solos` ya están ordenados de mayor a menor, así que el mejor es
+    // siempre el primero.
+    skaterResult.slotScores.comboJump = combos[0]?.score || 0;
+    skaterResult.slotScores.soloJump = solos[0]?.score || 0;
     skaterResult.slotScores.axel = axels[0]?.score || 0;
     // El Axel es obligatorio en ambos programas, pero solo en el Corto va en
     // posición fija con su propio slot; en el Largo puede ir en cualquier
     // momento y cuenta como un salto individual más, así que aquí se
-    // mezcla con el resto de saltos individuales (solos) y se ordenan
-    // juntos de mayor a menor para rellenar "Solo Jump 1"/"Solo Jump 2".
+    // mezcla con el resto de saltos individuales (solos) y se coge el mejor
+    // de los dos.
     const solosOrAxels = [...solos, ...axels].sort((a, b) => b.score - a.score);
-    skaterResult.slotScores.soloOrAxel1 = solosOrAxels[0]?.score || 0;
-    skaterResult.slotScores.soloOrAxel2 = solosOrAxels[1]?.score || 0;
+    skaterResult.slotScores.soloOrAxel = solosOrAxels[0]?.score || 0;
     skaterResult.slotScores.spinsTotal = Number(spins.reduce((acc, curr) => acc + curr.score, 0).toFixed(2));
     skaterResult.slotScores.choreoSequence = choreos[0]?.score || 0;
     skaterResult.slotScores.stepSequence = steps[0]?.score || 0;
