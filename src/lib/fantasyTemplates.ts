@@ -72,9 +72,18 @@ export const SOLO_DANCE_FREE_SLOTS: SlotTemplate[] = [
 // de resultados para Parejas tiene particularidades más complejas que se
 // revisarán aparte cuando lleguen esos PDFs reales — esto de aquí es solo
 // la plantilla de slots del Fantasy (qué eliges), no el parser de PDFs.
+//
+// "Jumps" era un único slot genérico que mezclaba el salto side-by-side
+// (ambos patinadores saltan a la vez) con el throw jump (élla es lanzada) —
+// dos elementos distintos del Programa Corto real, cada uno con su propia
+// nota. Separados en 2 slots (decisión confirmada por el usuario) para
+// poder draftear cada uno por separado, igual que ya se hace con Combo
+// Jump / Solo Jump en Libre. Usa los mismos nombres/categoryCode que el
+// Programa Largo (más abajo) para compartir la misma ElementCategory.
 export const PAIRS_SHORT_SLOTS: SlotTemplate[] = [
-  // Técnica (5 slots)
-  { name: "Jumps", slotType: "TECHNICAL", categoryCode: "JUMPS", rule: "BEST_1" },
+  // Técnica (6 slots)
+  { name: "Side by Side Jump", slotType: "TECHNICAL", categoryCode: "SIDE_BY_SIDE_JUMP", rule: "BEST_1" },
+  { name: "Throw Jump", slotType: "TECHNICAL", categoryCode: "THROW_JUMP", rule: "BEST_1" },
   { name: "Step Sequence", slotType: "TECHNICAL", categoryCode: "STEP_SEQUENCE", rule: "BEST_1" },
   { name: "Lifts", slotType: "TECHNICAL", categoryCode: "LIFTS", rule: "BEST_1" },
   { name: "Death Spiral", slotType: "TECHNICAL", categoryCode: "DEATH_SPIRAL", rule: "BEST_1" },
@@ -86,14 +95,22 @@ export const PAIRS_SHORT_SLOTS: SlotTemplate[] = [
 ];
 
 // 6. PAREJAS — FREE PROGRAM
+// "Jumps" y "Throw Jumps" pasan a llamarse igual que en el Programa Corto
+// ("Side by Side Jump" / "Throw Jump", en singular) para que ambos
+// segmentos compartan la misma ElementCategory en vez de crear una
+// duplicada solo por el nombre. Se añade "Combo Spin", que faltaba del
+// todo — el Programa Largo de Parejas SÍ incluye un combo spin (visto en
+// las actas reales que pasó el usuario) y antes no tenía ningún slot para
+// draftearlo.
 export const PAIRS_FREE_SLOTS: SlotTemplate[] = [
-  // Técnica (6 slots)
+  // Técnica (7 slots)
   { name: "Death Spiral", slotType: "TECHNICAL", categoryCode: "DEATH_SPIRAL", rule: "BEST_1" },
   { name: "Twist", slotType: "TECHNICAL", categoryCode: "TWIST", rule: "BEST_1" },
-  { name: "Jumps", slotType: "TECHNICAL", categoryCode: "JUMPS", rule: "BEST_1" },
-  { name: "Throw Jumps", slotType: "TECHNICAL", categoryCode: "THROW_JUMPS", rule: "BEST_1" },
+  { name: "Side by Side Jump", slotType: "TECHNICAL", categoryCode: "SIDE_BY_SIDE_JUMP", rule: "BEST_1" },
+  { name: "Throw Jump", slotType: "TECHNICAL", categoryCode: "THROW_JUMP", rule: "BEST_1" },
   { name: "Choreo Step", slotType: "TECHNICAL", categoryCode: "CHOREO_STEP", rule: "BEST_1" },
   { name: "Lifts", slotType: "TECHNICAL", categoryCode: "LIFTS", rule: "BEST_1" },
+  { name: "Combo Spin", slotType: "TECHNICAL", categoryCode: "COMBO_SPIN", rule: "BEST_1" },
 
   // Componentes (2 slots agrupados, igual que en el resto de disciplinas)
   { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
