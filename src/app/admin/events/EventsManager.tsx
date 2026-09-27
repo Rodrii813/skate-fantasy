@@ -5,6 +5,49 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { utcToZonedInputValue, VENUE_TIMEZONE } from "@/lib/timezone";
 
+// Recordar la última fecha/hora usada en cada tipo de campo, para no tener
+// que volver a teclearla entera cada vez que se crea un evento o segmento
+// nuevo — la mayoría de eventos de una misma jornada de competición caen en
+// el mismo día y a horas parecidas. Se guarda en localStorage (por
+// navegador; si el admin usa otro ordenador no lo verá) y solo sirve como
+// valor de partida: el campo se puede editar como siempre.
+const LAST_VALUE_KEYS = {
+  rosterLocksAt: "rollart-admin-last-rosterLocksAt",
+  scheduledAt: "rollart-admin-last-scheduledAt",
+  segmentLocksAt: "rollart-admin-last-segment-locksAt",
+  segmentOpensAt: "rollart-admin-last-segment-opensAt",
+  segmentSchedule: "rollart-admin-last-segment-schedule",
+} as const;
+
+function getRememberedValue(key: string): string {
+  if (typeof window === "undefined") return "";
+  try {
+    return localStorage.getItem(key) || "";
+  } catch {
+    return "";
+  }
+}
+
+function rememberValue(key: string, value: string) {
+  if (typeof window === "undefined" || !value) return;
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // localStorage puede fallar (modo privado, cuota llena...) — no es
+    // grave, simplemente no se recuerda el valor para la próxima vez.
+  }
+}
+
+// generate-slots/route.ts pone esta fecha lejana como placeholder al crear
+// un segmento nuevo, para que nazca cerrado por defecto (ver ese archivo).
+// De cara al admin, un segmento con esta fecha debe verse como "todavía sin
+// fecha puesta", no como un valor real que haya que "quitar".
+const FAR_FUTURE_PLACEHOLDER_YEAR = 2090;
+function isFarFuturePlaceholderDate(value: string): boolean {
+  const year = new Date(value).getFullYear();
+  return !Number.isNaN(year) && year >= FAR_FUTURE_PLACEHOLDER_YEAR;
+}
+
 export default function EventsManager({
   initialEvents,
   competitions,
@@ -23,8 +66,8 @@ export default function EventsManager({
   const [disciplineId, setDisciplineId] = useState(disciplines[0]?.id || "");
   const [categoryId, setCategoryId] = useState(categories[0]?.id || "");
   const [gender, setGender] = useState<"" | "MALE" | "FEMALE">("");
-  const [rosterLocksAt, setRosterLocksAt] = useState("");
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [rosterLocksAt, setRosterLocksAt] = useState(() => getRememberedValue(LAST_VALUE_KEYS.rosterLocksAt));
+  const [scheduledAt, setScheduledAt] = useState(() => getRememberedValue(LAST_VALUE_KEYS.scheduledAt));
   // Solo se usa/envía cuando la disciplina elegida es "Show" — ver
   // generate-slots/route.ts (Cuartetos/Grupos Pequeños/Grupos Grandes son
   // competiciones separadas, así que cada evento necesita saber cuál es).
@@ -69,8 +112,10 @@ export default function EventsManager({
     setDisciplineId(disciplines[0]?.id || "");
     setCategoryId(categories[0]?.id || "");
     setGender("");
-    setRosterLocksAt("");
-    setScheduledAt("");
+    // rosterLocksAt/scheduledAt NO se limpian a propósito: al crear varios
+    // eventos seguidos de la misma jornada, lo normal es que caigan el
+    // mismo día y a una hora parecida — así el admin solo tiene que ajustar
+    // lo que cambie, en vez de volver a teclear la fecha entera cada vez.
     setShowFormat("");
   };
 
@@ -174,6 +219,7 @@ export default function EventsManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error guardando el plazo del segmento");
 
+      rememberValue(LAST_VALUE_KEYS.segmentLocksAt, value);
       setStatusMessage(
         value
           ? "✅ Plazo del segmento actualizado"
@@ -205,6 +251,7 @@ export default function EventsManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error guardando la apertura del segmento");
 
+      rememberValue(LAST_VALUE_KEYS.segmentOpensAt, value);
       setStatusMessage(
         value ? "✅ Apertura del segmento actualizada" : "✅ Segmento vuelve a abrirse en cuanto tenga slots"
       );
@@ -269,6 +316,7 @@ export default function EventsManager({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error guardando el horario del segmento");
 
+      rememberValue(LAST_VALUE_KEYS.segmentSchedule, scheduledAtValue);
       setStatusMessage("✅ Horario del segmento actualizado");
       router.refresh();
     } catch (err: any) {
@@ -443,7 +491,10 @@ export default function EventsManager({
             <input
               type="datetime-local"
               value={rosterLocksAt}
-              onChange={(e) => setRosterLocksAt(e.target.value)}
+              onChange={(e) => {
+                setRosterLocksAt(e.target.value);
+                rememberValue(LAST_VALUE_KEYS.rosterLocksAt, e.target.value);
+              }}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
               required
             />
@@ -457,7 +508,10 @@ export default function EventsManager({
             <input
               type="datetime-local"
               value={scheduledAt}
-              onChange={(e) => setScheduledAt(e.target.value)}
+              onChange={(e) => {
+                setScheduledAt(e.target.value);
+                rememberValue(LAST_VALUE_KEYS.scheduledAt, e.target.value);
+              }}
               className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2.5 text-slate-100"
             />
             <p className="text-[11px] text-slate-500">
@@ -539,7 +593,10 @@ export default function EventsManager({
                       </p>
                       {ev.segments.map((seg: any) => {
                         const currentValue =
-                          segmentLocksInputs[seg.id] ?? (seg.locksAt ? toDatetimeLocalValue(seg.locksAt) : "");
+                          segmentLocksInputs[seg.id] ??
+                          (seg.locksAt
+                            ? toDatetimeLocalValue(seg.locksAt)
+                            : getRememberedValue(LAST_VALUE_KEYS.segmentLocksAt));
                         return (
                           <div key={seg.id} className="flex flex-wrap items-center gap-2">
                             <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">
@@ -604,8 +661,16 @@ export default function EventsManager({
                         </span>
                       </p>
                       {ev.segments.map((seg: any) => {
+                        // El placeholder de 2099 que pone generate-slots al
+                        // crear el segmento no cuenta como "fecha puesta" de
+                        // cara al admin: se ve vacío, con la última fecha
+                        // usada como valor de partida (ver LAST_VALUE_KEYS).
+                        const hasRealOpensAt = seg.opensAt && !isFarFuturePlaceholderDate(seg.opensAt);
                         const currentOpensValue =
-                          segmentOpensInputs[seg.id] ?? (seg.opensAt ? toDatetimeLocalValue(seg.opensAt) : "");
+                          segmentOpensInputs[seg.id] ??
+                          (hasRealOpensAt
+                            ? toDatetimeLocalValue(seg.opensAt)
+                            : getRememberedValue(LAST_VALUE_KEYS.segmentOpensAt));
                         return (
                           <div key={seg.id} className="flex flex-wrap items-center gap-2">
                             <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">
@@ -628,7 +693,7 @@ export default function EventsManager({
                             >
                               {segmentOpenSavingId === seg.id ? "Guardando…" : "Guardar"}
                             </button>
-                            {seg.opensAt && (
+                            {hasRealOpensAt && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -682,7 +747,9 @@ export default function EventsManager({
                         const splitScheduleKey = `${seg.id}:splitSchedule`;
                         const scheduleValue =
                           segmentScheduleInputs[scheduleKey] ??
-                          (seg.scheduledAt ? toDatetimeLocalValue(seg.scheduledAt) : "");
+                          (seg.scheduledAt
+                            ? toDatetimeLocalValue(seg.scheduledAt)
+                            : getRememberedValue(LAST_VALUE_KEYS.segmentSchedule));
                         const scheduleLabelValue =
                           segmentScheduleInputs[scheduleLabelKey] ?? seg.scheduleLabel ?? "";
                         const splitLabelValue = segmentScheduleInputs[splitLabelKey] ?? seg.splitLabel ?? "";
