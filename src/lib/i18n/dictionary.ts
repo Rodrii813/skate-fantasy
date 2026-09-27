@@ -530,6 +530,14 @@ export const dictionaries = {
         description: "Predice el podio de cada evento de patinaje artístico y compite en el ranking de Predicción.",
       },
     },
+    errors: {
+      notFoundTitle: "No hemos encontrado esta página",
+      notFoundBody: "Puede que el enlace esté roto o que la página se haya movido de sitio.",
+      errorTitle: "Algo se ha roto",
+      errorBody: "Ha ocurrido un error inesperado. Puedes intentarlo de nuevo o volver al inicio.",
+      tryAgain: "Reintentar",
+      backHome: "Volver al inicio",
+    },
   },
   en: {
     nav: {
@@ -1051,6 +1059,14 @@ export const dictionaries = {
         title: "Predictions",
         description: "Predict the podium for each artistic skating event and compete on the Predictions ranking.",
       },
+    },
+    errors: {
+      notFoundTitle: "Page not found",
+      notFoundBody: "That link might be broken, or the page may have moved.",
+      errorTitle: "Something broke",
+      errorBody: "An unexpected error happened. You can try again or head back home.",
+      tryAgain: "Try again",
+      backHome: "Back to home",
     },
   },
 } satisfies Record<Locale, Record<string, unknown>>;
