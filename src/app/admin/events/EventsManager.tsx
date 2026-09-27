@@ -82,6 +82,28 @@ export default function EventsManager({
   const [deleteConfirmText, setDeleteConfirmText] = useState("");
   const [loadingDelete, setLoadingDelete] = useState(false);
 
+  // Con muchos eventos creados, la lista entera (contadores + 3 paneles de
+  // plazos por segmento + botonera) por evento ocupaba muchísimo espacio
+  // vertical. Cada evento nace PLEGADO (solo cabecera: competición,
+  // disciplina/categoría, nombre y contadores) y se despliega al pulsarlo,
+  // para poder escanear la lista entera de un vistazo y solo abrir el que
+  // se necesite tocar.
+  const [expandedEventIds, setExpandedEventIds] = useState<Set<string>>(new Set());
+
+  const toggleEventExpanded = (id: string) => {
+    setExpandedEventIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const allEventsExpanded = initialEvents.length > 0 && initialEvents.every((ev) => expandedEventIds.has(ev.id));
+  const toggleAllEvents = () => {
+    setExpandedEventIds(allEventsExpanded ? new Set() : new Set(initialEvents.map((ev) => ev.id)));
+  };
+
   // Plazo de fichaje propio de cada segmento (Corto/Largo), independiente
   // del rosterLocksAt general del evento — ver src/lib/segments.ts. Estado
   // local por segmentId, precargado con el valor que ya tenga guardado.
@@ -136,6 +158,7 @@ export default function EventsManager({
     setRosterLocksAt(ev.rosterLocksAt ? toDatetimeLocalValue(ev.rosterLocksAt) : "");
     setScheduledAt(ev.scheduledAt ? toDatetimeLocalValue(ev.scheduledAt) : "");
     setShowFormat(ev.showFormat || "");
+    setExpandedEventIds((prev) => new Set(prev).add(ev.id));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -537,9 +560,20 @@ export default function EventsManager({
 
       {/* Lista de Eventos */}
       <div className="space-y-4">
-        <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-          📋 Eventos Registrados ({initialEvents.length})
-        </h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+            📋 Eventos Registrados ({initialEvents.length})
+          </h2>
+          {initialEvents.length > 0 && (
+            <button
+              type="button"
+              onClick={toggleAllEvents}
+              className="text-[11px] font-semibold text-slate-400 hover:text-slate-200 underline"
+            >
+              {allEventsExpanded ? "Plegar todos" : "Desplegar todos"}
+            </button>
+          )}
+        </div>
 
         <div className="space-y-3">
           {initialEvents.map((ev) => {
@@ -556,30 +590,55 @@ export default function EventsManager({
             const isPrecision = ev.discipline?.slug === "precision";
             const slotsAvailableForDiscipline =
               isShow || isPrecision || DISCIPLINES_WITH_SLOTS.includes(ev.discipline?.slug || "");
+            const isExpanded = expandedEventIds.has(ev.id);
 
             return (
-              <div
-                key={ev.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded">
-                      {ev.competition?.name}
-                    </span>
-                    <span className="text-[10px] bg-indigo-950 text-indigo-300 font-bold px-2 py-0.5 rounded">
-                      {ev.discipline?.name} · {ev.category?.name}
-                      {genderLabel ? ` · ${genderLabel}` : ""}
-                    </span>
+              <div key={ev.id} className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden">
+                {/* Cabecera siempre visible — pulsarla pliega/despliega el
+                    resto (plazos por segmento y botonera de acciones), que es
+                    lo que ocupa espacio de verdad cuando hay muchos eventos. */}
+                <button
+                  type="button"
+                  onClick={() => toggleEventExpanded(ev.id)}
+                  aria-expanded={isExpanded}
+                  className="w-full flex flex-col md:flex-row md:items-center justify-between gap-3 p-5 text-left hover:bg-slate-800/40 transition"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] bg-slate-800 text-slate-300 font-bold px-2 py-0.5 rounded">
+                        {ev.competition?.name}
+                      </span>
+                      <span className="text-[10px] bg-indigo-950 text-indigo-300 font-bold px-2 py-0.5 rounded">
+                        {ev.discipline?.name} · {ev.category?.name}
+                        {genderLabel ? ` · ${genderLabel}` : ""}
+                      </span>
+                    </div>
+                    <h3 className="text-base font-bold text-slate-100 mt-1 truncate">{ev.name}</h3>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      {ev._count?.registrations || 0} patinadores inscritos •{" "}
+                      <span className="text-amber-400 font-semibold">
+                        {ev.slots?.length || 0} slots configurados
+                      </span>
+                    </p>
                   </div>
-                  <h3 className="text-base font-bold text-slate-100 mt-1">{ev.name}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">
-                    {ev._count?.registrations || 0} patinadores inscritos •{" "}
-                    <span className="text-amber-400 font-semibold">
-                      {ev.slots?.length || 0} slots configurados
-                    </span>
-                  </p>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={`h-5 w-5 shrink-0 text-slate-500 transition-transform ${
+                      isExpanded ? "rotate-180" : ""
+                    }`}
+                  >
+                    <path d="M6 9l6 6 6-6" />
+                  </svg>
+                </button>
 
+                {isExpanded && (
+                  <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 px-5 pb-5 border-t border-slate-800/80 pt-4">
+                    <div className="flex-1 min-w-0">
                   {/* Plazo de fichaje propio por segmento (Corto/Largo). Si
                       se deja vacío, el segmento hereda el "Cierre de
                       Plantillas" general del evento de arriba. */}
@@ -905,6 +964,8 @@ export default function EventsManager({
                     🗑️ Borrar
                   </button>
                 </div>
+                  </div>
+                )}
               </div>
             );
           })}
