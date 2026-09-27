@@ -109,12 +109,20 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     };
 
     // Componentes (PCS): en el PDF real cada fila es
-    // "<Label> <J1> <J2> <J3> <J4> <J5> <promedio><Factor>", y el Factor
+    // "<Label> <J1> <J2> ... <Jn> <promedio><Factor>", y el Factor
     // (1.6, 1.8, 1.0, 0.8...) varía según disciplina/categoría/segmento —
     // por eso se lee siempre del propio PDF en vez de asumir un valor fijo,
     // y se aplica aquí para devolver el componente YA facturado (el mismo
     // número que suma al "Judges Total Program Component Score (factored)"
     // oficial), no el promedio sin facturar.
+    //
+    // El panel de jueces puede tener de 1 a 9 jueces según la competición —
+    // antes el regex exigía EXACTAMENTE 5 notas de juez antes del promedio,
+    // así que cualquier acta con un panel de distinto tamaño no hacía match
+    // y el componente se quedaba en 0. Ahora el hueco de los jueces es de
+    // longitud variable ("*", cero o más) y el promedio se seala como su
+    // propio grupo aparte (el último número antes del Factor), así que da
+    // igual cuántos jueces haya.
     //
     // OJO: en el Programa Largo (Free Program) de World Skate, el texto del
     // Factor se extrae PEGADO al promedio sin ningún espacio de por medio
@@ -128,7 +136,7 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     // captura el Factor aparte (pegado o con espacio) y se multiplica.
     const getPcsValue = (label: string): number => {
       const reg = new RegExp(
-        `${label}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+\\d+\\.\\d{2}\\s+(\\d+\\.\\d{2})\\s*(\\d+(?:\\.\\d+)?)?\\s*$`,
+        `${label}\\s+(?:\\d+\\.\\d{2}\\s+)*(\\d+\\.\\d{2})\\s*(\\d+(?:\\.\\d+)?)?\\s*$`,
         "im"
       );
       const match = chunk.match(reg);
