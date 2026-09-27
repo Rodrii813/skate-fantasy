@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Fraunces, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import "./globals.css";
@@ -7,6 +8,26 @@ import NavBar from "./nav-bar";
 import Footer from "./_components/Footer";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { LocaleProvider } from "@/lib/i18n/LocaleContext";
+
+// Antes las fuentes se cargaban con <link> a fonts.googleapis.com: eso
+// obliga al navegador a hacer 3 peticiones en cadena (preconnect → CSS →
+// archivo de fuente) a un dominio externo antes de poder pintar el texto
+// con la tipografía final — en móvil (CPU/red limitadas) eso penaliza
+// bastante el score de Speed Insights, sobre todo en la primera visita sin
+// caché. next/font/google descarga las fuentes en el build y las sirve
+// autoalojadas desde el propio dominio, sin esa ronda extra ni parpadeo.
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  weight: ["400", "600", "900"],
+  variable: "--font-display",
+  display: "swap",
+});
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+  display: "swap",
+});
 
 const BASE_URL = process.env.NEXTAUTH_URL || "https://rollartfantasy.com";
 const SITE_TITLE = "Rollart Fantasy — World Skate Games";
@@ -45,15 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const locale = getLocale();
 
   return (
-    <html lang={locale}>
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Fraunces:wght@400;600;900&family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
+    <html lang={locale} className={`${fraunces.variable} ${inter.variable}`}>
       <body className="font-body flex min-h-screen flex-col">
         <LocaleProvider initialLocale={locale}>
           <Providers>
