@@ -607,3 +607,56 @@ Verified
     expect(Number((sum + teams[1].deductions).toFixed(2))).toBeCloseTo(teams[1].total, 2);
   });
 });
+
+// Bug real encontrado con actas de Inline (checklist de lanzamiento, sección
+// "Producto"): en el Largo (Free Program), la ÚLTIMA fila de Componentes
+// ("Choreography/Composition") a veces queda pegada SIN salto de línea al
+// texto siguiente en la extracción del PDF — p.ej.
+// "...7.001.6Judges Total Program Component Score (factored) 44.80", todo en
+// una sola línea. El regex antiguo de getPcsValue exigía que el Factor fuera
+// lo último antes de fin de línea (\s*$), así que esta fila nunca hacía
+// match y el componente se quedaba en 0. Este test fija ese caso exacto para
+// que no vuelva a colarse.
+describe("parseJudgesDetailsText — Largo Inline: última fila de Componentes pegada al texto siguiente", () => {
+  const inlineGluedText = `
+JUDGES DETAILS PER SKATER
+TEST SKATER NAME
+Rank Name
+Total
+Element
+score
+Nation
+# Executed Element QOEInfo J1 J2 J4J3
+Base
+Value
+Scores of
+Panel
+5.00 5.30Jump1 3Lo3Lo +1+1+1+11.10
+5.30 5.30
+Total
+Segment
+score
+Total
+Component
+score (factored)
+Total
+Deductions1 GER
+5.30 44.80 0.00 50.10
+Program Components Factor
+Skating Skills 7.00 7.00 7.00 7.00 7.001.6
+Transitions/Linking Footwork/Movement 7.00 7.00 7.00 7.00 7.001.6
+Performance/Execution 7.00 7.00 7.00 7.00 7.001.6
+Choreography/Composition 7.00 7.00 7.00 7.00 7.001.6Judges Total Program Component Score (factored) 44.80
+Deductions 0.00
+`;
+
+  it("lee 'Choreography/Composition' aunque quede pegada sin salto de línea al texto siguiente", () => {
+    const [skater] = parseJudgesDetailsText(inlineGluedText);
+    expect(skater.components.choreography).toBeCloseTo(11.2, 2);
+    // Los otros 3 componentes (que sí llevan salto de línea detrás) no deben
+    // verse afectados por el cambio de regex.
+    expect(skater.components.skatingSkills).toBeCloseTo(11.2, 2);
+    expect(skater.components.transitions).toBeCloseTo(11.2, 2);
+    expect(skater.components.performance).toBeCloseTo(11.2, 2);
+  });
+});
