@@ -1,7 +1,7 @@
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
-const CONTACT_EMAIL = "rodrigomre08@gmail.com";
+const CONTACT_EMAIL = "support@rollartfantasy.com";
 
 export async function generateMetadata() {
   const locale = getLocale();
