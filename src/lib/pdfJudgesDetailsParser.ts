@@ -4,6 +4,17 @@ export interface ElementExecution {
   // sus elementos (ni "Lift", ni "Dance Step", ni "Dance Traveling", ni
   // "Spiral" estaban en la lista de palabras clave), así que un acta de
   // Parejas o Danza producía 0 elementos.
+  //
+  // "Dance Step" en el acta es una palabra clave GENÉRICA que el propio
+  // World Skate reutiliza para 3 elementos de Danza bien distintos (Hold
+  // Cluster Sequence, No Hold Sequence, Choreo Stop/Step seq.) — cada uno
+  // es su PROPIO slot de Fantasy (ver fantasyTemplates.ts: "Cluster", "No
+  // Hold Sequence" y "Choreo Stop" son 3 slots separados), así que no basta
+  // con la palabra clave: hace falta mirar la descripción de la línea para
+  // saber cuál de los 3 es exactamente (igual que ya se hacía para
+  // distinguir un Axel de un salto normal bajo la palabra clave "Jump").
+  // DANCE_STEP se queda como último recurso por si el acta trae alguna
+  // variante de "Dance Step" que no encaje con ninguna de las 3 conocidas.
   type:
     | "COMBO_JUMP"
     | "SOLO_JUMP"
@@ -15,8 +26,32 @@ export interface ElementExecution {
     | "THROW_JUMP"
     | "LIFT"
     | "DEATH_SPIRAL"
-    | "DANCE_TRAVELING"
-    | "DANCE_STEP";
+    | "TRAVELING"
+    | "CLUSTER"
+    | "NO_HOLD_SEQUENCE"
+    | "CHOREO_STOP"
+    | "DANCE_STEP"
+    // Solo Danza / Pareja Danza Style: "Pattern Sequence" y "Dance
+    // Sequence" son palabras clave propias (no variantes de "Dance Step");
+    // "Art Seq" y "Hold Sequence" comparten la palabra clave "Dance Step"
+    // con Cluster/No Hold/Choreo Stop, así que se distinguen igual, por
+    // descripción.
+    | "PATTERN_SEQUENCE"
+    | "FOOT_SEQUENCE"
+    | "ART_SEQUENCE"
+    | "HOLD_SEQUENCE"
+    // Show (Quartets) y Precisión: "Quartets Element" y "Precision
+    // Element" son también palabras clave genéricas, cada una reutilizada
+    // para varios elementos distintos — se distinguen por descripción, tal
+    // como ya se hacía con "Dance Step".
+    | "CREATIVE"
+    | "CANON"
+    | "WHEEL"
+    | "LINE"
+    | "BLOCK"
+    | "MOVE_ELEMENT"
+    | "INTERSECTION"
+    | "NO_HOLD_ELEMENT";
   name: string;
   score: number;
 }
@@ -74,8 +109,34 @@ export interface SkaterDetailedResult {
     throwJumpTotal: number;
     liftsTotal: number;
     deathSpiralTotal: number;
-    danceTravelingTotal: number;
+    travelingTotal: number;
+    clusterTotal: number;
+    noHoldSequenceTotal: number;
+    choreoStopTotal: number;
+    // Elementos "Dance Step" que no encajaron en ninguno de los 3 sub-tipos
+    // reconocidos arriba — debería quedarse siempre en 0 con las modalidades
+    // ya vistas; si alguna vez sale distinto de 0, es la señal de que el
+    // acta trae una variante de Danza aún no mapeada.
     danceStepTotal: number;
+    // Parejas: a diferencia de comboJump/soloJump/axel/soloOrAxel de arriba
+    // (pensados para el "mejor de la patinadora" de Libre), en Parejas TODOS
+    // los saltos side-by-side (los que no son Twist ni Throw) se suman en un
+    // único pack, igual que el resto de elementos de esta modalidad.
+    sideBySideJumpTotal: number;
+    // Solo Danza / Pareja Danza Style
+    patternSequenceTotal: number;
+    footSequenceTotal: number;
+    artSequenceTotal: number;
+    holdSequenceTotal: number;
+    // Show (Quartets) y Precisión
+    creativeTotal: number;
+    canonTotal: number;
+    wheelTotal: number;
+    lineTotal: number;
+    blockTotal: number;
+    moveElementTotal: number;
+    intersectionTotal: number;
+    noHoldElementTotal: number;
   };
 }
 
@@ -97,9 +158,50 @@ function keywordToType(keyword: string, nearbyText: string): ElementExecution["t
   if (keyword === "ComboSpin" || keyword === "Spin") return "SPIN";
   if (keyword === "Step Sequence") return "STEP";
   if (keyword === "Lift" || keyword === "ComboLift") return "LIFT";
-  if (keyword === "Dance Traveling") return "DANCE_TRAVELING";
-  if (keyword === "Dance Step") return "DANCE_STEP";
+  if (keyword === "Dance Traveling") return "TRAVELING";
+  if (keyword === "Pattern Sequence") return "PATTERN_SEQUENCE";
+  if (keyword === "Dance Sequence") return "FOOT_SEQUENCE";
+  if (keyword === "Dance Step") {
+    // Bajo "Dance Step" el acta agrupa hasta 5 elementos bien distintos
+    // según la modalidad (ver el comentario de la interfaz de arriba). El
+    // orden de estas comprobaciones importa:
+    // - "No Hold Sequence" también contiene la palabra "Cluster"? No, pero
+    //   si alguna vez apareciera "No Hold Cluster..." se clasificaría como
+    //   CLUSTER (mirado primero) en vez de NO_HOLD_SEQUENCE — no se ha visto
+    //   ese caso en ningún acta real todavía.
+    // - "No Hold Sequence" SÍ contiene "Hold Sequence" como subcadena, así
+    //   que "No Hold" tiene que mirarse ANTES que "Hold Sequence" a secas,
+    //   o toda "No Hold Sequence" se clasificaría por error como Hold
+    //   Sequence (Pareja Danza Style).
+    if (nearbyText.includes("Cluster")) return "CLUSTER";
+    if (nearbyText.includes("No Hold")) return "NO_HOLD_SEQUENCE";
+    if (nearbyText.includes("Choreo Stop") || nearbyText.includes("Choreo Step")) return "CHOREO_STOP";
+    if (nearbyText.includes("Art Seq")) return "ART_SEQUENCE";
+    if (nearbyText.includes("Hold Sequence")) return "HOLD_SEQUENCE";
+    return "DANCE_STEP";
+  }
   if (keyword === "Spiral") return "DEATH_SPIRAL";
+  if (keyword === "Quartets Element") {
+    if (nearbyText.includes("Cluster")) return "CLUSTER";
+    if (nearbyText.includes("Creative")) return "CREATIVE";
+    if (nearbyText.includes("Canon")) return "CANON";
+    return "CHOREO";
+  }
+  if (keyword === "Precision Element") {
+    const t = nearbyText.toLowerCase();
+    // El acta imprime "Pivoting block" con la "b" en minúscula (a
+    // diferencia del resto de elementos), así que esta comparación va en
+    // minúsculas para no depender de esa inconsistencia de mayúsculas.
+    if (t.includes("wheel")) return "WHEEL";
+    if (t.includes("line")) return "LINE";
+    if (t.includes("pivoting")) return "BLOCK";
+    if (t.includes("move element")) return "MOVE_ELEMENT";
+    if (t.includes("intersection")) return "INTERSECTION";
+    if (t.includes("traveling")) return "TRAVELING";
+    if (t.includes("creative")) return "CREATIVE";
+    if (t.includes("no hold element")) return "NO_HOLD_ELEMENT";
+    return "CHOREO";
+  }
   return "CHOREO";
 }
 
@@ -157,8 +259,24 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
         throwJumpTotal: 0,
         liftsTotal: 0,
         deathSpiralTotal: 0,
-        danceTravelingTotal: 0,
+        travelingTotal: 0,
+        clusterTotal: 0,
+        noHoldSequenceTotal: 0,
+        choreoStopTotal: 0,
         danceStepTotal: 0,
+        sideBySideJumpTotal: 0,
+        patternSequenceTotal: 0,
+        footSequenceTotal: 0,
+        artSequenceTotal: 0,
+        holdSequenceTotal: 0,
+        creativeTotal: 0,
+        canonTotal: 0,
+        wheelTotal: 0,
+        lineTotal: 0,
+        blockTotal: 0,
+        moveElementTotal: 0,
+        intersectionTotal: 0,
+        noHoldElementTotal: 0,
       },
     };
 
@@ -188,10 +306,20 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     // acta de "Seniores_Free_Skating_Ladies_FINAL_1.pdf": los 4 componentes
     // salían en blanco solo en el Largo, nunca en el Corto). Ahora se
     // captura el Factor aparte (pegado o con espacio) y se multiplica.
+    //
+    // Segundo bug real, encontrado con actas de Inline: la ÚLTIMA fila de
+    // Componentes ("Choreography/Composition") a veces queda pegada SIN
+    // salto de línea al texto siguiente ("...5.001.6Judges Total Program
+    // Component Score (factored) 31.87", todo en una sola línea de
+    // extracción). Exigir que el Factor fuera lo último antes de fin de
+    // línea (\s*$) hacía que esta fila nunca hiciera match. Ahora basta con
+    // que, tras el Factor, NO venga otro dígito pegado (que sí indicaría
+    // que nos hemos parado a media cifra) — así da igual si after viene un
+    // salto de línea real o el texto de la siguiente etiqueta.
     const getPcsValue = (label: string): number => {
       const reg = new RegExp(
-        `${label}\\s+(?:\\d+\\.\\d{2}\\s+)*(\\d+\\.\\d{2})\\s*(\\d+(?:\\.\\d+)?)?\\s*$`,
-        "im"
+        `${label}\\s+(?:\\d+\\.\\d{2}\\s+)*(\\d+\\.\\d{2})\\s*(\\d+(?:\\.\\d+)?)?(?!\\d)`,
+        "i"
       );
       const match = chunk.match(reg);
       if (!match) return 0;
@@ -234,7 +362,7 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     // más — declarar aquí la palabra clave ya basta para que M+L salgan
     // sumados como un único valor.
     const elementKeywords =
-      "ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step|ComboLift|Lift|Dance Traveling|Dance Step|Spiral";
+      "ComboJump|Jump|ComboSpin|Spin|Step Sequence|Choreo Sequence|Choreo Step|ComboLift|Lift|Dance Traveling|Dance Step|Spiral|Pattern Sequence|Dance Sequence|Quartets Element|Precision Element";
     const declRegexA = new RegExp(
       `^(\\d+\\.\\d{2})\\s+(\\d+\\.\\d{2})(${elementKeywords})(\\d+)`,
       "gm"
@@ -314,8 +442,23 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     const throwJumps = skaterResult.elements.filter((e) => e.type === "THROW_JUMP");
     const lifts = skaterResult.elements.filter((e) => e.type === "LIFT");
     const deathSpirals = skaterResult.elements.filter((e) => e.type === "DEATH_SPIRAL");
-    const danceTravelings = skaterResult.elements.filter((e) => e.type === "DANCE_TRAVELING");
+    const travelings = skaterResult.elements.filter((e) => e.type === "TRAVELING");
+    const clusters = skaterResult.elements.filter((e) => e.type === "CLUSTER");
+    const noHoldSequences = skaterResult.elements.filter((e) => e.type === "NO_HOLD_SEQUENCE");
+    const choreoStops = skaterResult.elements.filter((e) => e.type === "CHOREO_STOP");
     const danceSteps = skaterResult.elements.filter((e) => e.type === "DANCE_STEP");
+    const patternSequences = skaterResult.elements.filter((e) => e.type === "PATTERN_SEQUENCE");
+    const footSequences = skaterResult.elements.filter((e) => e.type === "FOOT_SEQUENCE");
+    const artSequences = skaterResult.elements.filter((e) => e.type === "ART_SEQUENCE");
+    const holdSequences = skaterResult.elements.filter((e) => e.type === "HOLD_SEQUENCE");
+    const creatives = skaterResult.elements.filter((e) => e.type === "CREATIVE");
+    const canons = skaterResult.elements.filter((e) => e.type === "CANON");
+    const wheels = skaterResult.elements.filter((e) => e.type === "WHEEL");
+    const lineElements = skaterResult.elements.filter((e) => e.type === "LINE");
+    const blocks = skaterResult.elements.filter((e) => e.type === "BLOCK");
+    const moveElements = skaterResult.elements.filter((e) => e.type === "MOVE_ELEMENT");
+    const intersections = skaterResult.elements.filter((e) => e.type === "INTERSECTION");
+    const noHoldElements = skaterResult.elements.filter((e) => e.type === "NO_HOLD_ELEMENT");
 
     // Un único valor por tipo: la MEJOR combinación y el MEJOR salto suelto
     // de esta patinadora (no "el mejor" y "el segundo mejor" por separado —
@@ -346,8 +489,30 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     skaterResult.slotScores.throwJumpTotal = sum(throwJumps);
     skaterResult.slotScores.liftsTotal = sum(lifts);
     skaterResult.slotScores.deathSpiralTotal = sum(deathSpirals);
-    skaterResult.slotScores.danceTravelingTotal = sum(danceTravelings);
+    skaterResult.slotScores.travelingTotal = sum(travelings);
+    skaterResult.slotScores.clusterTotal = sum(clusters);
+    skaterResult.slotScores.noHoldSequenceTotal = sum(noHoldSequences);
+    skaterResult.slotScores.choreoStopTotal = sum(choreoStops);
     skaterResult.slotScores.danceStepTotal = sum(danceSteps);
+    // Parejas: TODOS los saltos side-by-side (los que caen bajo SOLO_JUMP o
+    // AXEL por no ser Twist ni Throw) se suman en un único pack — a
+    // diferencia de Libre, donde estos mismos buckets se usan para el
+    // "mejor salto" (ver comboJump/soloJump/axel/soloOrAxel de arriba).
+    skaterResult.slotScores.sideBySideJumpTotal = sum([...solos, ...axels]);
+    // Solo Danza / Pareja Danza Style
+    skaterResult.slotScores.patternSequenceTotal = sum(patternSequences);
+    skaterResult.slotScores.footSequenceTotal = sum(footSequences);
+    skaterResult.slotScores.artSequenceTotal = sum(artSequences);
+    skaterResult.slotScores.holdSequenceTotal = sum(holdSequences);
+    // Show (Quartets) y Precisión
+    skaterResult.slotScores.creativeTotal = sum(creatives);
+    skaterResult.slotScores.canonTotal = sum(canons);
+    skaterResult.slotScores.wheelTotal = sum(wheels);
+    skaterResult.slotScores.lineTotal = sum(lineElements);
+    skaterResult.slotScores.blockTotal = sum(blocks);
+    skaterResult.slotScores.moveElementTotal = sum(moveElements);
+    skaterResult.slotScores.intersectionTotal = sum(intersections);
+    skaterResult.slotScores.noHoldElementTotal = sum(noHoldElements);
 
     // Sumar Componentes agrupados
     skaterResult.slotScores.pcsSkatingTransitions = Number(
@@ -358,6 +523,111 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     );
 
     results.push(skaterResult);
+  }
+
+  return results;
+}
+
+// Show Groups (Small/Large Groups): a diferencia de TODAS las demás
+// modalidades, estas actas NO contienen "JUDGES DETAILS PER SKATER" en
+// absoluto — no hay elementos técnicos (TES) porque estos formatos puntúan
+// EXCLUSIVAMENTE con 4 componentes de programa (PCS), sin ningún elemento
+// técnico ejecutado. Por eso usan una función de parseo completamente
+// aparte, en vez de una variante de `parseJudgesDetailsText`.
+//
+// Dos diferencias estructurales clave frente al resto de actas:
+// 1) Las notas de cada juez aparecen ANTES de la etiqueta del componente
+//    ("7.50 6.75 7.75 7.00 6.00 7.08Skating Skills 1.0"), al revés que en
+//    el resto de disciplinas.
+// 2) El número pegado justo delante de la etiqueta ("7.08Skating Skills")
+//    es una media recortada (se descartan la nota más alta y la más baja)
+//    que YA viene facturada — no hay que multiplicarla por el Factor que
+//    aparece al final de la fila. Esto se verificó cruzando estos valores
+//    con la tabla-resumen "FINAL RESULT - SHOW" al inicio del PDF (columnas
+//    SS/GT/PE/CH), que coinciden exactamente con estos 4 números por
+//    equipo, y con que su suma es igual al total del segmento.
+export interface TeamShowGroupResult {
+  rank: number;
+  teamName: string;
+  nation?: string;
+  deductions: number;
+  total: number;
+  components: {
+    skatingSkills: number;
+    groupTechnique: number;
+    performance: number;
+    ideaChoreography: number;
+  };
+}
+
+export function parseShowGroupResults(pdfText: string): TeamShowGroupResult[] {
+  const results: TeamShowGroupResult[] = [];
+  const cleanText = pdfText.replace(/\r\n/g, "\n");
+  // Cada equipo abre su bloque de detalle con la cabecera de tabla
+  // "Rank Group Name Nation" — no existe un separador con nombre propio
+  // como en el resto de disciplinas, así que se usa esta cabecera como
+  // marcador de corte.
+  const parts = cleanText.split(/Rank Group Name Nation/i);
+
+  for (let idx = 1; idx < parts.length; idx++) {
+    const chunk = parts[idx];
+    const prevLines = parts[idx - 1]
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    // El nombre del equipo/programa viene ANTES de la cabecera "Rank Group
+    // Name Nation", justo después de la línea "Show Small/Large Groups" de
+    // esa página — y a veces se parte en dos líneas cuando el nombre del
+    // club es largo (p.ej. "GRUP GRAN PATINAGE EL MASNOU - COME AND\nSEE !
+    // THE SHOW IS ABOUT TO BEGIN"), por eso se unen todas las líneas entre
+    // ese marcador y la cabecera en vez de coger solo la última.
+    let markerIdx = -1;
+    for (let i = prevLines.length - 1; i >= 0; i--) {
+      if (/^Show (Small|Large) Groups$/i.test(prevLines[i])) {
+        markerIdx = i;
+        break;
+      }
+    }
+    const nameLines = markerIdx > -1 ? prevLines.slice(markerIdx + 1) : [prevLines[prevLines.length - 1] || ""];
+    const teamName = nameLines.join(" ").replace(/\s+/g, " ").trim();
+
+    // Fila de totales real: "...Deductions<rank> <NAT>\n<componentTotal>
+    // <deducciones> <total>". Al no haber TES, el "Total Segment score" de
+    // la cabecera de la tabla es, en la práctica, el mismo valor que el
+    // "Total Component score (factored)" (no hay nada más que sumarle), y
+    // el propio Factor de "Deductions" queda pegado al rank sin espacio
+    // ("Deductions1 ESP").
+    const totalsMatch = chunk.match(
+      /Deductions(\d+)\s+([A-Z]{3})\s*\n?\s*(\d+\.\d{2})\s+(-?\d+\.\d{2})\s+(\d+\.\d{2})/
+    );
+    const rank = totalsMatch ? parseInt(totalsMatch[1], 10) : idx;
+    const nation = totalsMatch ? totalsMatch[2] : undefined;
+    const deductions = totalsMatch ? parseFloat(totalsMatch[4]) : 0;
+    const total = totalsMatch ? parseFloat(totalsMatch[5]) : 0;
+
+    // El valor ya facturado de cada componente está pegado justo delante de
+    // su etiqueta (ver nota arriba) — no hace falta leer el Factor ni
+    // multiplicar nada, a diferencia de `getPcsValue` en el resto de actas.
+    const getGroupPcsValue = (label: string): number => {
+      const reg = new RegExp(`(\\d+\\.\\d{2})\\s*${label}`, "i");
+      const match = chunk.match(reg);
+      return match ? parseFloat(match[1]) : 0;
+    };
+
+    results.push({
+      rank,
+      teamName,
+      nation,
+      deductions,
+      total,
+      components: {
+        skatingSkills: getGroupPcsValue("Skating Skills"),
+        groupTechnique: getGroupPcsValue("Group Technique"),
+        performance: getGroupPcsValue("Performance/Execution"),
+        ideaChoreography: getGroupPcsValue("Idea and Choreography"),
+      },
+    });
   }
 
   return results;
