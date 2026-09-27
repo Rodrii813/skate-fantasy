@@ -17,6 +17,19 @@ import {
   type SlotTemplate,
 } from "@/lib/fantasyTemplates";
 
+// Antes, un Segmento recién creado se abría al draft en cuanto tenía slots
+// (opensAt quedaba null, y null se interpreta como "ábrelo ya" — ver
+// isSegmentOpenByTime en src/lib/segments.ts). Eso obligaba al admin a
+// abrir manualmente la sección "Apertura del draft por segmento" y ponerle
+// una fecha ANTES de generar los slots si no quería que se abriera solo,
+// lo cual no siempre daba tiempo. Ahora un Segmento nuevo nace con esta
+// fecha placeholder muy lejana como opensAt, así que sale CERRADO por
+// defecto hasta que el admin le ponga una fecha real o pulse "Abrir ahora"
+// (manuallyOpened) — ver esa sección en EventsManager.tsx. Los segmentos ya
+// existentes (creados antes de este cambio) no se tocan, así que si ya
+// estaban abiertos siguen abiertos.
+const NEW_SEGMENT_DEFAULT_OPENS_AT = new Date("2099-01-01T00:00:00Z");
+
 function generateSlug(text: string): string {
   return text
     .toLowerCase()
@@ -42,7 +55,12 @@ async function generateSlotsForSegment(
 
   if (!segment) {
     segment = await prisma.segment.create({
-      data: { eventId, name: segmentName, order: segmentOrder },
+      data: {
+        eventId,
+        name: segmentName,
+        order: segmentOrder,
+        opensAt: NEW_SEGMENT_DEFAULT_OPENS_AT,
+      },
     });
   }
 

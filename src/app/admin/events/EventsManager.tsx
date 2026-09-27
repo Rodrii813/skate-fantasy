@@ -586,15 +586,21 @@ export default function EventsManager({
                       /fantasy aunque ya tenga slots generados — pensado para
                       el Largo, que puede generarse con antelación pero no
                       debe abrirse hasta que se sepa el resultado del Corto
-                      (a veces al día siguiente). Vacío = se abre en cuanto
-                      tiene slots (comportamiento de siempre). El botón de
-                      abrir/cerrar a mano salta esta hora sin borrarla. */}
+                      (a veces al día siguiente). Un segmento recién creado
+                      (al generar sus slots) nace CERRADO por defecto — sale
+                      con una fecha placeholder muy lejana como opensAt (ver
+                      generate-slots/route.ts) — así que hay que ponerle
+                      fecha aquí o pulsar "Abrir ahora" cuando toque. El
+                      botón de abrir/cerrar a mano salta esta hora sin
+                      borrarla. Los segmentos de eventos antiguos (de antes
+                      de este cambio) siguen con su comportamiento previo:
+                      vacío = se abren en cuanto tienen slots. */}
                   {ev.segments && ev.segments.length > 0 && (
                     <div className="mt-3 space-y-1.5 bg-slate-950/50 border border-slate-800/80 rounded-xl p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
                         Apertura del draft por segmento{" "}
                         <span className="font-normal normal-case text-slate-600">
-                          — vacío = se abre en cuanto haya slots generados
+                          — cerrado por defecto en segmentos nuevos: ponle fecha o pulsa &quot;Abrir ahora&quot;
                         </span>
                       </p>
                       {ev.segments.map((seg: any) => {
