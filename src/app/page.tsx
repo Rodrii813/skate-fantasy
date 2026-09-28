@@ -21,9 +21,11 @@ export default async function HomePage() {
 
   const now = new Date();
 
-  // Se piden hasta 8 candidatos (antes solo 2, y solo se usaba el primero)
+  // Se piden hasta 20 candidatos (antes solo 2, y solo se usaba el primero)
   // para poder recorrerlos buscando el primero que tenga REALMENTE algo
-  // abierto — ver el "porqué" completo unas líneas más abajo.
+  // abierto (ver el "porqué" completo unas líneas más abajo) y para que la
+  // lista de "en directo ahora" tenga margen de sobra para encontrar varias
+  // competiciones DISTINTAS, no solo varios eventos de la misma.
   const upcomingEvents = await prisma.event.findMany({
     where: {
       rosterLocksAt: { gte: now },
@@ -35,7 +37,7 @@ export default async function HomePage() {
       slots: { select: { segmentId: true } },
     },
     orderBy: { rosterLocksAt: "asc" },
-    take: 8,
+    take: 20,
   });
 
   // Tipado explícito: el cliente de Prisma en este entorno de verificación
@@ -79,12 +81,35 @@ export default async function HomePage() {
   const fmtDate = (d: Date) =>
     `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 
-  // Eventos "en directo ahora mismo" (Predicciones o Draft abiertos), para
-  // la lista de debajo del banner destacado — hasta 5, distintos del que ya
-  // protagoniza el banner grande para no repetir la misma prueba dos veces.
-  const liveNowEvents = candidates
-    .filter((c) => (c.status.predictionsOpen || c.status.draftOpen) && c.event.id !== nextActiveEvent?.id)
-    .slice(0, 5);
+  // Lista "en directo ahora": por COMPETICIÓN, no por evento — antes salía
+  // una fila por cada prueba (Corto Senior, Largo Senior, Danza...), y una
+  // sola competición con varias disciplinas/categorías abiertas a la vez
+  // llenaba la lista entera repitiendo el mismo nombre de competición. Ahora
+  // se agrupa por competitionId: una fila por competición, con las pastillas
+  // combinadas (si CUALQUIERA de sus pruebas tiene Predicciones y/o Draft
+  // abiertos). Se excluye la competición que ya protagoniza el banner grande
+  // de arriba, para no mostrarla dos veces.
+  const liveNowByCompetition = new Map<
+    string,
+    { competitionId: string; competitionName: string; predictionsOpen: boolean; draftOpen: boolean }
+  >();
+  for (const c of candidates) {
+    if (!c.status.predictionsOpen && !c.status.draftOpen) continue;
+    if (c.event.competitionId === nextActiveEvent?.competitionId) continue;
+    const existing = liveNowByCompetition.get(c.event.competitionId);
+    if (existing) {
+      existing.predictionsOpen = existing.predictionsOpen || c.status.predictionsOpen;
+      existing.draftOpen = existing.draftOpen || c.status.draftOpen;
+    } else {
+      liveNowByCompetition.set(c.event.competitionId, {
+        competitionId: c.event.competitionId,
+        competitionName: c.event.competition.name,
+        predictionsOpen: c.status.predictionsOpen,
+        draftOpen: c.status.draftOpen,
+      });
+    }
+  }
+  const liveNowCompetitions = Array.from(liveNowByCompetition.values()).slice(0, 5);
 
   // Cuenta atrás de la home: ajustable desde /admin/settings (activar o
   // desactivar, título, sede y fecha objetivo) en vez de detectarse sola
@@ -213,40 +238,38 @@ export default async function HomePage() {
           </div>
         )}
 
-        {/* Lista "en directo ahora": otras pruebas con Predicciones o Draft
-            abiertos, aparte de la que ya protagoniza el banner de arriba —
-            para que no haga falta ir a Predicciones o a Fantasy a comprobar
-            si hay algo más abierto ahora mismo. */}
-        {liveNowEvents.length > 0 && (
+        {/* Lista "en directo ahora": una fila por COMPETICIÓN (no por
+            prueba/evento) con Predicciones o Draft abiertos en alguna de sus
+            pruebas, aparte de la que ya protagoniza el banner de arriba.
+            Antes salía una fila por cada evento, y una sola competición con
+            varias disciplinas/categorías abiertas a la vez llenaba la lista
+            repitiendo su propio nombre una y otra vez. Cada fila enlaza a la
+            página general de esa competición (p.ej. World Skate Games), no a
+            una prueba/Predicción/Draft concretos — desde ahí se ve todo lo
+            suyo y se entra a lo que interese. Las pastillas son solo
+            informativas (qué hay abierto en esa competición), no enlaces
+            por separado. */}
+        {liveNowCompetitions.length > 0 && (
           <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
             <div className="flex items-center gap-2 px-5 pt-4 pb-1">
               <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
               <h2 className="text-xs font-bold uppercase tracking-wider text-ice-100/70">{t.liveNowTitle}</h2>
             </div>
             <div className="divide-y divide-white/5">
-              {/* Cada fila enlaza a la competición general (p.ej. World Skate
-                  Games), no al evento/prueba concreto ni directamente a
-                  Predicciones o al Draft — pedido explícitamente así: desde
-                  ahí la persona ya ve todas las pruebas de esa competición y
-                  entra a la que le interese. Las pastillas de color son solo
-                  informativas (qué hay abierto), no enlaces por separado. */}
-              {liveNowEvents.map(({ event, status }) => (
+              {liveNowCompetitions.map((comp) => (
                 <Link
-                  key={event.id}
-                  href={`/competitions/${event.competitionId}`}
+                  key={comp.competitionId}
+                  href={`/competitions/${comp.competitionId}`}
                   className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-white/5 transition"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ice-50 truncate">{event.name}</p>
-                    <p className="text-[11px] text-ice-100/40 truncate">{event.competition.name}</p>
-                  </div>
+                  <p className="text-sm font-semibold text-ice-50 truncate min-w-0">{comp.competitionName}</p>
                   <div className="flex items-center gap-1.5 shrink-0">
-                    {status.predictionsOpen && (
+                    {comp.predictionsOpen && (
                       <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent border border-accent/30 px-2.5 py-1 rounded-full">
                         {t.liveNowPredictionsPill}
                       </span>
                     )}
-                    {status.draftOpen && (
+                    {comp.draftOpen && (
                       <span className="text-[10px] font-bold uppercase tracking-wide bg-gold/20 text-gold border border-gold/30 px-2.5 py-1 rounded-full">
                         {t.liveNowDraftPill}
                       </span>
