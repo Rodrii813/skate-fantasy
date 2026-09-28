@@ -300,6 +300,11 @@ export default function FantasyRosterForm({
         </a>
       </div>
 
+      <div className="bg-indigo-950/30 border border-indigo-800/40 rounded-2xl p-4 space-y-1">
+        <h2 className="text-xs font-bold text-indigo-300 uppercase tracking-wider">{t.howToPlayTitle}</h2>
+        <p className="text-xs text-slate-300 leading-relaxed">{t.howToPlayBody}</p>
+      </div>
+
       {msg && (
         <div
           className={`p-3 rounded-xl text-xs font-semibold ${
@@ -394,6 +399,7 @@ export default function FantasyRosterForm({
               <p className="flex items-center gap-1.5 font-medium">
                 <span className="opacity-0">⚠️</span> {t.rule2}
               </p>
+              <p className="pl-5 text-[11px] text-slate-400 italic">{t.warmupGroupHint}</p>
             </div>
 
             {activeSegmentValidation && (

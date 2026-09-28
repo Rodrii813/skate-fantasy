@@ -50,6 +50,15 @@ export default function NormasPage() {
         <p className="mt-3 max-w-2xl text-sm text-ice-100/70">{t.intro}</p>
       </div>
 
+      <div className="rounded-2xl border border-gold/30 bg-gold/5 p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gold">{t.tldrTitle}</p>
+        <ul className="mt-2 list-inside list-disc space-y-1.5 text-sm text-ice-100/85">
+          {t.tldrItems.map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      </div>
+
       <Section title={t.s1.title}>
         <p>{t.s1.p1}</p>
         <p>{t.s1.p2}</p>
