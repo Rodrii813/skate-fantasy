@@ -4,18 +4,36 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+interface RegistrationRow {
+  id: string;
+  skaterId: string;
+  startOrder: number | null;
+  warmupGroup: number | null;
+  warmupGroupShort: number | null;
+  warmupGroupLong: number | null;
+  club: string | null;
+  skater: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    country: string | null;
+  };
+}
+
 export default function EventSkatersPage() {
   const params = useParams();
   const eventId = params.eventId as string;
 
   const [eventData, setEventData] = useState<any>(null);
   const [allSkaters, setAllSkaters] = useState<any[]>([]);
+  const [registrations, setRegistrations] = useState<RegistrationRow[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Formulario manual
   const [selectedSkaterId, setSelectedSkaterId] = useState("");
   const [warmupGroup, setWarmupGroup] = useState("1");
   const [skatingOrder, setSkatingOrder] = useState("1");
+  const [segmentName, setSegmentName] = useState("");
   // Por defecto el selector solo muestra patinadores de la disciplina+categoría
   // de esta prueba (si no, con miles de patinadores en total se vuelve
   // imposible de usar). Se puede desactivar para ver la lista completa.
@@ -23,6 +41,7 @@ export default function EventSkatersPage() {
 
   // Formulario Starting Order PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [pdfSegmentName, setPdfSegmentName] = useState("");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -46,6 +65,15 @@ export default function EventSkatersPage() {
         if (relevant.length > 0) setSelectedSkaterId(relevant[0].id);
         else if (skaters.length > 0) setSelectedSkaterId(skaters[0].id);
       }
+
+      // 3. Obtener la lista real de inscritos en ESTA prueba, con su grupo de
+      // calentamiento — antes esta pantalla no llamaba a este endpoint y por
+      // eso, tras subir un PDF de orden de salida, no había forma de ver si
+      // de verdad se habían detectado los grupos (solo se veía el mensaje de
+      // éxito, nunca la lista).
+      const resRegs = await fetch(`/api/admin/events/${eventId}/registrations`);
+      const regs = await resRegs.json();
+      if (Array.isArray(regs)) setRegistrations(regs);
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -69,6 +97,7 @@ export default function EventSkatersPage() {
         skaterId: selectedSkaterId,
         warmupGroup: Number(warmupGroup),
         skatingOrder: Number(skatingOrder),
+        segmentName,
       }),
     });
 
@@ -91,6 +120,12 @@ export default function EventSkatersPage() {
 
     const formData = new FormData();
     formData.append("file", pdfFile);
+    // El Corto y el Largo tienen sorteos de grupo de calentamiento distintos
+    // — sin indicar el segmento aquí, el grupo siempre caía en el campo
+    // legado warmupGroup, que la ficha pública de la competición solo usa
+    // cuando NO hay ningún warmupGroupShort/Long guardado; si luego se sube
+    // también el PDF del otro segmento, uno de los dos "desaparecía".
+    formData.append("segmentName", pdfSegmentName);
 
     try {
       const res = await fetch(`/api/admin/events/${eventId}/import-starting-order`, {
@@ -99,7 +134,13 @@ export default function EventSkatersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al procesar PDF");
-      setMsg(`✅ Importados ${data.count} patinadores con sus grupos de calentamiento`);
+      if (data.count === 0) {
+        setMsg(
+          "⚠️ El PDF se ha leído pero no se ha detectado ningún patinador. Comprueba que el archivo tiene el formato oficial de World Skate o de la RFEP."
+        );
+      } else {
+        setMsg(`✅ Importados ${data.count} patinadores con sus grupos de calentamiento`);
+      }
       loadData();
     } catch (err: any) {
       setMsg(`❌ ${err.message}`);
@@ -125,6 +166,22 @@ export default function EventSkatersPage() {
     });
     if (res.ok) loadData();
   };
+
+  // Qué grupo mostrar por fila: si tiene grupo de Corto y/o Largo se
+  // muestran los dos por separado (con etiqueta); si no, el legado.
+  const groupLabel = (r: RegistrationRow) => {
+    const parts: string[] = [];
+    if (r.warmupGroupShort != null) parts.push(`Corto G${r.warmupGroupShort}`);
+    if (r.warmupGroupLong != null) parts.push(`Largo G${r.warmupGroupLong}`);
+    if (parts.length === 0 && r.warmupGroup != null) parts.push(`G${r.warmupGroup}`);
+    return parts.length > 0 ? parts.join(" · ") : "—";
+  };
+
+  const sortedRegistrations = [...registrations].sort((a, b) => {
+    const oa = a.startOrder ?? Number.MAX_SAFE_INTEGER;
+    const ob = b.startOrder ?? Number.MAX_SAFE_INTEGER;
+    return oa - ob;
+  });
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -195,6 +252,19 @@ export default function EventSkatersPage() {
               )}
             </div>
 
+            <div className="space-y-1 text-xs">
+              <label className="text-slate-400">Segmento (opcional)</label>
+              <select
+                value={segmentName}
+                onChange={(e) => setSegmentName(e.target.value)}
+                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
+              >
+                <option value="">Sin segmento (grupo único)</option>
+                <option value="Short Program">Short Program (Corto)</option>
+                <option value="Long Program">Long Program (Largo)</option>
+              </select>
+            </div>
+
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
                 <label className="text-slate-400">Grupo Calentamiento</label>
@@ -240,6 +310,24 @@ export default function EventSkatersPage() {
               <p className="text-[11px] text-slate-400">
                 Detecta y extrae todos los patinadores, dorsales y grupos de calentamiento automáticamente.
               </p>
+
+              <div className="space-y-1 text-xs">
+                <label className="text-slate-400">Segmento de este PDF</label>
+                <select
+                  value={pdfSegmentName}
+                  onChange={(e) => setPdfSegmentName(e.target.value)}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
+                >
+                  <option value="">Sin segmento (grupo único)</option>
+                  <option value="Short Program">Short Program (Corto)</option>
+                  <option value="Long Program">Long Program (Largo)</option>
+                </select>
+                <p className="text-[10px] text-slate-500">
+                  El Corto y el Largo tienen sorteos de grupo distintos: indica aquí cuál es este
+                  PDF para que no se pisen entre sí.
+                </p>
+              </div>
+
               <input
                 type="file"
                 accept=".pdf"
@@ -262,20 +350,43 @@ export default function EventSkatersPage() {
         {/* Lista de Registrados */}
         <div className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Patinadores en la prueba ({eventData?._count?.registrations || 0})
+            Patinadores en la prueba ({registrations.length})
           </h2>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800 text-xs">
             {loading ? (
               <div className="p-4 text-center text-slate-400">Cargando lista...</div>
-            ) : eventData?._count?.registrations === 0 ? (
+            ) : sortedRegistrations.length === 0 ? (
               <div className="p-4 text-center text-slate-400">
                 No hay patinadores inscritos en esta prueba todavía.
               </div>
             ) : (
-              <div className="p-4 text-slate-300">
-                Patinadores listos para el draft y puntuación del evento.
-              </div>
+              sortedRegistrations.map((r) => (
+                <div key={r.id} className="flex items-center justify-between gap-3 p-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="font-bold text-slate-400 w-7 shrink-0 text-center">
+                      {r.startOrder ?? "—"}
+                    </span>
+                    <span className="shrink-0 rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-indigo-300 text-[11px] font-mono">
+                      {groupLabel(r)}
+                    </span>
+                    <span className="truncate font-sans font-medium text-slate-200">
+                      {r.skater.firstName} {r.skater.lastName}
+                    </span>
+                    {r.skater.country && (
+                      <span className="shrink-0 rounded bg-indigo-950 border border-indigo-800 px-2 py-0.5 text-indigo-300 font-bold text-[11px]">
+                        {r.skater.country}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => handleDeleteRegistration(r.skaterId)}
+                    className="shrink-0 text-[11px] font-semibold text-red-400 hover:text-red-300 px-2 py-1"
+                  >
+                    Quitar
+                  </button>
+                </div>
+              ))
             )}
           </div>
         </div>
