@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/adminAuth";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
+
   try {
     const comps = await prisma.competition.findMany({
       orderBy: { startDate: "desc" },
@@ -16,10 +18,10 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
 
+  try {
     const body = await req.json();
     const { name, location, startDate, endDate } = body;
 
@@ -38,10 +40,10 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
 
+  try {
     const body = await req.json();
     const { id, name, location, startDate, endDate } = body;
 
@@ -61,10 +63,10 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
 
+  try {
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
     if (!id) return NextResponse.json({ error: "Falta el ID" }, { status: 400 });

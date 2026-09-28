@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { requireAdmin } from "@/lib/adminAuth";
 
 // Lista los patinadores inscritos en esta prueba, con sus datos y grupos de
 // calentamiento por segmento — usada por la pantalla de admin
@@ -12,6 +11,9 @@ export async function GET(
   req: Request,
   { params }: { params: { eventId: string } }
 ) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
+
   try {
     const registrations = await prisma.registration.findMany({
       where: { eventId: params.eventId },
@@ -28,10 +30,10 @@ export async function POST(
   req: Request,
   { params }: { params: { eventId: string } }
 ) {
-  try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
 
+  try {
     const { eventId } = params;
     const body = await req.json();
     const { skaterId, warmupGroup, skatingOrder, segmentName } = body;
@@ -79,6 +81,9 @@ export async function DELETE(
   req: Request,
   { params }: { params: { eventId: string } }
 ) {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
+
   try {
     const { searchParams } = new URL(req.url);
     const skaterId = searchParams.get("skaterId");

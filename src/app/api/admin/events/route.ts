@@ -3,8 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
+import { requireAdmin } from "@/lib/adminAuth";
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth.response;
+
   try {
     const events = await prisma.event.findMany({
       orderBy: { rosterLocksAt: "desc" },
