@@ -278,7 +278,7 @@ export default function EventSkatersPage() {
                 />
               </div>
               <div className="space-y-1">
-                <label className="text-slate-400">Orden / Dorsal</label>
+                <label className="text-slate-400">Orden de Salida</label>
                 <input
                   type="number"
                   min="1"
@@ -308,7 +308,7 @@ export default function EventSkatersPage() {
                 📄 Ingestar Orden de Salida (PDF)
               </h2>
               <p className="text-[11px] text-slate-400">
-                Detecta y extrae todos los patinadores, dorsales y grupos de calentamiento automáticamente.
+                Detecta y extrae automáticamente a todos los patinadores, su orden de salida y sus grupos de calentamiento.
               </p>
 
               <div className="space-y-1 text-xs">
