@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -88,6 +88,101 @@ function NavGlyph({ icon, className }: { icon: NavIcon; className?: string }) {
   }
 }
 
+// Menú de cuenta en escritorio: antes "Mi cuenta" y "Salir (nombre)" eran dos
+// enlaces de texto sueltos en la fila de arriba. Con la fila ya bastante
+// llena (Competiciones, Calendario, Fantasy, Predicciones, Normas, idioma,
+// zona horaria...) y "Salir (nombre)" pudiendo ser largo según el nickname
+// de cada uno, la fila se salía del ancho disponible en pantallas de
+// escritorio no muy anchas: se veía descuadrada, cortada por el borde
+// derecho. Un único botón compacto (inicial + nombre truncado) con un
+// desplegable resuelve el desbordamiento pase lo que pase de largo el
+// nickname, y de paso dijimos que nos gustaba ese estilo en la captura de
+// referencia que nos pasaron.
+function AccountMenu({
+  name,
+  profileLabel,
+  logoutLabel,
+  onLogout,
+  profileActive,
+}: {
+  name: string;
+  profileLabel: string;
+  logoutLabel: string;
+  onLogout: () => void;
+  profileActive: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [open]);
+
+  const initial = name.trim().charAt(0).toUpperCase() || "?";
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className={`flex items-center gap-2 rounded-full pl-1 pr-2.5 py-1 text-sm transition-colors ${
+          open ? "bg-white/10 text-white" : "text-ice-100/80 hover:bg-white/5 hover:text-white"
+        }`}
+      >
+        <span className="w-6 h-6 shrink-0 rounded-full bg-gold/20 text-gold text-[11px] font-bold flex items-center justify-center">
+          {initial}
+        </span>
+        <span className="max-w-[100px] truncate">{name}</span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className={`shrink-0 text-ice-100/40 transition-transform ${open ? "rotate-180" : ""}`}
+        >
+          <path d="M6 9l6 6 6-6" />
+        </svg>
+      </button>
+
+      <div
+        className={`absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-rink shadow-xl shadow-black/50 py-1 origin-top-right transition-all z-50 ${
+          open ? "opacity-100 scale-100" : "pointer-events-none opacity-0 scale-95"
+        }`}
+      >
+        <Link
+          href="/profile"
+          onClick={() => setOpen(false)}
+          className={`block px-3.5 py-2 text-sm transition-colors ${
+            profileActive ? "text-gold" : "text-ice-100/80 hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          {profileLabel}
+        </Link>
+        <button
+          type="button"
+          onClick={() => {
+            setOpen(false);
+            onLogout();
+          }}
+          className="block w-full text-left px-3.5 py-2 text-sm text-ice-100/80 hover:bg-white/5 hover:text-white transition-colors"
+        >
+          {logoutLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function NavBar() {
   const { data: session } = useSession();
   const isAdmin = (session?.user as any)?.role === "ADMIN";
@@ -146,20 +241,16 @@ export default function NavBar() {
   );
 
   const authLinks = session?.user ? (
-    <>
-      <Link href="/profile" className="hover:text-white" onClick={closeMenu}>
-        {t.profile}
-      </Link>
-      <button
-        onClick={() => {
-          closeMenu();
-          signOut({ callbackUrl: "/" });
-        }}
-        className="hover:text-white"
-      >
-        {t.logout(session.user.name || "")}
-      </button>
-    </>
+    <AccountMenu
+      name={session.user.name || session.user.email || ""}
+      profileLabel={t.profile}
+      logoutLabel={t.logoutPlain}
+      profileActive={isActive("/profile")}
+      onLogout={() => {
+        closeMenu();
+        signOut({ callbackUrl: "/" });
+      }}
+    />
   ) : (
     <>
       <Link href="/login" className="hover:text-white" onClick={closeMenu}>
