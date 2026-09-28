@@ -8,10 +8,10 @@ import type { Locale } from "./config";
 export const dictionaries = {
   es: {
     nav: {
-      competitions: "Competition Hub",
+      competitions: "Competiciones",
       calendar: "Calendario",
       fantasy: "Fantasy",
-      predictions: "Prediction Central",
+      predictions: "Predicciones",
       rules: "Normas",
       admin: "Admin",
       profile: "Mi cuenta",
@@ -49,10 +49,10 @@ export const dictionaries = {
       heroTitle: "El Hub del Patinaje Artístico",
       heroSubtitle:
         "Sigue el calendario internacional, predice los podios de cada categoría y compite en el fantasy de Rollart.",
-      cardHubTitle: "Competition Hub",
+      cardHubTitle: "Competiciones",
       cardHubBody: "Calendario de competiciones, órdenes de salida y actas de resultados Rollart.",
       cardHubCta: "Ver calendario oficial →",
-      cardPredictionsTitle: "Prediction Central",
+      cardPredictionsTitle: "Predicciones",
       cardPredictionsBody:
         "Predicciones oficiales: predice los patinadores que subirán al podio en cada categoría.",
       cardPredictionsCta: "Hacer mis predicciones →",
@@ -101,7 +101,7 @@ export const dictionaries = {
       empty: "Aún no hay eventos creados.",
     },
     competitionsHub: {
-      title: "Competition Hub",
+      title: "Competiciones",
       subtitle: "Calendario oficial, pruebas de la temporada, inscripciones y actas de resultados Rollart.",
       viewCalendar: "📅 Ver Calendario general",
       season: "Temporada 2026",
@@ -247,7 +247,7 @@ export const dictionaries = {
       error: "No se ha podido actualizar el nickname.",
     },
     predictions: {
-      title: "Prediction Central",
+      title: "Predicciones",
       subtitle: "Acierta el podio o el Top 5 de cada categoría y compite en el ranking de predicciones.",
       viewCalendar: "Ver Calendario Oficial",
       noEvents: "No hay eventos disponibles para realizar predicciones.",
@@ -636,10 +636,10 @@ export const dictionaries = {
   },
   en: {
     nav: {
-      competitions: "Competition Hub",
+      competitions: "Competitions",
       calendar: "Calendar",
       fantasy: "Fantasy",
-      predictions: "Prediction Central",
+      predictions: "Predictions",
       rules: "Rules",
       admin: "Admin",
       profile: "My account",
@@ -677,10 +677,10 @@ export const dictionaries = {
       heroTitle: "The Figure Skating Hub",
       heroSubtitle:
         "Follow the international calendar, predict each category's podium and compete in Rollart Fantasy.",
-      cardHubTitle: "Competition Hub",
+      cardHubTitle: "Competitions",
       cardHubBody: "Competition calendar, starting orders and official Rollart results.",
       cardHubCta: "View official calendar →",
-      cardPredictionsTitle: "Prediction Central",
+      cardPredictionsTitle: "Predictions",
       cardPredictionsBody: "Official predictions: pick the skaters you think will make the podium in each category.",
       cardPredictionsCta: "Make my predictions →",
       cardFantasyTitle: "Rollart Fantasy",
@@ -728,7 +728,7 @@ export const dictionaries = {
       empty: "No events created yet.",
     },
     competitionsHub: {
-      title: "Competition Hub",
+      title: "Competitions",
       subtitle: "Official calendar, this season's events, entries and official Rollart results.",
       viewCalendar: "📅 View General Calendar",
       season: "2026 Season",
@@ -873,7 +873,7 @@ export const dictionaries = {
       error: "Couldn't update the nickname.",
     },
     predictions: {
-      title: "Prediction Central",
+      title: "Predictions",
       subtitle: "Guess the podium or Top 5 of each category and compete in the predictions leaderboard.",
       viewCalendar: "View Official Calendar",
       noEvents: "No events available for predictions.",

@@ -224,31 +224,35 @@ export default async function HomePage() {
               <h2 className="text-xs font-bold uppercase tracking-wider text-ice-100/70">{t.liveNowTitle}</h2>
             </div>
             <div className="divide-y divide-white/5">
+              {/* Cada fila enlaza a la competición general (p.ej. World Skate
+                  Games), no al evento/prueba concreto ni directamente a
+                  Predicciones o al Draft — pedido explícitamente así: desde
+                  ahí la persona ya ve todas las pruebas de esa competición y
+                  entra a la que le interese. Las pastillas de color son solo
+                  informativas (qué hay abierto), no enlaces por separado. */}
               {liveNowEvents.map(({ event, status }) => (
-                <div key={event.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                <Link
+                  key={event.id}
+                  href={`/competitions/${event.competitionId}`}
+                  className="flex items-center justify-between gap-3 px-5 py-3 hover:bg-white/5 transition"
+                >
                   <div className="min-w-0">
                     <p className="text-sm font-semibold text-ice-50 truncate">{event.name}</p>
                     <p className="text-[11px] text-ice-100/40 truncate">{event.competition.name}</p>
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {status.predictionsOpen && (
-                      <Link
-                        href={`/predictions?event=${event.id}`}
-                        className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent border border-accent/30 px-2.5 py-1 rounded-full hover:bg-accent/30 transition"
-                      >
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent border border-accent/30 px-2.5 py-1 rounded-full">
                         {t.liveNowPredictionsPill}
-                      </Link>
+                      </span>
                     )}
                     {status.draftOpen && (
-                      <Link
-                        href={`/events/${event.id}`}
-                        className="text-[10px] font-bold uppercase tracking-wide bg-gold/20 text-gold border border-gold/30 px-2.5 py-1 rounded-full hover:bg-gold/30 transition"
-                      >
+                      <span className="text-[10px] font-bold uppercase tracking-wide bg-gold/20 text-gold border border-gold/30 px-2.5 py-1 rounded-full">
                         {t.liveNowDraftPill}
-                      </Link>
+                      </span>
                     )}
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
