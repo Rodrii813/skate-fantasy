@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp } from "@/lib/rateLimit";
 
 // Cuánto hay que esperar entre dos reenvíos del email de verificación para
 // la MISMA cuenta. Sin este límite, alguien podría darle al botón "reenviar"
@@ -9,6 +10,11 @@ import { sendVerificationEmail } from "@/lib/email";
 // Resend (100 emails/día) en minutos. 2 minutos es tiempo de sobra para que
 // llegue el correo antes de pedir otro.
 const RESEND_COOLDOWN_MS = 2 * 60 * 1000;
+
+// El cooldown de arriba solo frena repetir la MISMA cuenta; esto frena a un
+// script que fuera probando muchos emails distintos desde el mismo sitio.
+const IP_LIMIT = 15;
+const IP_WINDOW_MS = 60 * 60 * 1000;
 
 // Respuesta SIEMPRE genérica (exista o no la cuenta, esté o no ya
 // verificada, esté o no en cooldown), para no revelar por esta vía qué
@@ -22,6 +28,10 @@ function genericResponse() {
 
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const ipLimit = checkRateLimit(`resend-verification-ip:${ip}`, IP_LIMIT, IP_WINDOW_MS);
+    if (!ipLimit.allowed) return genericResponse();
+
     const { email } = await req.json();
     const normalizedEmail = typeof email === "string" ? email.toLowerCase().trim() : "";
 

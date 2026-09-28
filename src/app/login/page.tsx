@@ -45,6 +45,10 @@ function LoginForm() {
       setNotVerified(true);
       return;
     }
+    if (res?.error === "RATE_LIMITED") {
+      setError(t.loginRateLimited);
+      return;
+    }
     if (res?.error) {
       setError(t.loginError);
       return;

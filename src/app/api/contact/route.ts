@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { sendContactEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit";
 
 const VALID_REASONS = ["bug", "help", "suggestion", "other"];
+
+// Sin login de por medio, un script podría mandar cientos de mensajes por
+// minuto y agotar la cuota gratuita de Resend, así que además del honeypot
+// de abajo limitamos por IP.
+const CONTACT_LIMIT = 5;
+const CONTACT_WINDOW_MS = 60 * 60 * 1000;
 
 // Sin autenticación a propósito (cualquiera puede escribir, incluso sin
 // cuenta) — protegido con: 1) un campo "website" oculto (honeypot: un
@@ -9,6 +16,12 @@ const VALID_REASONS = ["bug", "help", "suggestion", "other"];
 // longitud para no dejar mandar mensajes gigantes.
 export async function POST(req: Request) {
   try {
+    const ip = getClientIp(req);
+    const limit = checkRateLimit(`contact:${ip}`, CONTACT_LIMIT, CONTACT_WINDOW_MS);
+    if (!limit.allowed) {
+      return rateLimitResponse(limit, "Demasiados mensajes enviados desde aquí. Prueba de nuevo más tarde.");
+    }
+
     const body = await req.json();
     const { name, email, reason, message, website } = body;
 

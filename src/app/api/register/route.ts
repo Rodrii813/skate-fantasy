@@ -3,8 +3,21 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
+import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit";
+
+// Máximo de cuentas nuevas por IP en una hora — sin esto, un script podría
+// crear cientos de cuentas falsas en minutos (cada una gasta además una
+// verificación de email de la cuota gratuita de Resend).
+const REGISTER_LIMIT = 8;
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const limit = checkRateLimit(`register:${ip}`, REGISTER_LIMIT, REGISTER_WINDOW_MS);
+  if (!limit.allowed) {
+    return rateLimitResponse(limit, "Demasiadas cuentas creadas desde aquí. Prueba de nuevo más tarde.");
+  }
+
   const { name, email, password } = await req.json();
 
   const trimmedName = typeof name === "string" ? name.trim() : "";
