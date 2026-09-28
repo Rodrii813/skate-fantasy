@@ -594,6 +594,8 @@ export const dictionaries = {
       privacy: "Privacidad",
       terms: "Términos",
       rights: (year: number) => `© ${year} Rollart Fantasy`,
+      followInstagram: "Síguenos en Instagram",
+      followX: "Síguenos en X",
     },
     meta: {
       competitions: {
@@ -1228,6 +1230,8 @@ export const dictionaries = {
       privacy: "Privacy",
       terms: "Terms",
       rights: (year: number) => `© ${year} Rollart Fantasy`,
+      followInstagram: "Follow us on Instagram",
+      followX: "Follow us on X",
     },
     meta: {
       competitions: {
