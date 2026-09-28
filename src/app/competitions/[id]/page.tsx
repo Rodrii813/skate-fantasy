@@ -127,6 +127,8 @@ export default async function CompetitionDetailPage({
     return {
       key: `${event.id}-${i}`,
       scheduledAt: row.scheduledAt.toISOString(),
+      disciplineName: event.discipline.name,
+      status: event.status,
       node: (
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
           <div className="flex items-center justify-between gap-4">
@@ -268,6 +270,15 @@ export default async function CompetitionDetailPage({
                       <p className="text-slate-400 text-base">{t.noScheduled}</p>
                     </div>
                   }
+                  controls={{
+                    filterDisciplineLabel: t.filterDisciplineLabel,
+                    filterStatusLabel: t.filterStatusLabel,
+                    filterAllLabel: t.filterAllLabel,
+                    expandAllLabel: t.expandAllLabel,
+                    collapseAllLabel: t.collapseAllLabel,
+                    noResultsFilter: t.noResultsFilter,
+                    statusText: statusLabel,
+                  }}
                 />
               </div>
             ) : (

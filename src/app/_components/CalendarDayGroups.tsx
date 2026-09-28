@@ -31,7 +31,12 @@ export interface CalendarDayRow {
 // separado — solo /calendario necesita esto, porque es donde de verdad se
 // acumulan muchos eventos.
 export interface CalendarControls {
-  filterCompetitionLabel: string;
+  // Opcional: solo hace falta cuando la lista de filas puede abarcar más de
+  // una competición (p.ej. /calendario). En /competitions/[id], donde todas
+  // las filas son siempre de la MISMA competición, el filtro de competición
+  // nunca llega a mostrarse (competitionOptions.length nunca pasa de 1), así
+  // que no tiene sentido obligar a pasar esta etiqueta ahí.
+  filterCompetitionLabel?: string;
   filterDisciplineLabel: string;
   filterStatusLabel: string;
   filterAllLabel: string;
