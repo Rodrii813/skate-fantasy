@@ -148,13 +148,21 @@ export default async function FantasyHubPage({
   };
 
   // Ranking: por evento (con selector de evento propio) o global por
-  // competición.
+  // competición — solo se calcula el de la pestaña activa. Antes se
+  // calculaban SIEMPRE los dos en cada carga de la página, y el ranking
+  // "global por competición" reutiliza computeEventLeaderboard EVENTO A
+  // EVENTO (ver src/lib/scoring.ts) — con una competición de 20 pruebas eso
+  // son ~20 consultas extra a la base de datos en cada visita a /fantasy,
+  // aunque quien la visite ni siquiera mire esa pestaña. Con esta página sin
+  // caché (force-dynamic), es tráfico a Neon que se repite en cada visita.
   const rankTab = searchParams.rank === "competition" ? "competition" : "event";
   const rankEventId = searchParams.event || activeCompetition.events[0]?.id;
   const rankEvent = activeCompetition.events.find((e) => e.id === rankEventId);
 
-  const eventRanking = rankEvent ? await computeEventLeaderboard(rankEvent.id) : [];
-  const competitionRanking = await computeCompetitionFantasyLeaderboard(activeCompetition.id);
+  const eventRanking =
+    rankEvent && rankTab === "event" ? await computeEventLeaderboard(rankEvent.id) : [];
+  const competitionRanking =
+    rankTab === "competition" ? await computeCompetitionFantasyLeaderboard(activeCompetition.id) : [];
 
   const rankHref = (tab: "event" | "competition", eventId?: string) =>
     `/fantasy?competition=${activeCompetition.id}${

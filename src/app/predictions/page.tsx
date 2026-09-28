@@ -163,14 +163,20 @@ export default async function PredictionsPage({
     statsRank3 = getRankStats("rank3SkaterId");
   }
 
-  // Ranking de Predicciones: por evento (siempre) y global por competición
-  // (solo si el evento activo pertenece a una), reutilizando las funciones
-  // de src/lib/scoring.ts basadas en Prediction.pointsEarned ya calculado.
+  // Ranking de Predicciones: por evento o global por competición, según la
+  // pestaña activa — reutilizando las funciones de src/lib/scoring.ts
+  // basadas en Prediction.pointsEarned ya calculado. Antes se calculaban
+  // SIEMPRE los dos rankings en cada carga de la página (aunque solo se
+  // mostrara uno), duplicando consultas a la base de datos sin necesidad en
+  // cada visita — con esta página sin caché (force-dynamic), eso es tráfico
+  // extra a Neon en cada visita, tanto de quien ve la web como de quien no.
   const rankTab = searchParams.rank === "competition" ? "competition" : "event";
-  const eventRanking = activeEvent ? await computeEventPredictionLeaderboard(activeEvent.id) : [];
-  const competitionRanking = activeEvent
-    ? await computeCompetitionPredictionLeaderboard(activeEvent.competitionId)
-    : [];
+  const eventRanking =
+    activeEvent && rankTab === "event" ? await computeEventPredictionLeaderboard(activeEvent.id) : [];
+  const competitionRanking =
+    activeEvent && rankTab === "competition"
+      ? await computeCompetitionPredictionLeaderboard(activeEvent.competitionId)
+      : [];
 
   const rankHref = (tab: "event" | "competition") =>
     `/predictions?event=${activeEvent?.id ?? ""}${tab === "competition" ? "&rank=competition" : ""}`;
