@@ -24,7 +24,7 @@ export async function generateMetadata() {
 export default async function PredictionsPage({
   searchParams,
 }: {
-  searchParams: { event?: string; rank?: string };
+  searchParams: { competition?: string; event?: string; rank?: string };
 }) {
   const session = await getServerSession(authOptions);
   const locale = getLocale();
@@ -53,10 +53,44 @@ export default async function PredictionsPage({
   });
 
   const allEvents = competitions.flatMap((c) => c.events);
+  const competitionsWithEvents = competitions.filter((c) => c.events.length > 0);
 
-  // Evento activo seleccionado o por defecto el primero (cronológicamente)
-  const selectedEventId = searchParams.event || allEvents[0]?.id;
-  const activeEvent = allEvents.find((e) => e.id === selectedEventId) || allEvents[0];
+  // Selector en DOS pasos (Competición -> Evento), igual criterio que
+  // /fantasy — antes se mostraban TODOS los eventos de TODAS las
+  // competiciones a la vez, solo agrupados por el nombre de la competición
+  // (un simple <p>), lo que con una competición grande (World Skate Games,
+  // ~20 eventos entre todas las disciplinas) se veía como una pared plana de
+  // botones sin ninguna jerarquía real. Ahora primero se elige la
+  // competición y solo se listan (agrupados por disciplina) los eventos de
+  // ESA competición.
+  const activeCompetition =
+    competitionsWithEvents.find((c) => c.id === searchParams.competition) ||
+    competitionsWithEvents.find((c) => c.events.some((e) => e.id === searchParams.event)) ||
+    competitionsWithEvents[0];
+
+  // Evento activo: el indicado por la URL si pertenece a la competición
+  // elegida, si no el primero de esa competición.
+  const selectedEventId = searchParams.event;
+  const activeEvent =
+    activeCompetition?.events.find((e) => e.id === selectedEventId) || activeCompetition?.events[0];
+
+  // Eventos de la competición activa agrupados por disciplina, en el orden
+  // en que aparece cada disciplina por primera vez. Se calcula aquí (en vez
+  // de con un .reduce() inline en el JSX) porque, con el cliente de Prisma
+  // sustituido por `any` en este entorno de pruebas, TypeScript no puede
+  // inferir el tipo del Map resultante — tipando explícitamente el array de
+  // salida se evita ese arrastre de "any".
+  type PredictionEvent = NonNullable<typeof activeCompetition>["events"][number];
+  const eventsByDiscipline: { disciplineName: string; events: PredictionEvent[] }[] = [];
+  for (const e of activeCompetition?.events ?? []) {
+    const disciplineName: string = e.discipline.name;
+    let group = eventsByDiscipline.find((g) => g.disciplineName === disciplineName);
+    if (!group) {
+      group = { disciplineName, events: [] };
+      eventsByDiscipline.push(group);
+    }
+    group.events.push(e);
+  }
 
   let userPrediction = null;
   if (session?.user?.email && activeEvent) {
@@ -164,40 +198,67 @@ export default async function PredictionsPage({
             {t.noEvents}
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Selector Competición → Evento */}
-            <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
-              <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                {t.selectEvent}
-              </label>
-              <div className="space-y-3">
-                {competitions
-                  .filter((c) => c.events.length > 0)
-                  .map((c) => (
-                    <div key={c.id} className="space-y-1.5">
+          <div className="space-y-4">
+            {/* Paso 1: Competición (solo si hay más de una con eventos) */}
+            {competitionsWithEvents.length > 1 && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {t.selectCompetition}
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {competitionsWithEvents.map((c) => (
+                    <Link
+                      key={c.id}
+                      href={`/predictions?competition=${c.id}`}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
+                        c.id === activeCompetition?.id
+                          ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-900/20"
+                          : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700"
+                      }`}
+                    >
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Paso 2: Evento de la competición elegida, agrupado por
+                disciplina — así una competición grande (World Skate Games)
+                se ve en varios grupos pequeños en vez de una única pared
+                de botones. */}
+            {activeCompetition && (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+                <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  {t.selectEvent}
+                </label>
+                <div className="space-y-3">
+                  {eventsByDiscipline.map(({ disciplineName, events }) => (
+                    <div key={disciplineName} className="space-y-1.5">
                       <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-                        {c.name}
+                        {disciplineName}
                       </p>
                       <div className="flex flex-wrap gap-2">
-                        {c.events.map((e) => (
+                        {events.map((e) => (
                           <Link
                             key={e.id}
-                            href={`/predictions?event=${e.id}`}
+                            href={`/predictions?competition=${activeCompetition.id}&event=${e.id}`}
                             className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
                               e.id === activeEvent?.id
                                 ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/20"
                                 : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
                             }`}
                           >
-                            {e.discipline.name} · {e.category.name}
+                            {e.category.name}
                             {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
                           </Link>
                         ))}
                       </div>
                     </div>
                   ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Ficha del evento activo */}
             {activeEvent && (
