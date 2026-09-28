@@ -77,9 +77,24 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [yearFilter, setYearFilter] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Qué grupos de disciplina están colapsados, por tarjeta de competición
+  // (clave "competitionId::disciplina") — una competición con muchos eventos
+  // (World Skate Games, ~20) mostraba todas sus pruebas en una sola lista
+  // plana sin ninguna jerarquía; ahora se agrupan por disciplina y cada
+  // grupo se puede plegar, igual que los días en /calendario.
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { locale } = useLocale();
   const t = getDictionary(locale).competitionsHub;
   const dateLocale = locale === "en" ? "en-US" : "es-ES";
+
+  function toggleGroup(key: string) {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   // Estados y temporadas realmente presentes en los datos — así los chips de
   // filtro no muestran opciones vacías, y en cuanto haya varias temporadas
@@ -264,14 +279,53 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                 )}
               </div>
 
-              {/* Eventos / Categorías dentro de la competición */}
+              {/* Eventos / Categorías dentro de la competición, agrupados
+                  por disciplina y plegables — antes era una única lista
+                  plana con TODOS los eventos de la competición seguidos. */}
               <div className="space-y-3">
                 <p className="text-xs font-semibold uppercase tracking-wider text-ice-100/50">
                   {t.scheduledEvents(comp.events.length)}
                 </p>
 
-                <div className="grid gap-3">
-                  {comp.events.map((event) => {
+                {(() => {
+                  const groups: { disciplineName: string; events: EventItem[] }[] = [];
+                  for (const ev of comp.events) {
+                    let group = groups.find((g) => g.disciplineName === ev.discipline.name);
+                    if (!group) {
+                      group = { disciplineName: ev.discipline.name, events: [] };
+                      groups.push(group);
+                    }
+                    group.events.push(ev);
+                  }
+                  return groups.map((group) => {
+                    const groupKey = `${comp.id}::${group.disciplineName}`;
+                    const isCollapsed = collapsedGroups.has(groupKey);
+                    return (
+                      <div key={groupKey} className="space-y-2">
+                        {groups.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => toggleGroup(groupKey)}
+                            aria-expanded={!isCollapsed}
+                            className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-left transition hover:border-white/20"
+                          >
+                            <span className="text-xs font-bold uppercase tracking-wide text-ice-100/70">
+                              {group.disciplineName}{" "}
+                              <span className="font-normal normal-case text-ice-100/40">
+                                ({group.events.length})
+                              </span>
+                            </span>
+                            <span
+                              className={`text-xs text-ice-100/50 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
+                              aria-hidden="true"
+                            >
+                              ▾
+                            </span>
+                          </button>
+                        )}
+                        {!isCollapsed && (
+                          <div className="grid gap-3">
+                            {group.events.map((event) => {
                     const badgeLabel = t.status[event.status as keyof typeof t.status];
                     const badgeClass = statusClassName[event.status];
                     return (
@@ -351,8 +405,13 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                         </div>
                       </div>
                     );
-                  })}
-                </div>
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
             </div>
           ))}
