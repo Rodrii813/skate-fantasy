@@ -404,7 +404,7 @@ export default async function HomePage() {
           {!session ? (
             <div className="bg-gradient-to-br from-gold/10 to-white/5 border border-gold/20 rounded-2xl p-6 flex flex-col justify-between min-h-[160px]">
               <div className="space-y-2">
-                <span className="text-xl">⛸️</span>
+                <span className="text-xl">🛼</span>
                 <h3 className="text-lg font-bold text-ice-50">{t.cardSignupTitle}</h3>
                 <p className="text-xs text-ice-100/50">
                   {t.cardSignupBody}

@@ -16,7 +16,7 @@ export default function AdminDashboardPage() {
       color: "border-emerald-500/30 hover:border-emerald-500",
     },
     {
-      title: "⛸️ Patinadores",
+      title: "🛼 Patinadores",
       desc: "Lista de deportistas, borrado de patinadores falsos o corrección de nombres y países.",
       href: "/admin/skaters",
       color: "border-amber-500/30 hover:border-amber-500",
