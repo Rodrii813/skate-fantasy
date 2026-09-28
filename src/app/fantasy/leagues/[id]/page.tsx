@@ -7,6 +7,9 @@ import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import JoinLeagueForm from "../JoinLeagueForm";
 import CopyCodeButton from "./CopyCodeButton";
+import LeagueMembersManager from "./LeagueMembersManager";
+import LeaveLeagueButton from "./LeaveLeagueButton";
+import DeleteLeagueButton from "./DeleteLeagueButton";
 
 export const dynamic = "force-dynamic";
 
@@ -72,6 +75,8 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
   }
 
   const ranking = await computeLeagueLeaderboard(league.id);
+  // currentUser no puede ser null aquí: isMember ya lo exige más arriba.
+  const isOwner = currentUser!.id === league.ownerId;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -80,10 +85,22 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
           <Link href="/fantasy/leagues" className="text-xs text-slate-400 hover:text-slate-200">
             {t.back}
           </Link>
-          <div className="flex items-center gap-2 mt-2">
-            <span className="text-2xl">🏆</span>
-            <h1 className="text-2xl font-extrabold tracking-tight">{league.name}</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3 mt-2">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🏆</span>
+              <h1 className="text-2xl font-extrabold tracking-tight">{league.name}</h1>
+            </div>
+            {/* Salir/borrar: reglas distintas según quién mira la página —
+                ver el comentario en DELETE /api/leagues/[id]/members/[userId].
+                Quien creó la liga no puede salir (se quedaría sin dueño),
+                así que en su lugar ve el botón de borrarla entera. */}
+            {isOwner ? (
+              <DeleteLeagueButton leagueId={league.id} leagueName={league.name} />
+            ) : (
+              <LeaveLeagueButton leagueId={league.id} userId={currentUser!.id} />
+            )}
           </div>
+          {isOwner && <p className="text-xs text-slate-500 mt-2">{t.ownerCannotLeaveHint}</p>}
         </div>
 
         {/* Código de invitación */}
@@ -96,24 +113,18 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
           <CopyCodeButton code={league.code} />
         </div>
 
-        {/* Miembros */}
+        {/* Miembros — el creador puede echar a cualquiera que no sea él
+            mismo (ver LeagueMembersManager). */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">{t.membersTitle}</h2>
           </div>
-          <div className="flex flex-wrap gap-2 p-4">
-            {league.memberships.map((m) => (
-              <span
-                key={m.id}
-                className="text-xs bg-slate-800 text-slate-200 px-3 py-1.5 rounded-full font-medium"
-              >
-                {m.user.name}
-                {m.userId === league.ownerId && (
-                  <span className="ml-1.5 text-amber-400 font-semibold">★</span>
-                )}
-              </span>
-            ))}
-          </div>
+          <LeagueMembersManager
+            leagueId={league.id}
+            ownerId={league.ownerId}
+            isOwner={isOwner}
+            members={league.memberships.map((m) => ({ id: m.id, userId: m.userId, name: m.user.name }))}
+          />
         </div>
 
         {/* Eventos de la liga */}
