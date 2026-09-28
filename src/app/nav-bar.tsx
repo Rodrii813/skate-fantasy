@@ -339,25 +339,31 @@ export default function NavBar() {
           Rollart<span className="text-gold">Fantasy</span>
         </Link>
 
-        {/* Navegación de escritorio: fila horizontal completa, oculta en móvil.
-            Se agrupa en 3 bloques (links / idioma+zona horaria / sesión) con
-            separadores, en vez de un único "gap-6" plano, para que no se vea
-            todo apelotonado cuando hay muchos enlaces (Competiciones, Calendario,
-            Fantasy, Predicción, Normas, Admin...). */}
-        <nav className="hidden md:flex items-center gap-6 text-sm text-ice-100/80">
-          <div className="flex items-center gap-6">{navLinks}</div>
-          <div className="flex items-center gap-3 pl-6 border-l border-white/10">
+        {/* Navegación de escritorio: fila horizontal completa, oculta hasta
+            "xl" (antes "md" = 768px). Con Competiciones, Calendario, Fantasy,
+            Predicciones, Normas, Admin, idioma, zona horaria y el menú de
+            cuenta, esta fila necesita más de 1024px reales para caber sin
+            recortarse por la derecha — con "md"/"lg" cabía "por poco" (o
+            directamente no cabía) en portátiles normales, así que se sube el
+            corte a "xl" (1280px) y por debajo se usa el desplegable móvil,
+            que sí soporta cualquier ancho. Se agrupa en 3 bloques (links /
+            idioma+zona horaria / sesión) con separadores y gaps ajustados,
+            para que no se vea todo apelotonado. */}
+        <nav className="hidden xl:flex items-center gap-4 text-sm text-ice-100/80">
+          <div className="flex items-center gap-5">{navLinks}</div>
+          <div className="flex items-center gap-2 pl-4 border-l border-white/10">
             <LanguageSwitcher />
             <TimezoneSelector />
           </div>
-          <div className="flex items-center gap-4 pl-4 border-l border-white/10">{authLinks}</div>
+          <div className="flex items-center gap-3 pl-3 border-l border-white/10">{authLinks}</div>
         </nav>
 
-        {/* En móvil: selector de idioma siempre visible junto al botón de
-            hamburguesa, para no obligar a abrir el menú solo para cambiar de
-            idioma. El botón cambia de fondo cuando el menú está abierto para
-            que quede claro que es un toggle, no solo un icono suelto. */}
-        <div className="md:hidden flex items-center gap-2">
+        {/* Por debajo de "xl": selector de idioma siempre visible junto al
+            botón de hamburguesa, para no obligar a abrir el menú solo para
+            cambiar de idioma. El botón cambia de fondo cuando el menú está
+            abierto para que quede claro que es un toggle, no solo un icono
+            suelto. */}
+        <div className="xl:hidden flex items-center gap-2">
           <LanguageSwitcher />
           <button
             type="button"
@@ -387,7 +393,7 @@ export default function NavBar() {
           versión anterior. Se mantiene siempre montado (no solo cuando
           `open`) para que la transición de cierre también se vea. */}
       <div
-        className={`md:hidden overflow-hidden border-t border-white/10 bg-rink transition-[max-height,opacity] duration-300 ease-in-out ${
+        className={`xl:hidden overflow-hidden border-t border-white/10 bg-rink transition-[max-height,opacity] duration-300 ease-in-out ${
           open ? "max-h-[32rem] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
