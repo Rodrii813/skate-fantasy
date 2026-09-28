@@ -78,6 +78,9 @@ export default async function CalendarioPage() {
     return {
       key: `${event.id}-${i}`,
       scheduledAt: row.scheduledAt.toISOString(),
+      competitionName: event.competition.name,
+      disciplineName: event.discipline.name,
+      status: event.status,
       node: (
         <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10">
           <div className="flex items-center justify-between gap-4">
@@ -203,7 +206,19 @@ export default async function CalendarioPage() {
         </section>
       )}
 
-      <CalendarDayGroups rows={calendarRows} />
+      <CalendarDayGroups
+        rows={calendarRows}
+        controls={{
+          filterCompetitionLabel: t.filterCompetitionLabel,
+          filterDisciplineLabel: t.filterDisciplineLabel,
+          filterStatusLabel: t.filterStatusLabel,
+          filterAllLabel: t.filterAllLabel,
+          expandAllLabel: t.expandAllLabel,
+          collapseAllLabel: t.collapseAllLabel,
+          noResultsFilter: t.noResultsFilter,
+          statusText: statusLabel,
+        }}
+      />
 
       {events.length === 0 && <p className="mt-8 text-ice-100/60">{t.empty}</p>}
     </div>
