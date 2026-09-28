@@ -40,17 +40,16 @@ export async function POST(
 
     // Igual que en la importación por PDF: si se indica el segmento
     // (Corto/Largo), el grupo de calentamiento se guarda en el campo
-    // específico de ese segmento; si no se indica nada, cae en el campo
-    // legado `warmupGroup` (compatibilidad con inscripciones antiguas sin
-    // segmentos). Antes este formulario SIEMPRE escribía en el campo legado,
-    // así que un patinador metido a mano aquí nunca aparecía con grupo en el
-    // picker de Fantasy, que ya solo mira los campos por segmento.
+    // específico de ese segmento. Si no se indica nada, se asume
+    // warmupGroupShort en vez del campo legado `warmupGroup` — el picker de
+    // Fantasy (FantasyRosterForm) SOLO lee warmupGroupShort/warmupGroupLong
+    // (warmupGroupShort para la pestaña única de un evento sin segmentos),
+    // así que escribir en el campo legado dejaba a ese patinador sin grupo
+    // real de cara a Fantasy (le tocaba siempre el grupo 1 por defecto, como
+    // a todos los demás en su misma situación — el bug de "todos salen en el
+    // mismo grupo").
     const normalizedSegment = (segmentName || "").trim().toLowerCase();
-    const groupField = normalizedSegment.includes("short")
-      ? "warmupGroupShort"
-      : normalizedSegment.includes("long")
-        ? "warmupGroupLong"
-        : "warmupGroup";
+    const groupField = normalizedSegment.includes("long") ? "warmupGroupLong" : "warmupGroupShort";
 
     const reg = await prisma.registration.upsert({
       where: {

@@ -6,16 +6,20 @@ import { extractText } from "unpdf";
 import { normalizeName } from "@/lib/normalizeName";
 
 // Campo de BD donde se guarda el grupo de calentamiento según el segmento
-// indicado. "" (sin segmentName) cae en el campo legado `warmupGroup`, para
-// no romper llamadas existentes que no lo envían (p.ej. el formulario
-// manual de /admin/events/[eventId]/skaters).
+// indicado. warmupGroup (legado) YA NO se escribe desde aquí: el picker de
+// Fantasy (FantasyRosterForm) solo lee warmupGroupShort/warmupGroupLong, así
+// que un grupo guardado en el campo legado es invisible para Fantasy — todo
+// el mundo le aparecía en el mismo grupo ("grupo 1" por defecto), aunque la
+// importación hubiera detectado los grupos reales correctamente. Por eso, si
+// no se indica segmento (evento con un único programa), se asume
+// warmupGroupShort — el mismo campo que usa la pestaña única por defecto de
+// Fantasy cuando el evento no tiene segmentos configurados.
 type WarmupGroupField = "warmupGroup" | "warmupGroupShort" | "warmupGroupLong";
 
 function resolveWarmupGroupField(segmentName: string): WarmupGroupField {
   const normalized = segmentName.trim().toLowerCase();
-  if (normalized.includes("short")) return "warmupGroupShort";
   if (normalized.includes("long")) return "warmupGroupLong";
-  return "warmupGroup";
+  return "warmupGroupShort";
 }
 
 // Qué forma tiene cada línea de patinador en el acta de orden de salida,
