@@ -31,6 +31,11 @@ export default async function PredictionsPage({
   const dict = getDictionary(locale);
   const t = dict.predictions;
   const genderLabel = dict.common.gender;
+  // Sin locale explícito, toLocaleDateString() usa el locale del SERVIDOR
+  // (en-US: mes/día), así que "cierra el 30 de septiembre" se veía como
+  // "9/30/2026" — al revés de como se lee en español (30/9/2026). Mismo
+  // criterio que ya usan /competitions y /competitions/[id].
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
 
   const competitions = await prisma.competition.findMany({
     orderBy: { startDate: "asc" },
@@ -280,10 +285,10 @@ export default async function PredictionsPage({
                         {t.closes(
                           new Date(
                             firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                          ).toLocaleDateString(),
+                          ).toLocaleDateString(dateLocale),
                           new Date(
                             firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                          ).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                          ).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })
                         )}
                       </span>
                     )}

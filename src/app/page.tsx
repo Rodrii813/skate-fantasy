@@ -17,7 +17,13 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
-  const t = getDictionary(getLocale()).home;
+  const locale = getLocale();
+  const t = getDictionary(locale).home;
+  // Mismo criterio que /competitions y /competitions/[id]: sin locale
+  // explícito, toLocaleDateString() usaba el locale del SERVIDOR (en-US),
+  // así que una fecha como "30 de septiembre" se veía "9/30/2026"
+  // (mes/día, al revés de como se lee en español) en vez de "30/9/2026".
+  const dateLocale = locale === "en" ? "en-US" : "es-ES";
 
   const now = new Date();
 
@@ -79,7 +85,7 @@ export default async function HomePage() {
     activeStatus!.predictionsCloseAt.getTime() !== activeStatus!.draftCloseAt.getTime();
 
   const fmtDate = (d: Date) =>
-    `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+    `${d.toLocaleDateString(dateLocale)} ${d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}`;
 
   // Lista "en directo ahora": por COMPETICIÓN, no por evento — antes salía
   // una fila por cada prueba (Corto Senior, Largo Senior, Danza...), y una
