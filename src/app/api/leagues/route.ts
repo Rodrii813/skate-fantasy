@@ -51,7 +51,10 @@ export async function POST(req: Request) {
             code,
             ownerId: user.id,
             events: { create: validEvents.map((e) => ({ eventId: e.id })) },
-            memberships: { create: { userId: user.id } },
+            // El creador es admin desde el primer día — ver el comentario de
+            // isAdmin en el esquema: así puede nombrar a otros admins más
+            // adelante sin que haga falta una migración de datos aparte.
+            memberships: { create: { userId: user.id, isAdmin: true } },
           },
         });
       } catch (err: any) {

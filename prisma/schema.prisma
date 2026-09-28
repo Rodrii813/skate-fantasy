@@ -387,6 +387,13 @@ model LeagueMembership {
   userId   String
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   joinedAt DateTime @default(now())
+  // Administrador de la liga (además de quien la creó, ver League.ownerId):
+  // puede echar miembros normales igual que el creador, pero no borrar la
+  // liga ni nombrar/quitar a otros administradores — eso sigue siendo cosa
+  // solo del creador. Pensado para que la liga siga gestionada aunque quien
+  // la creó esté desconectado una temporada. El creador siempre tiene esto a
+  // `true` en su propia membership (se pone al crear la liga).
+  isAdmin  Boolean  @default(false)
 
   @@unique([leagueId, userId])
   @@index([userId])

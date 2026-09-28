@@ -77,6 +77,12 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
   const ranking = await computeLeagueLeaderboard(league.id);
   // currentUser no puede ser null aquí: isMember ya lo exige más arriba.
   const isOwner = currentUser!.id === league.ownerId;
+  const viewerMembership = league.memberships.find((m) => m.userId === currentUser!.id);
+  // El creador siempre puede gestionar (isOwner ya lo cubre); un admin
+  // nombrado por el creador también puede echar miembros normales, aunque
+  // no pueda nombrar a otros admins ni borrar la liga — ver
+  // LeagueMembersManager y el PATCH de members/[userId].
+  const viewerIsAdmin = isOwner || !!viewerMembership?.isAdmin;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -114,7 +120,8 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
         </div>
 
         {/* Miembros — el creador puede echar a cualquiera que no sea él
-            mismo (ver LeagueMembersManager). */}
+            mismo, nombrar/quitar administradores, y un administrador puede
+            echar a los miembros normales (ver LeagueMembersManager). */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">{t.membersTitle}</h2>
@@ -123,7 +130,13 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
             leagueId={league.id}
             ownerId={league.ownerId}
             isOwner={isOwner}
-            members={league.memberships.map((m) => ({ id: m.id, userId: m.userId, name: m.user.name }))}
+            viewerIsAdmin={viewerIsAdmin}
+            members={league.memberships.map((m) => ({
+              id: m.id,
+              userId: m.userId,
+              name: m.user.name,
+              isAdmin: m.isAdmin,
+            }))}
           />
         </div>
 
