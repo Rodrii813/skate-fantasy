@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
 import TimezoneSelector from "./_components/TimezoneSelector";
 import LanguageSwitcher from "./_components/LanguageSwitcher";
+import logoMark from "./_components/logo-mark.png";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -210,9 +212,17 @@ export default function NavBar() {
       <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-5 gap-4">
         <Link
           href="/"
-          className="font-display text-xl font-semibold tracking-tight text-white shrink-0"
+          className="flex items-center gap-2.5 font-display text-xl font-semibold tracking-tight text-white shrink-0"
           onClick={closeMenu}
         >
+          <Image
+            src={logoMark}
+            alt=""
+            width={36}
+            height={36}
+            priority
+            className="h-9 w-9 shrink-0"
+          />
           Rollart<span className="text-gold">Fantasy</span>
         </Link>
 

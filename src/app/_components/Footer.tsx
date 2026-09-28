@@ -1,4 +1,6 @@
 import Link from "next/link";
+import Image from "next/image";
+import logoMark from "./logo-mark.png";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -13,7 +15,10 @@ export default function Footer() {
   return (
     <footer className="mt-16 border-t border-white/10">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-6 py-8 text-xs text-ice-100/50 sm:flex-row sm:items-center sm:justify-between">
-        <p>{t.rights(year)} — {t.tagline}</p>
+        <p className="flex items-center gap-2">
+          <Image src={logoMark} alt="" width={20} height={20} className="h-5 w-5 shrink-0 opacity-80" />
+          {t.rights(year)} — {t.tagline}
+        </p>
         <nav className="flex items-center gap-4">
           <Link href="/contacto" className="hover:text-ice-100/80">
             {dict.contact.navLabel}
