@@ -146,15 +146,20 @@ export default function NavBar() {
   );
 
   const authLinks = session?.user ? (
-    <button
-      onClick={() => {
-        closeMenu();
-        signOut({ callbackUrl: "/" });
-      }}
-      className="hover:text-white"
-    >
-      {t.logout(session.user.name || "")}
-    </button>
+    <>
+      <Link href="/profile" className="hover:text-white" onClick={closeMenu}>
+        {t.profile}
+      </Link>
+      <button
+        onClick={() => {
+          closeMenu();
+          signOut({ callbackUrl: "/" });
+        }}
+        className="hover:text-white"
+      >
+        {t.logout(session.user.name || "")}
+      </button>
+    </>
   ) : (
     <>
       <Link href="/login" className="hover:text-white" onClick={closeMenu}>
@@ -171,19 +176,36 @@ export default function NavBar() {
   );
 
   const mobileAuthLinks = session?.user ? (
-    <button
-      onClick={() => {
-        closeMenu();
-        signOut({ callbackUrl: "/" });
-      }}
-      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ice-100/80 hover:bg-white/5 hover:text-white"
-    >
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-ice-100/50">
-        <path d="M9 21H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3H9" />
-        <path d="M16 17l5-5-5-5M21 12H9" />
-      </svg>
-      {t.logout(session.user.name || "")}
-    </button>
+    <>
+      <Link
+        href="/profile"
+        onClick={closeMenu}
+        className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors ${
+          isActive("/profile")
+            ? "bg-gold/15 text-gold"
+            : "text-ice-100/80 hover:bg-white/5 hover:text-white"
+        }`}
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className={isActive("/profile") ? "text-gold" : "text-ice-100/50"}>
+          <circle cx="12" cy="8" r="3.5" />
+          <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6" />
+        </svg>
+        {t.profile}
+      </Link>
+      <button
+        onClick={() => {
+          closeMenu();
+          signOut({ callbackUrl: "/" });
+        }}
+        className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-ice-100/80 hover:bg-white/5 hover:text-white"
+      >
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="text-ice-100/50">
+          <path d="M9 21H6.5A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3H9" />
+          <path d="M16 17l5-5-5-5M21 12H9" />
+        </svg>
+        {t.logout(session.user.name || "")}
+      </button>
+    </>
   ) : (
     <>
       <Link

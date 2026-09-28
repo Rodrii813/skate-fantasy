@@ -60,10 +60,18 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         token.id = (user as any).id;
         token.role = (user as any).role;
+      }
+      // Se dispara cuando el cliente llama a update({ name }) desde
+      // useSession (ver /profile) tras cambiar el nickname — sin esto, el
+      // nuevo nombre no se reflejaría en la sesión (ni en la barra de
+      // navegación, ni en las ligas) hasta volver a iniciar sesión, porque
+      // el JWT normalmente solo se rellena una vez al hacer login.
+      if (trigger === "update" && typeof session?.name === "string") {
+        token.name = session.name;
       }
       return token;
     },
