@@ -10,18 +10,19 @@ export default function EventSkatersPage() {
 
   const [eventData, setEventData] = useState<any>(null);
   const [allSkaters, setAllSkaters] = useState<any[]>([]);
-  const [registrations, setRegistrations] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Formulario manual
   const [selectedSkaterId, setSelectedSkaterId] = useState("");
   const [warmupGroup, setWarmupGroup] = useState("1");
   const [skatingOrder, setSkatingOrder] = useState("1");
-  const [manualSegment, setManualSegment] = useState("Short Program");
+  // Por defecto el selector solo muestra patinadores de la disciplina+categoría
+  // de esta prueba (si no, con miles de patinadores en total se vuelve
+  // imposible de usar). Se puede desactivar para ver la lista completa.
+  const [showAllSkaters, setShowAllSkaters] = useState(false);
 
   // Formulario Starting Order PDF
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [segmentName, setSegmentName] = useState("Short Program");
   const [uploadingPdf, setUploadingPdf] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -39,14 +40,12 @@ export default function EventSkatersPage() {
       const skaters = await resSkaters.json();
       if (Array.isArray(skaters)) {
         setAllSkaters(skaters);
-        if (skaters.length > 0) setSelectedSkaterId(skaters[0].id);
+        const relevant = current?.disciplineId && current?.categoryId
+          ? skaters.filter((s: any) => s.disciplineId === current.disciplineId && s.categoryId === current.categoryId)
+          : skaters;
+        if (relevant.length > 0) setSelectedSkaterId(relevant[0].id);
+        else if (skaters.length > 0) setSelectedSkaterId(skaters[0].id);
       }
-
-      // 3. Obtener quién está inscrito de verdad en ESTA prueba, para poder
-      // ver duplicados o nombres mal importados y quitarlos aquí mismo.
-      const resRegs = await fetch(`/api/admin/events/${eventId}/registrations`);
-      const regs = await resRegs.json();
-      if (Array.isArray(regs)) setRegistrations(regs);
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -70,12 +69,11 @@ export default function EventSkatersPage() {
         skaterId: selectedSkaterId,
         warmupGroup: Number(warmupGroup),
         skatingOrder: Number(skatingOrder),
-        segmentName: manualSegment,
       }),
     });
 
     if (res.ok) {
-      setMsg(`✅ Patinador inscrito correctamente en "${manualSegment}"`);
+      setMsg("✅ Patinador inscrito correctamente");
       setSkatingOrder(String(Number(skatingOrder) + 1));
       loadData();
     } else {
@@ -93,7 +91,6 @@ export default function EventSkatersPage() {
 
     const formData = new FormData();
     formData.append("file", pdfFile);
-    formData.append("segmentName", segmentName);
 
     try {
       const res = await fetch(`/api/admin/events/${eventId}/import-starting-order`, {
@@ -102,7 +99,7 @@ export default function EventSkatersPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al procesar PDF");
-      setMsg(`✅ Importados ${data.count} patinadores con su grupo de calentamiento de "${segmentName}"`);
+      setMsg(`✅ Importados ${data.count} patinadores con sus grupos de calentamiento`);
       loadData();
     } catch (err: any) {
       setMsg(`❌ ${err.message}`);
@@ -110,6 +107,15 @@ export default function EventSkatersPage() {
       setUploadingPdf(false);
     }
   };
+
+  // Patinadores que se muestran en el selector manual: por defecto, solo los
+  // de la misma disciplina+categoría que esta prueba (evita tener que buscar
+  // entre miles de patinadores de otras disciplinas/categorías).
+  const relevantSkaters = allSkaters.filter((s: any) => {
+    if (showAllSkaters) return true;
+    if (!eventData?.disciplineId || !eventData?.categoryId) return true;
+    return s.disciplineId === eventData.disciplineId && s.categoryId === eventData.categoryId;
+  });
 
   // Eliminar patinador del evento
   const handleDeleteRegistration = async (skaterId: string) => {
@@ -157,35 +163,41 @@ export default function EventSkatersPage() {
             </h2>
 
             <div className="space-y-1 text-xs">
-              <label className="text-slate-400">Patinador</label>
+              <div className="flex items-center justify-between">
+                <label className="text-slate-400">Patinador</label>
+                {eventData?.disciplineId && eventData?.categoryId && (
+                  <label className="flex items-center gap-1.5 text-[10px] text-slate-500 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showAllSkaters}
+                      onChange={(e) => setShowAllSkaters(e.target.checked)}
+                      className="accent-indigo-500"
+                    />
+                    Ver todos ({allSkaters.length})
+                  </label>
+                )}
+              </div>
               <select
                 value={selectedSkaterId}
                 onChange={(e) => setSelectedSkaterId(e.target.value)}
                 className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
               >
-                {allSkaters.map((s) => (
+                {relevantSkaters.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.firstName} {s.lastName} {s.country ? `(${s.country})` : ""}
                   </option>
                 ))}
               </select>
-            </div>
-
-            <div className="space-y-1 text-xs">
-              <label className="text-slate-400">Segmento</label>
-              <select
-                value={manualSegment}
-                onChange={(e) => setManualSegment(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-200"
-              >
-                <option value="Short Program">Short Program (Programa Corto)</option>
-                <option value="Long Program">Long Program (Programa Largo)</option>
-              </select>
+              {!showAllSkaters && eventData?.disciplineId && eventData?.categoryId && (
+                <p className="text-[10px] text-slate-500">
+                  Mostrando solo patinadores de la disciplina y categoría de esta prueba ({relevantSkaters.length} de {allSkaters.length}).
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div className="space-y-1">
-                <label className="text-slate-400">Grupo Calentamiento ({manualSegment === "Short Program" ? "Corto" : "Largo"})</label>
+                <label className="text-slate-400">Grupo Calentamiento</label>
                 <input
                   type="number"
                   min="1"
@@ -228,25 +240,6 @@ export default function EventSkatersPage() {
               <p className="text-[11px] text-slate-400">
                 Detecta y extrae todos los patinadores, dorsales y grupos de calentamiento automáticamente.
               </p>
-
-              <div className="space-y-1">
-                <label className="text-[11px] text-slate-400 font-semibold uppercase tracking-wider">
-                  Segmento
-                </label>
-                <select
-                  value={segmentName}
-                  onChange={(e) => setSegmentName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs text-slate-200"
-                >
-                  <option value="Short Program">Short Program (Programa Corto)</option>
-                  <option value="Long Program">Long Program (Programa Largo)</option>
-                </select>
-                <p className="text-[10px] text-slate-500">
-                  El Corto y el Largo tienen sorteos de grupo de calentamiento distintos: sube el
-                  PDF de cada uno por separado, eligiendo aquí el segmento correcto cada vez.
-                </p>
-              </div>
-
               <input
                 type="file"
                 accept=".pdf"
@@ -269,51 +262,20 @@ export default function EventSkatersPage() {
         {/* Lista de Registrados */}
         <div className="space-y-3">
           <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-            Patinadores en la prueba ({registrations.length})
+            Patinadores en la prueba ({eventData?._count?.registrations || 0})
           </h2>
-          <p className="text-[11px] text-slate-500">
-            Si ves un nombre duplicado o mal leído del PDF (p.ej. con el país pegado al apellido),
-            quítalo aquí con "Desinscribir" y corrígelo o bórralo del todo en{" "}
-            <Link href="/admin/skaters" className="text-indigo-400 hover:underline">
-              Gestión de Patinadores
-            </Link>
-            .
-          </p>
 
           <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden divide-y divide-slate-800 text-xs">
             {loading ? (
               <div className="p-4 text-center text-slate-400">Cargando lista...</div>
-            ) : registrations.length === 0 ? (
+            ) : eventData?._count?.registrations === 0 ? (
               <div className="p-4 text-center text-slate-400">
                 No hay patinadores inscritos en esta prueba todavía.
               </div>
             ) : (
-              registrations.map((reg) => (
-                <div key={reg.id} className="p-3 flex items-center justify-between hover:bg-slate-850">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-slate-500 w-6">
-                      {reg.startOrder ?? "—"}
-                    </span>
-                    <span className="font-semibold text-slate-100">
-                      {reg.skater.firstName} {reg.skater.lastName}
-                    </span>
-                    {reg.skater.country && (
-                      <span className="text-[10px] bg-slate-800 text-slate-400 font-semibold px-1.5 py-0.5 rounded">
-                        {reg.skater.country}
-                      </span>
-                    )}
-                    <span className="text-[10px] text-slate-500">
-                      G.Corto: {reg.warmupGroupShort ?? "—"} · G.Largo: {reg.warmupGroupLong ?? "—"}
-                    </span>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteRegistration(reg.skaterId)}
-                    className="px-2.5 py-1 bg-red-600/20 hover:bg-red-600/40 text-red-300 rounded text-[11px]"
-                  >
-                    Desinscribir
-                  </button>
-                </div>
-              ))
+              <div className="p-4 text-slate-300">
+                Patinadores listos para el draft y puntuación del evento.
+              </div>
             )}
           </div>
         </div>

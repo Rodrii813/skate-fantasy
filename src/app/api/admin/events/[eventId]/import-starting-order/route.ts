@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { extractText } from "unpdf";
+import { normalizeName } from "@/lib/normalizeName";
 
 // Campo de BD donde se guarda el grupo de calentamiento según el segmento
 // indicado. "" (sin segmentName) cae en el campo legado `warmupGroup`, para
@@ -332,27 +333,43 @@ async function parseAndRegisterSkaters(
 
     const { order, firstName, lastName, country } = entry;
 
-    // Buscar o Crear Patinador/Pareja/Equipo. Para "team" (lastName="") la
-    // búsqueda por lastName invertido no aporta nada (queda "" en los dos
-    // lados), pero no rompe nada tampoco.
-    let skater = await prisma.skater.findFirst({
+    // Buscar o Crear Patinador/Pareja/Equipo.
+    //
+    // OJO con esto: antes se comparaba con un `equals` de Postgres
+    // (case-insensitive pero nada más), así que la misma persona con el
+    // nombre escrito con acentos distintos, con "Ñ"/"N", o con un espacio de
+    // más que deja la extracción de texto del PDF (frecuente entre actas de
+    // distintas federaciones) no se reconocía como la misma, y cada
+    // reimportación iba acumulando un Skater duplicado — que es justo el
+    // problema de "la lista de patinadores no para de crecer" reportado tras
+    // usar esto varias semanas seguidas. Ahora se compara en memoria con
+    // normalizeName() (quita acentos, colapsa espacios, minúsculas), sobre
+    // un candidato ya acotado a la MISMA disciplina+categoría — acotarlo así
+    // además evita el problema contrario (fusionar sin querer con un
+    // patinador de incorporeo distinto que comparta nombre), coherente con
+    // que un Skater ya está pensado como una entrada de una disciplina y
+    // categoría concretas, no como una persona global.
+    const candidates = await prisma.skater.findMany({
       where: {
-        OR: [
-          {
-            AND: [
-              { firstName: { equals: firstName, mode: "insensitive" } },
-              { lastName: { equals: lastName, mode: "insensitive" } },
-            ],
-          },
-          {
-            AND: [
-              { firstName: { equals: lastName, mode: "insensitive" } },
-              { lastName: { equals: firstName, mode: "insensitive" } },
-            ],
-          },
-        ],
+        disciplineId: currentEvent.disciplineId,
+        categoryId: currentEvent.categoryId,
       },
+      select: { id: true, firstName: true, lastName: true, country: true },
     });
+
+    const nFirst = normalizeName(firstName);
+    const nLast = normalizeName(lastName);
+    // Para "team" (lastName="") la comparación invertida no aporta nada
+    // (queda "" en los dos lados), pero tampoco rompe nada.
+    const candidateMatch = candidates.find(
+      (c: { id: string; firstName: string; lastName: string; country: string | null }) =>
+        (normalizeName(c.firstName) === nFirst && normalizeName(c.lastName) === nLast) ||
+        (normalizeName(c.firstName) === nLast && normalizeName(c.lastName) === nFirst)
+    );
+
+    let skater = candidateMatch
+      ? await prisma.skater.findUnique({ where: { id: candidateMatch.id } })
+      : null;
 
     if (!skater) {
       skater = await prisma.skater.create({
