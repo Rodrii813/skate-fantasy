@@ -4,8 +4,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
-import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus } from "@/lib/segments";
+import { computeEventOpenStatus } from "@/lib/eventOpenStatus";
 import WorldSkateGamesCountdown from "@/app/_components/WorldSkateGamesCountdown";
+import ShareSiteCard from "@/app/_components/ShareSiteCard";
 
 export const dynamic = "force-dynamic";
 
@@ -18,8 +19,11 @@ export default async function HomePage() {
   const session = await getServerSession(authOptions);
   const t = getDictionary(getLocale()).home;
 
-  // Consultar si hay eventos abiertos para picks/predicciones o en vivo
   const now = new Date();
+
+  // Se piden hasta 8 candidatos (antes solo 2, y solo se usaba el primero)
+  // para poder recorrerlos buscando el primero que tenga REALMENTE algo
+  // abierto — ver el "porqué" completo unas líneas más abajo.
   const upcomingEvents = await prisma.event.findMany({
     where: {
       rosterLocksAt: { gte: now },
@@ -31,52 +35,67 @@ export default async function HomePage() {
       slots: { select: { segmentId: true } },
     },
     orderBy: { rosterLocksAt: "asc" },
-    take: 2,
+    take: 8,
   });
 
-  const nextActiveEvent = upcomingEvents[0];
+  // Tipado explícito: el cliente de Prisma en este entorno de verificación
+  // está "stubeado" como `any` (ver notas del proyecto), lo que hace que
+  // `upcomingEvents` sea `any[]` y arrastre ese "any" a cualquier callback
+  // que se encadene después (find/filter/map, incluso desestructurando en
+  // el JSX más abajo) sin que noImplicitAny pueda inferir nada. Anotar el
+  // tipo de `candidates` aquí corta esa cadena de una vez.
+  const candidates: { event: (typeof upcomingEvents)[number]; status: ReturnType<typeof computeEventOpenStatus> }[] =
+    upcomingEvents.map((ev: (typeof upcomingEvents)[number]) => ({ event: ev, status: computeEventOpenStatus(ev, now) }));
 
-  // Este banner afirmaba SIEMPRE "DRAFTS Y PREDICCIONES ABIERTAS" con los 2
-  // botones en color activo, solo por existir un evento UPCOMING con
-  // rosterLocksAt futuro — sin comprobar si de verdad hay algo que se pueda
-  // draftear o predecir YA MISMO (mismos criterios reales que usan
-  // /predictions y /fantasy: ver src/lib/segments.ts).
-  const predictionsOpen = nextActiveEvent
-    ? nextActiveEvent.status === "UPCOMING" &&
-      now <= firstSegmentEffectiveLocksAt(nextActiveEvent.segments, nextActiveEvent.rosterLocksAt)
-    : false;
+  // Bug reportado: el banner se quedaba pegado al evento con el rosterLocksAt
+  // más próximo aunque ESE evento ya no tuviera nada abierto (p.ej. su primer
+  // segmento ya cerró para Predicciones y su Draft tampoco ha abierto
+  // todavía), mientras que otro evento algo más lejano en el tiempo sí tenía
+  // Predicciones o Draft abiertos ahora mismo. Se recorre la lista y se
+  // escoge el primero que tenga algo REALMENTE abierto; si ninguno lo tiene,
+  // se cae al más próximo de todos (mismo comportamiento "próximamente" de
+  // siempre).
+  const activeCandidate = candidates.find((c) => c.status.predictionsOpen || c.status.draftOpen) || candidates[0];
+  const nextActiveEvent = activeCandidate?.event;
+  const activeStatus = activeCandidate?.status;
 
-  const draftOpen = nextActiveEvent
-    ? (() => {
-        const slotsBySegment = new Map<string, number>();
-        for (const slot of nextActiveEvent.slots) {
-          if (slot.segmentId) slotsBySegment.set(slot.segmentId, (slotsBySegment.get(slot.segmentId) || 0) + 1);
-        }
-        return nextActiveEvent.segments.some(
-          (seg) =>
-            getSegmentDraftStatus(
-              seg,
-              nextActiveEvent.rosterLocksAt,
-              (slotsBySegment.get(seg.id) || 0) > 0,
-              now
-            ) === "OPEN"
-        );
-      })()
-    : false;
-
+  const predictionsOpen = activeStatus?.predictionsOpen || false;
+  const draftOpen = activeStatus?.draftOpen || false;
   const somethingLiveNow = predictionsOpen || draftOpen;
 
-  // Cuenta atrás llamativa hasta el inicio de los World Skate Games — se
-  // busca por nombre (en vez de un id fijo) para no depender de qué
-  // competición concreta se haya creado como "la" de este año; si hay más
-  // de una que matchee (poco probable), se coge la de inicio más próximo.
-  // Solo se manda al cliente lo que necesita (fecha, nombre, sede), nunca el
-  // registro completo de Prisma.
-  const worldSkateGames = await prisma.competition.findFirst({
-    where: { name: { contains: "World Skate Games", mode: "insensitive" } },
-    orderBy: { startDate: "asc" },
-    select: { name: true, location: true, startDate: true },
-  });
+  // Segundo bug reportado en el mismo banner: "Cierre de picks" mostraba
+  // SIEMPRE rosterLocksAt, aunque lo que estuviera abierto (o lo próximo a
+  // cerrar) fueran las Predicciones, cuyo plazo real es
+  // predictionsCloseAt (firstSegmentEffectiveLocksAt) — casi siempre
+  // IGUAL o ANTES que rosterLocksAt, nunca después. Ahora se muestra el
+  // plazo que corresponde a lo que está (o va a estar) abierto, y si
+  // Predicciones y Draft cierran en momentos distintos y los dos están
+  // abiertos a la vez, se muestran ambos por separado en vez de uno solo.
+  const showBothCloseDates =
+    predictionsOpen &&
+    draftOpen &&
+    activeStatus!.predictionsCloseAt.getTime() !== activeStatus!.draftCloseAt.getTime();
+
+  const fmtDate = (d: Date) =>
+    `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+
+  // Eventos "en directo ahora mismo" (Predicciones o Draft abiertos), para
+  // la lista de debajo del banner destacado — hasta 5, distintos del que ya
+  // protagoniza el banner grande para no repetir la misma prueba dos veces.
+  const liveNowEvents = candidates
+    .filter((c) => (c.status.predictionsOpen || c.status.draftOpen) && c.event.id !== nextActiveEvent?.id)
+    .slice(0, 5);
+
+  // Cuenta atrás de la home: ajustable desde /admin/settings (activar o
+  // desactivar, título, sede y fecha objetivo) en vez de detectarse sola
+  // buscando una Competition llamada "World Skate Games" — así se puede
+  // quitar sin más cuando no aplique, o reutilizar para cualquier otro
+  // evento destacado.
+  const siteSettings = await prisma.siteSettings.findUnique({ where: { id: "singleton" } });
+  const countdownVisible =
+    !!siteSettings?.countdownEnabled &&
+    !!siteSettings.countdownTargetDate &&
+    siteSettings.countdownTargetDate.getTime() > now.getTime();
 
   return (
     // La home tenía su PROPIA cabecera ("SKATEHUB", con su propio botón de
@@ -88,11 +107,21 @@ export default async function HomePage() {
     // pone globals.css, igual que se hizo en /competitions.
     <div className="min-h-screen text-ice-50 flex flex-col justify-between">
       <main className="w-full py-4 space-y-8 flex-1">
-        {worldSkateGames && (
+        {/* Aviso de beta / en construcción: la web ya funciona de verdad,
+            pero todavía se están puliendo cosas y puede haber cambios — se
+            avisa arriba del todo para que nadie se lleve una sorpresa. */}
+        <div className="flex items-center gap-2.5 bg-amber-500/10 border border-amber-500/25 text-amber-200 text-xs rounded-xl px-4 py-2.5">
+          <span className="text-sm shrink-0">🚧</span>
+          <p>
+            <span className="font-bold">{t.betaNoticeTag}</span> {t.betaNoticeBody}
+          </p>
+        </div>
+
+        {countdownVisible && (
           <WorldSkateGamesCountdown
-            targetDate={worldSkateGames.startDate.toISOString()}
-            title={worldSkateGames.name}
-            location={worldSkateGames.location}
+            targetDate={siteSettings!.countdownTargetDate!.toISOString()}
+            title={siteSettings!.countdownTitle || t.heroTitle}
+            location={siteSettings!.countdownLocation}
             prefix={t.countdownPrefix}
             labels={{
               days: t.countdownDays,
@@ -129,10 +158,25 @@ export default async function HomePage() {
               <h2 className="text-xl sm:text-2xl font-display font-black text-white">
                 {nextActiveEvent.name}
               </h2>
-              <p className="text-xs text-ice-100/50">
-                {t.picksClose}: {new Date(nextActiveEvent.rosterLocksAt).toLocaleDateString()}{" "}
-                {new Date(nextActiveEvent.rosterLocksAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </p>
+              {showBothCloseDates ? (
+                <p className="text-xs text-ice-100/50 space-x-3">
+                  <span>{t.picksClosePredictions}: {fmtDate(activeStatus!.predictionsCloseAt)}</span>
+                  <span>{t.picksCloseDraft}: {fmtDate(activeStatus!.draftCloseAt)}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-ice-100/50">
+                  {t.picksClose}:{" "}
+                  {fmtDate(
+                    predictionsOpen
+                      ? activeStatus!.predictionsCloseAt
+                      : draftOpen
+                      ? activeStatus!.draftCloseAt
+                      : activeStatus!.predictionsCloseAt.getTime() < activeStatus!.draftCloseAt.getTime()
+                      ? activeStatus!.predictionsCloseAt
+                      : activeStatus!.draftCloseAt
+                  )}
+                </p>
+              )}
             </div>
 
             <div className="flex gap-2 w-full sm:w-auto">
@@ -166,6 +210,47 @@ export default async function HomePage() {
             <p className="text-ice-100/60 text-sm max-w-xl mx-auto">
               {t.heroSubtitle}
             </p>
+          </div>
+        )}
+
+        {/* Lista "en directo ahora": otras pruebas con Predicciones o Draft
+            abiertos, aparte de la que ya protagoniza el banner de arriba —
+            para que no haga falta ir a Predicciones o a Fantasy a comprobar
+            si hay algo más abierto ahora mismo. */}
+        {liveNowEvents.length > 0 && (
+          <div className="bg-white/[0.03] border border-white/10 rounded-2xl overflow-hidden">
+            <div className="flex items-center gap-2 px-5 pt-4 pb-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+              <h2 className="text-xs font-bold uppercase tracking-wider text-ice-100/70">{t.liveNowTitle}</h2>
+            </div>
+            <div className="divide-y divide-white/5">
+              {liveNowEvents.map(({ event, status }) => (
+                <div key={event.id} className="flex items-center justify-between gap-3 px-5 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ice-50 truncate">{event.name}</p>
+                    <p className="text-[11px] text-ice-100/40 truncate">{event.competition.name}</p>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {status.predictionsOpen && (
+                      <Link
+                        href={`/predictions?event=${event.id}`}
+                        className="text-[10px] font-bold uppercase tracking-wide bg-accent/20 text-accent border border-accent/30 px-2.5 py-1 rounded-full hover:bg-accent/30 transition"
+                      >
+                        {t.liveNowPredictionsPill}
+                      </Link>
+                    )}
+                    {status.draftOpen && (
+                      <Link
+                        href={`/events/${event.id}`}
+                        className="text-[10px] font-bold uppercase tracking-wide bg-gold/20 text-gold border border-gold/30 px-2.5 py-1 rounded-full hover:bg-gold/30 transition"
+                      >
+                        {t.liveNowDraftPill}
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -272,25 +357,15 @@ export default async function HomePage() {
             </span>
           </Link>
 
-          {/* Card 5: Reglas y Puntuación Rollart */}
-          <div className="bg-white/[0.03] border border-white/10 rounded-2xl p-6 flex flex-col justify-between min-h-[160px] opacity-90">
-            <div className="space-y-3">
-              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center text-xl">
-                📋
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-ice-50">
-                  {t.cardScoringTitle}
-                </h3>
-                <p className="text-xs text-ice-100/50 mt-1 leading-relaxed">
-                  {t.cardScoringBody}
-                </p>
-              </div>
-            </div>
-            <span className="text-xs text-ice-100/35 mt-4">
-              {t.cardScoringFooter}
-            </span>
-          </div>
+          {/* Card 5: Compartir la web */}
+          <ShareSiteCard
+            title={t.cardShareTitle}
+            body={t.cardShareBody}
+            buttonLabel={t.cardShareCta}
+            copiedLabel={t.cardShareCopied}
+            shareTitle={t.cardShareNativeTitle}
+            shareText={t.cardShareNativeText}
+          />
 
           {/* Card 6: Acceso Rápido Registro / Login */}
           {!session ? (
@@ -318,12 +393,20 @@ export default async function HomePage() {
                   {t.cardActiveBody(session.user?.name || session.user?.email || "")}
                 </p>
               </div>
-              <Link
-                href="/competitions"
-                className="w-full text-center bg-white/10 hover:bg-white/15 text-ice-100/90 text-xs font-semibold py-2.5 rounded-xl border border-white/15 transition mt-4"
-              >
-                {t.cardActiveCta}
-              </Link>
+              <div className="flex gap-2 mt-4">
+                <Link
+                  href="/competitions"
+                  className="flex-1 text-center bg-white/10 hover:bg-white/15 text-ice-100/90 text-xs font-semibold py-2.5 rounded-xl border border-white/15 transition"
+                >
+                  {t.cardActiveCta}
+                </Link>
+                <Link
+                  href="/profile"
+                  className="flex-1 text-center bg-white/5 hover:bg-white/10 text-ice-100/70 text-xs font-semibold py-2.5 rounded-xl border border-white/10 transition"
+                >
+                  {t.cardActiveProfileCta}
+                </Link>
+              </div>
             </div>
           )}
         </div>

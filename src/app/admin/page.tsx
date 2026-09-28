@@ -27,6 +27,12 @@ export default function AdminDashboardPage() {
       href: "/admin/judges-details",
       color: "border-purple-500/30 hover:border-purple-500",
     },
+    {
+      title: "⚙️ Ajustes del Sitio",
+      desc: "Activa o desactiva la cuenta atrás de la home y edita su texto y fecha.",
+      href: "/admin/settings",
+      color: "border-rose-500/30 hover:border-rose-500",
+    },
   ];
 
   return (

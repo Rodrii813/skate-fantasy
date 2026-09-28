@@ -12,6 +12,7 @@ export default function AdminNav() {
     { href: "/admin/events", label: "⚙️ Eventos y Slots" },
     { href: "/admin/skaters", label: "⛸️ Patinadores" },
     { href: "/admin/judges-details", label: "📊 Subir Resultados (PDF)" },
+    { href: "/admin/settings", label: "⚙️ Ajustes del Sitio" },
   ];
 
   return (

@@ -398,3 +398,19 @@ model LeagueMembership {
   @@unique([leagueId, userId])
   @@index([userId])
 }
+
+// Fila única (singleton, id fijo "singleton") con ajustes globales del sitio
+// editables desde el panel de admin sin tocar código. De momento solo la
+// cuenta atrás de la home: antes se detectaba sola buscando una Competition
+// llamada "World Skate Games" y se mostraba siempre que existiera una — no
+// había forma de quitarla, ni de usarla para otra cosa que no fuera
+// literalmente esa competición. Ahora el admin decide el texto, la fecha y
+// si se muestra o no.
+model SiteSettings {
+  id                  String    @id @default("singleton")
+  countdownEnabled    Boolean   @default(false)
+  countdownTitle      String?
+  countdownLocation   String?
+  countdownTargetDate DateTime?
+  updatedAt           DateTime  @updatedAt
+}
