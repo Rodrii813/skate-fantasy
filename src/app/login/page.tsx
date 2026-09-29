@@ -33,6 +33,16 @@ function LoginForm() {
   const [resendState, setResendState] = useState<"idle" | "sending" | "sent">("idle");
 
   const verifyParam = searchParams.get("verify");
+  // Varias páginas (perfil, un evento, o ahora el enlace de invitación de
+  // una liga) redirigen aquí con ?callbackUrl=/lo-que-sea cuando hace falta
+  // iniciar sesión primero. Solo se acepta una ruta relativa (empieza por
+  // "/", nunca "//" que en el navegador equivale a otro dominio) — así nadie
+  // puede colar un enlace de login que termine mandándote a un sitio externo.
+  const callbackUrlParam = searchParams.get("callbackUrl");
+  const callbackUrl =
+    callbackUrlParam && callbackUrlParam.startsWith("/") && !callbackUrlParam.startsWith("//")
+      ? callbackUrlParam
+      : "/";
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,10 +63,11 @@ function LoginForm() {
       setError(t.loginError);
       return;
     }
-    // Antes iba a /events, una lista de eventos antigua (previa al rediseño
-    // del Competition Hub) que ya no enlaza nadie desde el menú — de ahí la
-    // sensación de "aterrizar en un sitio raro" al iniciar sesión.
-    router.push("/");
+    // Antes iba siempre a "/". Si se llegó aquí con ?callbackUrl= (por
+    // ejemplo desde un enlace de invitación a una liga privada), volvemos
+    // ahí para completar lo que se estaba haciendo en vez de mandar a
+    // cualquiera a la portada y hacerle repetir el paso.
+    router.push(callbackUrl);
     router.refresh();
   }
 

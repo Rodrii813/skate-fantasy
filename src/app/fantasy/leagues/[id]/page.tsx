@@ -7,11 +7,17 @@ import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import JoinLeagueForm from "../JoinLeagueForm";
 import CopyCodeButton from "./CopyCodeButton";
+import CopyLinkButton from "./CopyLinkButton";
 import LeagueMembersManager from "./LeagueMembersManager";
 import LeaveLeagueButton from "./LeaveLeagueButton";
 import DeleteLeagueButton from "./DeleteLeagueButton";
 
 export const dynamic = "force-dynamic";
+
+// Mismo patrón que src/app/layout.tsx para construir URLs absolutas: el
+// enlace de invitación tiene que funcionar tal cual se comparta (WhatsApp,
+// email...), así que no puede ser una ruta relativa.
+const BASE_URL = process.env.NEXTAUTH_URL || "https://rollartfantasy.com";
 
 export default async function LeagueDetailPage({ params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -109,14 +115,27 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
           {isOwner && <p className="text-xs text-slate-500 mt-2">{t.ownerCannotLeaveHint}</p>}
         </div>
 
-        {/* Código de invitación */}
-        <div className="flex items-center justify-between gap-3 bg-slate-900/80 border border-slate-800 rounded-2xl p-4">
-          <div>
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.codeLabel}</p>
-            <p className="text-xl font-mono font-bold tracking-widest text-indigo-300 mt-1">{league.code}</p>
-            <p className="text-xs text-slate-500 mt-1">{t.codeHint}</p>
+        {/* Invitación: código para teclear a mano, o enlace directo que une
+            automáticamente al abrirlo (ver /fantasy/leagues/join/[code]) —
+            dos formas de compartir lo mismo, según lo que le venga mejor a
+            quien invitas. */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.codeLabel}</p>
+              <p className="text-xl font-mono font-bold tracking-widest text-indigo-300 mt-1">{league.code}</p>
+              <p className="text-xs text-slate-500 mt-1">{t.codeHint}</p>
+            </div>
+            <CopyCodeButton code={league.code} />
           </div>
-          <CopyCodeButton code={league.code} />
+          <div className="flex items-center justify-between gap-3 border-t border-slate-800 pt-4">
+            <div className="min-w-0">
+              <p className="text-xs font-bold text-slate-400 uppercase tracking-wide">{t.inviteLinkLabel}</p>
+              <p className="text-sm font-mono text-slate-300 mt-1 truncate">{`${BASE_URL}/fantasy/leagues/join/${league.code}`}</p>
+              <p className="text-xs text-slate-500 mt-1">{t.inviteLinkHint}</p>
+            </div>
+            <CopyLinkButton url={`${BASE_URL}/fantasy/leagues/join/${league.code}`} />
+          </div>
         </div>
 
         {/* Miembros — el creador puede echar a cualquiera que no sea él
