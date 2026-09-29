@@ -104,6 +104,7 @@ export default async function FantasyHubPage({
     categoryName: string;
     state: "proximamente" | "abierto" | "cerrado";
     drafted: boolean;
+    isTest: boolean;
   };
 
   const cellFor = (column: Column, rowIndex: number): CellEvent[] => {
@@ -133,6 +134,7 @@ export default async function FantasyHubPage({
           categoryName: ev.category.name,
           state,
           drafted,
+          isTest: Boolean(ev.isTest),
         };
       })
       .filter((c): c is CellEvent => c !== null);
@@ -265,6 +267,7 @@ export default async function FantasyHubPage({
                                       >
                                         {badge.label}
                                       </span>
+                                      {ce.isTest && <span className="ml-1 text-amber-400 text-[11px]">🧪</span>}
                                       {session && ce.state !== "proximamente" && (
                                         <span
                                           className={`ml-1.5 text-[11px] font-semibold ${

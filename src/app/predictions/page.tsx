@@ -7,6 +7,7 @@ import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import TestEventBanner from "@/app/_components/TestEventBanner";
 
 export const dynamic = "force-dynamic";
 
@@ -262,6 +263,7 @@ export default async function PredictionsPage({
                           >
                             {e.category.name}
                             {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
+                            {e.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                           </Link>
                         ))}
                       </div>
@@ -274,6 +276,7 @@ export default async function PredictionsPage({
             {/* Ficha del evento activo */}
             {activeEvent && (
               <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-6 space-y-6">
+                {activeEvent.isTest && <TestEventBanner locale={locale} />}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-slate-800 pb-4">
                   <div>
                     <h2 className="text-xl font-bold text-slate-100">{activeEvent.name}</h2>

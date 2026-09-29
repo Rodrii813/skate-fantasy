@@ -155,6 +155,11 @@ model Event {
   // generate-slots sepa qué plantilla aplicar sin preguntar cada vez. Null
   // en el resto de disciplinas.
   showFormat    ShowFormat?
+  // Evento de práctica (p.ej. antes de tener órdenes de salida reales, para
+  // que la gente pruebe Fantasy/Predicciones): se marca a mano desde el
+  // admin y se muestra con un aviso en todas las pantallas públicas donde se
+  // pueda interactuar con él, para no confundirlo con una prueba real.
+  isTest        Boolean         @default(false)
   segments      Segment[]
   slots         FantasySlot[]
   registrations Registration[]

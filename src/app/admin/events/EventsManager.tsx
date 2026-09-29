@@ -139,6 +139,13 @@ export default function EventsManager({
   // generate-slots/route.ts (Cuartetos/Grupos Pequeños/Grupos Grandes son
   // competiciones separadas, así que cada evento necesita saber cuál es).
   const [showFormat, setShowFormat] = useState<"" | "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP">("");
+  // Marca este evento como "de prueba": aparece con un aviso en todas las
+  // pantallas públicas donde se pueda interactuar con él (Fantasy,
+  // Predicciones, calendario, ficha de competición), para que quien practique
+  // con él no lo confunda con una prueba real. Pensado para el evento que se
+  // crea antes de tener órdenes de salida reales, solo para que la gente
+  // pruebe la interfaz.
+  const [isTest, setIsTest] = useState(false);
 
   const [editingEventId, setEditingEventId] = useState<string | null>(null);
   const [loadingCreate, setLoadingCreate] = useState(false);
@@ -217,6 +224,7 @@ export default function EventsManager({
     // mismo día y a una hora parecida — así el admin solo tiene que ajustar
     // lo que cambie, en vez de volver a teclear la fecha entera cada vez.
     setShowFormat("");
+    setIsTest(false);
   };
 
   // El servidor interpreta lo que se escriba aquí como hora de la sede
@@ -236,6 +244,7 @@ export default function EventsManager({
     setRosterLocksAt(ev.rosterLocksAt ? toDatetimeLocalValue(ev.rosterLocksAt) : "");
     setScheduledAt(ev.scheduledAt ? toDatetimeLocalValue(ev.scheduledAt) : "");
     setShowFormat(ev.showFormat || "");
+    setIsTest(Boolean(ev.isTest));
     setExpandedEventIds((prev) => new Set(prev).add(ev.id));
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
@@ -262,6 +271,7 @@ export default function EventsManager({
             gender: gender || null,
             scheduledAt: scheduledAt || null,
             showFormat: isShowDiscipline ? showFormat || null : null,
+            isTest,
           }),
         }
       );
@@ -586,6 +596,23 @@ export default function EventsManager({
             </div>
           )}
 
+          <div className="flex items-start gap-2 rounded-lg border border-amber-700/40 bg-amber-950/20 p-3">
+            <input
+              type="checkbox"
+              id="isTest"
+              checked={isTest}
+              onChange={(e) => setIsTest(e.target.checked)}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-amber-500"
+            />
+            <label htmlFor="isTest" className="text-amber-200">
+              <span className="font-semibold">🧪 Evento de prueba</span>
+              <span className="block font-normal text-amber-200/70 mt-0.5">
+                Muestra un aviso en Fantasy, Predicciones, el calendario y la ficha de la competición avisando de que
+                es solo para practicar y no cuenta para nada real.
+              </span>
+            </label>
+          </div>
+
           <div className="space-y-1">
             <label className="text-slate-400 font-semibold">
               Cierre de Plantillas (Roster Locks At){" "}
@@ -713,7 +740,12 @@ export default function EventsManager({
                         {genderLabel ? ` · ${genderLabel}` : ""}
                       </span>
                     </div>
-                    <h3 className="text-base font-bold text-slate-100 mt-1 truncate">{ev.name}</h3>
+                    <h3 className="text-base font-bold text-slate-100 mt-1 truncate">
+                      {ev.name}
+                      {ev.isTest && (
+                        <span className="ml-2 align-middle text-xs font-semibold text-amber-400">🧪 Prueba</span>
+                      )}
+                    </h3>
                     <p className="text-xs text-slate-400 mt-0.5">
                       {ev._count?.registrations || 0} patinadores inscritos •{" "}
                       <span className="text-amber-400 font-semibold">

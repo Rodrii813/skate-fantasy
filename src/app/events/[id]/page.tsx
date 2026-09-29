@@ -4,6 +4,8 @@ import { prisma } from "@/lib/prisma";
 import { notFound, redirect } from "next/navigation";
 import FantasyRosterForm from "@/app/fantasy/[eventId]/FantasyRosterForm";
 import { effectiveLocksAt, isSegmentLocked, isSegmentOpenByTime } from "@/lib/segments";
+import { getLocale } from "@/lib/i18n/getLocale";
+import TestEventBanner from "@/app/_components/TestEventBanner";
 
 export default async function EventPage({
   params,
@@ -85,6 +87,11 @@ export default async function EventPage({
 
   return (
     <div className="min-h-screen bg-[#070b18] text-slate-100 p-6 md:p-10">
+      {event.isTest && (
+        <div className="max-w-2xl mx-auto mb-6">
+          <TestEventBanner locale={getLocale()} />
+        </div>
+      )}
       <FantasyRosterForm
         eventId={event.id}
         eventName={event.name}

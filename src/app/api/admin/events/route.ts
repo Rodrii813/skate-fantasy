@@ -44,7 +44,8 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt, showFormat } = body;
+    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt, showFormat, isTest } =
+      body;
 
     if (!name || !competitionId || !disciplineId || !categoryId || !rosterLocksAt) {
       return NextResponse.json({ error: "Faltan campos obligatorios" }, { status: 400 });
@@ -78,6 +79,7 @@ export async function POST(req: Request) {
         gender: gender || null,
         scheduledAt: scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null,
         showFormat: showFormat || null,
+        isTest: Boolean(isTest),
       },
     });
 

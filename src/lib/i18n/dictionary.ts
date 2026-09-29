@@ -549,6 +549,11 @@ export const dictionaries = {
         deleteLeagueError: "No se ha podido borrar la liga",
       },
     },
+    testEvent: {
+      bannerTitle: "🧪 Esto es un evento de prueba",
+      bannerBody: "Sirve para practicar cómo funciona Fantasy y Predicciones — no cuenta para ningún ranking real.",
+      badge: "Prueba",
+    },
     legal: {
       privacyTitle: "Privacidad",
       privacyTag: "Legal",
@@ -1194,6 +1199,11 @@ export const dictionaries = {
         deletingLeague: "Deleting...",
         deleteLeagueError: "Couldn't delete the league",
       },
+    },
+    testEvent: {
+      bannerTitle: "🧪 This is a test event",
+      bannerBody: "It's here so you can try out how Fantasy and Predictions work — it doesn't count toward any real ranking.",
+      badge: "Test",
     },
     legal: {
       privacyTitle: "Privacy",
