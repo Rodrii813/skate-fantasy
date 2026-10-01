@@ -5,8 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { isSegmentLocked, effectiveLocksAt } from "@/lib/segments";
 import {
   computeCompetitionFantasyLeaderboard,
-  computeEventLeaderboardBySegment,
-  mapWithConcurrency,
+  computeCompetitionLeaderboardsBySegment,
 } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
@@ -80,13 +79,21 @@ export default async function FantasyLeaderboardPage({
   const competitionTabs = activeCompetitions.length > 0 ? activeCompetitions : competitions;
   const archivedForSelect = activeCompetitions.length > 0 ? archivedCompetitions : [];
 
-  // Tarjetas de resumen: igual que en el Fantasy Hub, tu puesto global de
-  // esta competición y tu puesto en cada liga privada a la que pertenezcas.
-  const competitionRanking = await computeCompetitionFantasyLeaderboard(activeCompetition.id);
-  let user: { id: string } | null = null;
-  if (session?.user?.email) {
-    user = await prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } });
-  }
+  // Tarjetas de resumen (puesto global + puesto por liga) y el desglose por
+  // prueba (Program Scores) son consultas independientes entre sí — se
+  // lanzan todas en paralelo con Promise.all en vez de una detrás de otra,
+  // igual que se hizo en el Fantasy Hub, para no sumar sus tiempos. La
+  // clasificación global de la competición (computeCompetitionFantasyLeaderboard)
+  // y el desglose por prueba+segmento (computeCompetitionLeaderboardsBySegment)
+  // son cada una 2 consultas en bloque sin importar cuántos eventos tenga la
+  // competición (ver scoring.ts) — ya no escalan con el número de pruebas.
+  const [competitionRanking, user, boardsByEvent] = await Promise.all([
+    computeCompetitionFantasyLeaderboard(activeCompetition.id),
+    session?.user?.email
+      ? prisma.user.findUnique({ where: { email: session.user.email }, select: { id: true } })
+      : Promise.resolve(null as { id: string } | null),
+    computeCompetitionLeaderboardsBySegment(activeCompetition.id),
+  ]);
   const myGlobalIndex = user ? competitionRanking.findIndex((r) => r.userId === user!.id) : -1;
   const myGlobalRank = myGlobalIndex === -1 ? null : myGlobalIndex + 1;
   const myLeagueRanks = user ? await getMyLeagueRanks(user.id) : [];
@@ -126,24 +133,9 @@ export default async function FantasyLeaderboardPage({
 
   const ROW_LABELS = [tf.shortLabel, tf.longLabel] as const;
 
-  // mapWithConcurrency en vez de Promise.all: esta página ya calcula
-  // computeCompetitionFantasyLeaderboard (otro lote de consultas por
-  // evento) más arriba, así que lanzar TODOS los eventos de golpe aquí
-  // también agotaba el pool de conexiones de Neon y tiraba la página
-  // entera — ver el comentario junto a mapWithConcurrency en scoring.ts.
+  // boardsByEvent ya se calculó más arriba, en paralelo con el resto —
+  // aquí solo se filtran los eventos con segmentos configurados.
   const eventsWithSegments = activeCompetition.events.filter((ev) => ev.segments.length > 0);
-  const boardsByEvent = new Map<string, Awaited<ReturnType<typeof computeEventLeaderboardBySegment>>>(
-    await mapWithConcurrency(
-      eventsWithSegments,
-      5,
-      async (
-        ev: (typeof eventsWithSegments)[number]
-      ): Promise<[string, Awaited<ReturnType<typeof computeEventLeaderboardBySegment>>]> => [
-        ev.id,
-        await computeEventLeaderboardBySegment(ev.id),
-      ]
-    )
-  );
 
   const programScoresColumns: ProgramScoresColumn[] = columns
     .map((col) => {

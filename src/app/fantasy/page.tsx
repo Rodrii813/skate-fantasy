@@ -76,33 +76,39 @@ export default async function FantasyHubPage({
   const activeCompetition =
     competitions.find((c) => c.id === selectedCompetitionId) || competitions[0];
 
-  // Puesto global de la competición, para la tarjeta "Global" (misma
-  // clasificación que usa /fantasy/leaderboard).
-  const competitionRanking = await computeCompetitionFantasyLeaderboard(activeCompetition.id);
+  // Puesto global de la competición (tarjeta "Global") y todo lo que depende
+  // del usuario actual (qué tiene drafteado, su equipo por prueba, sus
+  // ligas) son consultas independientes entre sí — se lanzan en paralelo con
+  // Promise.all en vez de una detrás de otra, para no sumar sus tiempos.
+  const [competitionRanking, myData] = await Promise.all([
+    computeCompetitionFantasyLeaderboard(activeCompetition.id),
+    (async () => {
+      if (!session?.user?.email) return null;
+      const user = await prisma.user.findUnique({ where: { email: session.user.email } });
+      if (!user) return null;
+      const [rosters, myPicksByEvent, myLeagueRanks] = await Promise.all([
+        prisma.fantasyRoster.findMany({
+          where: { userId: user.id, event: { competitionId: activeCompetition.id } },
+          include: { picks: { select: { slotId: true } } },
+        }),
+        computeMyPicksForCompetition(activeCompetition.id, user.id),
+        getMyLeagueRanks(user.id),
+      ]);
+      return {
+        userId: user.id,
+        draftedSlotIds: new Set(rosters.flatMap((r) => r.picks.map((p) => p.slotId))),
+        myPicksByEvent,
+        myLeagueRanks,
+      };
+    })(),
+  ]);
 
-  // Picks ya guardados por el usuario actual en ESTA competición: para
-  // marcar en la tabla qué segmentos ya tiene "draft hecho", para mostrar
-  // directamente su equipo (con puntos si ya hay resultados) al desplegar
-  // cada disciplina (computeMyPicksForCompetition), para su puesto en la
-  // tarjeta "Global" y para sus tarjetas de liga privada.
-  let draftedSlotIds = new Set<string>();
-  let myPicksByEvent: Awaited<ReturnType<typeof computeMyPicksForCompetition>> = new Map();
-  let myLeagueRanks: Awaited<ReturnType<typeof getMyLeagueRanks>> = [];
-  let myGlobalRank: number | null = null;
-  if (session?.user?.email) {
-    const user = await prisma.user.findUnique({ where: { email: session.user.email } });
-    if (user) {
-      const rosters = await prisma.fantasyRoster.findMany({
-        where: { userId: user.id, event: { competitionId: activeCompetition.id } },
-        include: { picks: { select: { slotId: true } } },
-      });
-      draftedSlotIds = new Set(rosters.flatMap((r) => r.picks.map((p) => p.slotId)));
-      myPicksByEvent = await computeMyPicksForCompetition(activeCompetition.id, user.id);
-      myLeagueRanks = await getMyLeagueRanks(user.id);
-      const index = competitionRanking.findIndex((r) => r.userId === user.id);
-      myGlobalRank = index === -1 ? null : index + 1;
-    }
-  }
+  const draftedSlotIds = myData?.draftedSlotIds ?? new Set<string>();
+  const myPicksByEvent: Awaited<ReturnType<typeof computeMyPicksForCompetition>> =
+    myData?.myPicksByEvent ?? new Map();
+  const myLeagueRanks: Awaited<ReturnType<typeof getMyLeagueRanks>> = myData?.myLeagueRanks ?? [];
+  const myGlobalIndex = myData ? competitionRanking.findIndex((r) => r.userId === myData!.userId) : -1;
+  const myGlobalRank = myGlobalIndex === -1 ? null : myGlobalIndex + 1;
 
   // Columnas dinámicas: combinaciones Disciplina + Género realmente
   // presentes en los eventos de esta competición.

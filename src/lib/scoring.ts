@@ -204,35 +204,163 @@ export async function computeEventLeaderboardBySegment(
   return result;
 }
 
-/** Ranking global: suma los totales de cada usuario a través de todos los eventos. */
-export async function computeGlobalLeaderboard() {
-  const events = await prisma.event.findMany({ select: { id: true, name: true } });
-  const totalsByUser = new Map<string, { userName: string; total: number }>();
+/**
+ * Igual que computeEventLeaderboardBySegment pero para TODOS los eventos de
+ * una competición de una vez (2 consultas en total, no 2 por evento) — la
+ * usa /fantasy/leaderboard para las "Puntuaciones por prueba": antes pedía
+ * esto evento a evento (con mapWithConcurrency para no agotar el pool de
+ * Neon), lo que seguía siendo docenas de consultas y se notaba como
+ * lentitud real. Mismo motivo y misma solución que computeBulkFantasyTotals,
+ * arriba, solo que aquí agrupando por evento+segmento en vez de sumar un
+ * único total por usuario.
+ */
+export async function computeCompetitionLeaderboardsBySegment(
+  competitionId: string
+): Promise<Map<string, Map<string, SegmentLeaderboard>>> {
+  const result = new Map<string, Map<string, SegmentLeaderboard>>();
 
-  // Antes se pedía el leaderboard de cada evento uno detrás de otro
-  // (await dentro de un for), lo que son N idas y vueltas seguidas a la
-  // base de datos. Con muchos eventos eso se notaba como lentitud real,
-  // sobre todo con la latencia añadida de una base de datos serverless
-  // (Neon). mapWithConcurrency lanza varias a la vez pero con un límite,
-  // para no agotar el pool de conexiones (ver el comentario junto a su
-  // definición, arriba).
-  const boards = await mapWithConcurrency(events, 5, (event: { id: string }) =>
-    computeEventLeaderboard(event.id)
-  );
+  const rosters = await prisma.fantasyRoster.findMany({
+    where: { event: { competitionId } },
+    include: {
+      user: true,
+      picks: { include: { slot: true, skater: true } },
+    },
+  });
+  if (rosters.length === 0) return result;
 
-  for (const board of boards) {
-    for (const row of board) {
-      const existing = totalsByUser.get(row.userId);
-      if (existing) {
-        existing.total += row.total;
-      } else {
-        totalsByUser.set(row.userId, { userName: row.userName, total: row.total });
-      }
+  const eventIds = Array.from(new Set(rosters.map((r) => r.eventId)));
+  const scores = await prisma.elementScore.findMany({
+    where: { registration: { eventId: { in: eventIds } } },
+    include: { registration: true },
+  });
+
+  const scoreKey = (skaterId: string, elementCategoryId: string, segmentId: string) =>
+    `${skaterId}__${elementCategoryId}__${segmentId}`;
+  const scoreMap = new Map<string, number>();
+  const scoredSegmentIds = new Set<string>();
+  for (const s of scores) {
+    scoreMap.set(scoreKey(s.registration.skaterId, s.elementCategoryId, s.segmentId), s.value);
+    scoredSegmentIds.add(s.segmentId);
+  }
+
+  // eventId -> segmentId -> rosters de ese evento+segmento
+  const rostersByEventSegment = new Map<string, Map<string, RosterScore[]>>();
+
+  for (const roster of rosters) {
+    const slotsBySegment = new Map<string, SlotResult[]>();
+    for (const pick of roster.picks) {
+      const segmentId = pick.slot.segmentId;
+      if (!segmentId) continue;
+      const key = scoreKey(pick.skaterId, pick.slot.elementCategoryId, segmentId);
+      const slotResult: SlotResult = {
+        slotId: pick.slotId,
+        slotLabel: pick.slot.label,
+        skaterId: pick.skaterId,
+        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        points: scoreMap.get(key) ?? 0,
+      };
+      if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
+      slotsBySegment.get(segmentId)!.push(slotResult);
+    }
+
+    if (!rostersByEventSegment.has(roster.eventId)) rostersByEventSegment.set(roster.eventId, new Map());
+    const bySegment = rostersByEventSegment.get(roster.eventId)!;
+
+    for (const [segmentId, slots] of slotsBySegment) {
+      if (!bySegment.has(segmentId)) bySegment.set(segmentId, []);
+      bySegment.get(segmentId)!.push({
+        rosterId: roster.id,
+        userId: roster.userId,
+        userName: roster.user.name,
+        total: slots.reduce((sum, s) => sum + s.points, 0),
+        slots,
+      });
     }
   }
 
-  return Array.from(totalsByUser.entries())
-    .map(([userId, v]) => ({ userId, ...v }))
+  for (const [eventId, bySegment] of rostersByEventSegment) {
+    const segmentMap = new Map<string, SegmentLeaderboard>();
+    for (const [segmentId, boardRosters] of bySegment) {
+      segmentMap.set(segmentId, {
+        segmentId,
+        rosters: boardRosters.sort((a, b) => b.total - a.total),
+        hasScores: scoredSegmentIds.has(segmentId),
+      });
+    }
+    result.set(eventId, segmentMap);
+  }
+
+  return result;
+}
+
+/**
+ * Núcleo compartido de computeGlobalLeaderboard, computeCompetitionFantasyLeaderboard
+ * y computeLeagueLeaderboard. Antes cada una pedía el leaderboard evento a
+ * evento (computeEventLeaderboard, 2 consultas por evento) y sumaba los
+ * totales — con una competición de 15-20 pruebas eso son 30-40 consultas
+ * seguidas en cada visita a /fantasy o /fantasy/leaderboard (antes solo se
+ * ejecutaba al entrar a la pestaña "Global", así que casi nunca se notaba).
+ * Eso disparaba conexiones a la base de datos serverless (Neon) a la vez,
+ * agotaba su pool y además se notaba como una lentitud real. Esta función
+ * trae TODOS los rosters y TODAS las puntuaciones de los eventos pedidos en
+ * una sola tanda de 2 consultas (sin importar cuántos eventos sean) y agrega
+ * los totales en memoria — mismo cálculo de puntos que computeEventLeaderboard
+ * (0 si la puntuación oficial todavía no está cargada).
+ */
+async function computeBulkFantasyTotals(
+  eventIds: string[]
+): Promise<Map<string, { userName: string; total: number; eventIds: Set<string> }>> {
+  const totalsByUser = new Map<string, { userName: string; total: number; eventIds: Set<string> }>();
+  if (eventIds.length === 0) return totalsByUser;
+
+  const rosters = await prisma.fantasyRoster.findMany({
+    where: { eventId: { in: eventIds } },
+    include: { user: true, picks: { include: { slot: true } } },
+  });
+  if (rosters.length === 0) return totalsByUser;
+
+  const scores = await prisma.elementScore.findMany({
+    where: { registration: { eventId: { in: eventIds } } },
+    include: { registration: true },
+  });
+
+  const scoreKey = (skaterId: string, elementCategoryId: string, segmentId: string) =>
+    `${skaterId}__${elementCategoryId}__${segmentId}`;
+  const scoreMap = new Map<string, number>();
+  for (const s of scores) {
+    scoreMap.set(scoreKey(s.registration.skaterId, s.elementCategoryId, s.segmentId), s.value);
+  }
+
+  for (const roster of rosters) {
+    let rosterTotal = 0;
+    for (const pick of roster.picks) {
+      const segmentId = pick.slot.segmentId;
+      const key = segmentId ? scoreKey(pick.skaterId, pick.slot.elementCategoryId, segmentId) : null;
+      rosterTotal += key ? scoreMap.get(key) ?? 0 : 0;
+    }
+    const existing = totalsByUser.get(roster.userId);
+    if (existing) {
+      existing.total += rosterTotal;
+      existing.eventIds.add(roster.eventId);
+    } else {
+      totalsByUser.set(roster.userId, {
+        userName: roster.user.name,
+        total: rosterTotal,
+        eventIds: new Set([roster.eventId]),
+      });
+    }
+  }
+
+  return totalsByUser;
+}
+
+/** Ranking global: suma los totales de cada usuario a través de todos los eventos. */
+export async function computeGlobalLeaderboard() {
+  const events = await prisma.event.findMany({ select: { id: true } });
+  const totals = await computeBulkFantasyTotals(events.map((e) => e.id));
+
+  return Array.from(totals.entries())
+    .map(([userId, v]) => ({ userId, userName: v.userName, total: v.total }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -245,9 +373,8 @@ export type CompetitionScore = {
 
 /**
  * Ranking Fantasy GLOBAL de una competición: igual que computeGlobalLeaderboard
- * pero acotado a los eventos de UNA competición (para la vista "Ranking
- * Fantasy por competición" de /fantasy). Reutiliza computeEventLeaderboard
- * evento a evento, no reimplementa el cálculo de puntos.
+ * pero acotado a los eventos de UNA competición (para la tarjeta "Global" y
+ * la Clasificación Global de /fantasy y /fantasy/leaderboard).
  */
 export async function computeCompetitionFantasyLeaderboard(
   competitionId: string
@@ -256,27 +383,10 @@ export async function computeCompetitionFantasyLeaderboard(
     where: { competitionId },
     select: { id: true },
   });
+  const totals = await computeBulkFantasyTotals(events.map((e) => e.id));
 
-  const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
-
-  const boards = await mapWithConcurrency(events, 5, (event: { id: string }) =>
-    computeEventLeaderboard(event.id)
-  );
-
-  for (const board of boards) {
-    for (const row of board) {
-      const existing = totalsByUser.get(row.userId);
-      if (existing) {
-        existing.total += row.total;
-        existing.eventsPlayed += 1;
-      } else {
-        totalsByUser.set(row.userId, { userName: row.userName, total: row.total, eventsPlayed: 1 });
-      }
-    }
-  }
-
-  return Array.from(totalsByUser.entries())
-    .map(([userId, v]) => ({ userId, ...v }))
+  return Array.from(totals.entries())
+    .map(([userId, v]) => ({ userId, userName: v.userName, total: v.total, eventsPlayed: v.eventIds.size }))
     .sort((a, b) => b.total - a.total);
 }
 
@@ -295,7 +405,8 @@ export type LeagueScore = {
  * liga no aparece aunque haya jugado esos eventos. Todos los miembros
  * aparecen desde el primer momento (0 puntos, 0 eventos) aunque todavía no
  * hayan hecho ningún draft, para que la liga se vea completa nada más
- * crearse.
+ * crearse (por eso se recorre league.memberships, no el resultado de
+ * computeBulkFantasyTotals).
  */
 export async function computeLeagueLeaderboard(leagueId: string): Promise<LeagueScore[]> {
   const league = await prisma.league.findUnique({
@@ -307,26 +418,18 @@ export async function computeLeagueLeaderboard(leagueId: string): Promise<League
   });
   if (!league) return [];
 
-  const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
-  for (const m of league.memberships) {
-    totalsByUser.set(m.userId, { userName: m.user.name, total: 0, eventsPlayed: 0 });
-  }
+  const totals = await computeBulkFantasyTotals(league.events.map((e) => e.eventId));
 
-  const boards = await mapWithConcurrency(league.events, 5, ({ eventId }: { eventId: string }) =>
-    computeEventLeaderboard(eventId)
-  );
-
-  for (const board of boards) {
-    for (const row of board) {
-      const existing = totalsByUser.get(row.userId);
-      if (!existing) continue; // solo cuentan los miembros de la liga
-      existing.total += row.total;
-      existing.eventsPlayed += 1;
-    }
-  }
-
-  return Array.from(totalsByUser.entries())
-    .map(([userId, v]) => ({ userId, ...v }))
+  return league.memberships
+    .map((m) => {
+      const v = totals.get(m.userId);
+      return {
+        userId: m.userId,
+        userName: m.user.name,
+        total: v?.total ?? 0,
+        eventsPlayed: v?.eventIds.size ?? 0,
+      };
+    })
     .sort((a, b) => b.total - a.total);
 }
 
