@@ -88,6 +88,8 @@ export const dictionaries = {
       gender: { FEMALE: "Femenino", MALE: "Masculino" },
       skater: (plural: boolean, female: boolean) =>
         female ? (plural ? "Patinadoras" : "Patinadora") : plural ? "Patinadores" : "Patinador",
+      searchSkaters: "Buscar patinadores...",
+      noSkatersFound: "No se han encontrado patinadores",
     },
     calendario: {
       title: "Calendario",
@@ -357,6 +359,7 @@ export const dictionaries = {
       maxOnePerGroup: "Máx 1 por grupo",
       selectSkater: (slotLabel: string) => `Elige patinadora para ${slotLabel}`,
       warmupGroupLabel: (group: number) => `── Grupo de Calentamiento ${group} ──`,
+      warmupGroupHeader: (group: number) => `Grupo de Calentamiento ${group}`,
       saving: "Guardando...",
       saveOfficial: "Guardar Alineación Oficial",
       completeRoster: "Completa la alineación",
@@ -741,6 +744,8 @@ export const dictionaries = {
       gender: { FEMALE: "Ladies", MALE: "Men" },
       skater: (plural: boolean, female: boolean) =>
         female ? (plural ? "Skaters" : "Skater") : plural ? "Skaters" : "Skater",
+      searchSkaters: "Search skaters...",
+      noSkatersFound: "No skaters found",
     },
     calendario: {
       title: "Calendar",
@@ -1008,6 +1013,7 @@ export const dictionaries = {
       maxOnePerGroup: "Max 1 per group",
       selectSkater: (slotLabel: string) => `Select skater for ${slotLabel}`,
       warmupGroupLabel: (group: number) => `── Warmup Group ${group} ──`,
+      warmupGroupHeader: (group: number) => `Warmup Group ${group}`,
       saving: "Saving...",
       saveOfficial: "Save Official Lineup",
       completeRoster: "Complete the lineup",

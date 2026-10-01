@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import SkaterSearchSelect, { type SkaterSearchOption } from "@/app/_components/SkaterSearchSelect";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -33,7 +34,8 @@ export default function PredictionForm({
 }: PredictionFormProps) {
   const router = useRouter();
   const { locale } = useLocale();
-  const t = getDictionary(locale).predictions.form;
+  const dict = getDictionary(locale);
+  const t = dict.predictions.form;
 
   const [rank1, setRank1] = useState(initialPrediction?.rank1SkaterId || "");
   const [rank2, setRank2] = useState(initialPrediction?.rank2SkaterId || "");
@@ -101,23 +103,32 @@ export default function PredictionForm({
           </div>
         </div>
 
-        <select
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={isLocked || loading}
-          className="w-full sm:w-72 bg-slate-950 border border-slate-700 text-slate-100 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-          required={required}
-        >
-          <option value="">{t.chooseSkater}</option>
-          {skaters.map((s) => {
-            const isAlreadyChosen = selectedList.includes(s.id) && s.id !== value;
-            return (
-              <option key={s.id} value={s.id} disabled={isAlreadyChosen}>
-                {s.firstName} {s.lastName} ({s.country}) {isAlreadyChosen ? t.alreadyChosen : ""}
-              </option>
-            );
-          })}
-        </select>
+        <div className="w-full sm:w-72">
+          <SkaterSearchSelect
+            value={value}
+            onChange={onChange}
+            groups={[
+              {
+                label: null,
+                options: skaters.map(
+                  (s): SkaterSearchOption => ({
+                    id: s.id,
+                    firstName: s.firstName,
+                    lastName: s.lastName,
+                    country: s.country,
+                    disabled: selectedList.includes(s.id) && s.id !== value,
+                    disabledLabel: t.alreadyChosen,
+                  })
+                ),
+              },
+            ]}
+            placeholder={t.chooseSkater}
+            searchPlaceholder={dict.common.searchSkaters}
+            noResultsLabel={dict.common.noSkatersFound}
+            disabled={isLocked || loading}
+            ringColorClass="focus:ring-blue-500"
+          />
+        </div>
       </div>
     );
   };

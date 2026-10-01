@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
 import LocalDateTime from "@/app/_components/LocalDateTime";
+import SkaterSearchSelect, { type SkaterSearchGroup } from "@/app/_components/SkaterSearchSelect";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
@@ -79,7 +80,8 @@ export default function FantasyRosterForm({
 }: Props) {
   const router = useRouter();
   const { locale } = useLocale();
-  const t = getDictionary(locale).fantasyRoster;
+  const dict = getDictionary(locale);
+  const t = dict.fantasyRoster;
   const [picks, setPicks] = useState<Record<string, string>>(initialPicks || {});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -240,29 +242,26 @@ export default function FantasyRosterForm({
 
   const renderSlotSelect = (slot: Slot, ringColor: string) => {
     const currentSkaterId = picks[slot.id] || "";
+    const groups: SkaterSearchGroup[] = groupedRegistrations.map(({ group, skaters }) => ({
+      label: t.warmupGroupHeader(group),
+      options: skaters.map((reg) => ({
+        id: reg.skater.id,
+        firstName: reg.skater.firstName,
+        lastName: reg.skater.lastName,
+        country: reg.skater.country,
+      })),
+    }));
     return (
-      <div key={slot.id} className="relative">
-        <select
-          value={currentSkaterId}
-          onChange={(e) => handleSelect(slot.id, e.target.value)}
-          className={`w-full bg-[#0d162e] border border-slate-800 hover:border-slate-700 text-slate-200 text-xs rounded-xl p-3 appearance-none focus:outline-none focus:ring-1 ${ringColor} transition`}
-        >
-          <option value="">{t.selectSkater(slot.label)}</option>
-          {groupedRegistrations.map(({ group, skaters }) => (
-            <optgroup key={group} label={t.warmupGroupLabel(group)}>
-              {skaters.map((reg) => (
-                <option key={reg.skater.id} value={reg.skater.id}>
-                  {reg.skater.firstName} {reg.skater.lastName}
-                  {reg.skater.country ? ` (${reg.skater.country})` : ""}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400 text-xs">
-          ▼
-        </div>
-      </div>
+      <SkaterSearchSelect
+        key={slot.id}
+        value={currentSkaterId}
+        onChange={(skaterId) => handleSelect(slot.id, skaterId)}
+        groups={groups}
+        placeholder={t.selectSkater(slot.label)}
+        searchPlaceholder={dict.common.searchSkaters}
+        noResultsLabel={dict.common.noSkatersFound}
+        ringColorClass={ringColor}
+      />
     );
   };
 
