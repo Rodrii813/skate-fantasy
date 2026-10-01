@@ -330,6 +330,7 @@ export const dictionaries = {
       leaguesCardTitle: "Ligas Privadas",
       leaguesCardBody: "Crea una liga con tus amigos o únete con un código y compite en vuestro propio ranking.",
       leaguesCardCta: "Ver Ligas",
+      legendDrafted: "Ya tienes draft",
     },
     fantasyRoster: {
       deadline: "Cierre",
@@ -984,6 +985,7 @@ export const dictionaries = {
       pointsSuffix: "pts",
       leaguesCardTitle: "Private Leagues",
       leaguesCardBody: "Create a league with your friends or join one with a code, and compete in your own leaderboard.",
+      legendDrafted: "Already drafted",
       leaguesCardCta: "View Leagues",
     },
     fantasyRoster: {

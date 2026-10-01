@@ -109,39 +109,6 @@ export default async function FantasyHubPage({
     isTest: boolean;
   };
 
-  const cellFor = (column: Column, rowIndex: number): CellEvent[] => {
-    const matchingEvents = activeCompetition.events.filter(
-      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === column.key
-    );
-
-    return matchingEvents
-      .map((ev): CellEvent | null => {
-        const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
-        const segment = orderedSegments[rowIndex];
-        if (!segment) return null;
-
-        const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
-        const draftStatus = getSegmentDraftStatus(
-          segment,
-          ev.rosterLocksAt,
-          slotsForSegment.length > 0
-        );
-        const state: CellEvent["state"] =
-          draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
-        const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
-
-        return {
-          eventId: ev.id,
-          eventName: ev.name,
-          categoryName: translateCategoryName(ev.category.name, locale),
-          state,
-          drafted,
-          isTest: Boolean(ev.isTest),
-        };
-      })
-      .filter((c): c is CellEvent => c !== null);
-  };
-
   const stateBadge: Record<CellEvent["state"], { label: string; className: string }> = {
     proximamente: { label: t.stateUpcoming, className: "bg-slate-800 text-slate-400 border-slate-700" },
     abierto: {
@@ -218,12 +185,38 @@ export default async function FantasyHubPage({
           ))}
         </div>
 
-        {/* Tabla Draft Status */}
+        {/* Draft Status: antes era una tabla matriz (filas = Corto/Largo,
+            columnas = disciplina+género), donde cada celda apilaba verticalmente
+            TODOS los eventos de esa combinación que cayeran en esa fila — con
+            una disciplina como Show (varias categorías: Cuartetos, Grupos
+            Pequeños, Grupos Grandes...) eso dejaba columnas desiguales y muy
+            altas, además de forzar scroll horizontal con 5+ columnas de
+            180px cada una. Ahora es una rejilla de tarjetas (una por
+            disciplina+género) y, dentro de cada una, una fila por evento con
+            sus 1-2 segmentos como chips compactos en línea — mismo contenido,
+            una fracción del espacio, y se adapta mejor a cada competición
+            tenga 2 o 10 disciplinas distintas. */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
-          <div className="p-4 border-b border-slate-800">
+          <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
               {t.draftStatus(activeCompetition.name)}
             </h2>
+            {columns.length > 0 && (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
+                {(["proximamente", "abierto", "cerrado"] as const).map((state) => (
+                  <span key={state} className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full border ${stateBadge[state].className}`} />
+                    {stateBadge[state].label}
+                  </span>
+                ))}
+                {session && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
+                    {t.legendDrafted}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
 
           {columns.length === 0 ? (
@@ -231,78 +224,82 @@ export default async function FantasyHubPage({
               {t.noEvents}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-slate-800/60 text-slate-300 font-semibold border-b border-slate-700/80 text-xs uppercase tracking-wider">
-                    <th className="py-3 px-4 w-24">{t.segment}</th>
-                    {columns.map((col) => (
-                      <th key={col.key} className="py-3 px-4 min-w-[180px]">
-                        {col.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/80">
-                  {ROW_LABELS.map((rowLabel, rowIndex) => (
-                    <tr key={rowLabel}>
-                      <td className="py-3 px-4 font-bold text-slate-300 align-top">{rowLabel}</td>
-                      {columns.map((col) => {
-                        const cellEvents = cellFor(col, rowIndex);
+            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
+              {columns.map((col) => {
+                const eventsInColumn = activeCompetition.events.filter(
+                  (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
+                );
+                return (
+                  <div
+                    key={col.key}
+                    className="bg-slate-950/50 border border-slate-800 rounded-xl p-3.5 space-y-2.5"
+                  >
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-300 truncate">
+                      {col.label}
+                    </p>
+                    <div className="space-y-1.5">
+                      {eventsInColumn.map((ev) => {
+                        const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
                         return (
-                          <td key={col.key} className="py-3 px-4 align-top">
-                            {cellEvents.length === 0 ? (
-                              <span className="text-xs text-slate-600">—</span>
-                            ) : (
-                              <div className="space-y-2">
-                                {cellEvents.map((ce) => {
-                                  const badge = stateBadge[ce.state];
-                                  const content = (
-                                    <div className="space-y-1">
-                                      {cellEvents.length > 1 && (
-                                        <p className="text-[10px] text-slate-500 uppercase tracking-wide">
-                                          {ce.categoryName}
-                                        </p>
-                                      )}
-                                      <span
-                                        className={`inline-block px-2 py-0.5 text-[11px] font-semibold rounded-full border ${badge.className}`}
-                                      >
-                                        {badge.label}
-                                      </span>
-                                      {ce.isTest && <span className="ml-1 text-amber-400 text-[11px]">🧪</span>}
-                                      {session && ce.state !== "proximamente" && (
-                                        <span
-                                          className={`ml-1.5 text-[11px] font-semibold ${
-                                            ce.drafted ? "text-indigo-400" : "text-slate-500"
-                                          }`}
-                                        >
-                                          {ce.drafted ? t.alreadyDrafted : t.notDrafted}
-                                        </span>
-                                      )}
-                                    </div>
-                                  );
+                          <div key={ev.id} className="flex items-center justify-between gap-2">
+                            <span className="text-xs text-slate-400 truncate">
+                              {translateCategoryName(ev.category.name, locale)}
+                              {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
+                            </span>
+                            <div className="flex items-center gap-1 shrink-0">
+                              {orderedSegments.map((segment, segIndex) => {
+                                const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
+                                const draftStatus = getSegmentDraftStatus(
+                                  segment,
+                                  ev.rosterLocksAt,
+                                  slotsForSegment.length > 0
+                                );
+                                const state: CellEvent["state"] =
+                                  draftStatus === "UPCOMING"
+                                    ? "proximamente"
+                                    : draftStatus === "CLOSED"
+                                      ? "cerrado"
+                                      : "abierto";
+                                const badge = stateBadge[state];
+                                const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
+                                const rowLabel = ROW_LABELS[segIndex] ?? segment.name;
 
-                                  return ce.state === "proximamente" ? (
-                                    <div key={ce.eventId}>{content}</div>
-                                  ) : (
-                                    <Link
-                                      key={ce.eventId}
-                                      href={`/events/${ce.eventId}`}
-                                      className="block hover:opacity-80 transition"
-                                    >
-                                      {content}
-                                    </Link>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </td>
+                                const chip = (
+                                  <span
+                                    title={`${rowLabel} · ${badge.label}${
+                                      session && state !== "proximamente"
+                                        ? ` · ${drafted ? t.alreadyDrafted : t.notDrafted}`
+                                        : ""
+                                    }`}
+                                    className={`relative flex h-6 w-6 items-center justify-center rounded-md border text-[10px] font-bold ${badge.className}`}
+                                  >
+                                    {rowLabel.charAt(0)}
+                                    {session && state !== "proximamente" && drafted && (
+                                      <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />
+                                    )}
+                                  </span>
+                                );
+
+                                return state === "proximamente" ? (
+                                  <span key={segment.id}>{chip}</span>
+                                ) : (
+                                  <Link
+                                    key={segment.id}
+                                    href={`/events/${ev.id}`}
+                                    className="hover:opacity-80 transition"
+                                  >
+                                    {chip}
+                                  </Link>
+                                );
+                              })}
+                            </div>
+                          </div>
                         );
                       })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
