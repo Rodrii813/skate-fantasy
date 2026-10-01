@@ -80,6 +80,101 @@ export async function computeEventLeaderboard(eventId: string): Promise<RosterSc
   return results.sort((a, b) => b.total - a.total);
 }
 
+export type SegmentLeaderboard = {
+  segmentId: string;
+  rosters: RosterScore[];
+  // Si el admin ya ha cargado al menos una puntuación oficial de este
+  // segmento. Un segmento puede estar "cerrado" (plazo pasado) sin que
+  // todavía haya resultados subidos — distinguir eso evita que la
+  // clasificación en vivo enseñe una pared de "0.00 pts" que parezca que
+  // todo el mundo sacó cero, cuando en realidad es que aún no hay nada
+  // cargado.
+  hasScores: boolean;
+};
+
+/**
+ * Igual que computeEventLeaderboard, pero separa el resultado POR SEGMENTO
+ * (Corto/Largo) en vez de sumarlo todo junto — cada segmento tiene su propio
+ * plazo de fichajes y su propio sorteo de calentamiento, así que su
+ * clasificación debe poder consultarse en cuanto ESE segmento cierre y se
+ * puntúe, sin esperar a que el otro también termine. Se recalculan las
+ * mismas dos consultas que computeEventLeaderboard en vez de reutilizarla
+ * para no tocar esa función (la usan computeGlobalLeaderboard,
+ * computeCompetitionFantasyLeaderboard y computeLeagueLeaderboard, con un
+ * total combinado que sigue siendo el comportamiento correcto ahí).
+ * Los slots sin segmento (eventos antiguos sin segmentos configurados) no
+ * aparecen aquí — para esos sigue sirviendo computeEventLeaderboard tal cual.
+ */
+export async function computeEventLeaderboardBySegment(
+  eventId: string
+): Promise<Map<string, SegmentLeaderboard>> {
+  const rosters = await prisma.fantasyRoster.findMany({
+    where: { eventId },
+    include: {
+      user: true,
+      picks: {
+        include: { slot: true, skater: true },
+      },
+    },
+  });
+
+  const scores = await prisma.elementScore.findMany({
+    where: { registration: { eventId } },
+    include: { registration: true },
+  });
+
+  const scoreKey = (skaterId: string, elementCategoryId: string, segmentId: string) =>
+    `${skaterId}__${elementCategoryId}__${segmentId}`;
+
+  const scoreMap = new Map<string, number>();
+  const scoredSegmentIds = new Set<string>();
+  for (const s of scores) {
+    scoreMap.set(scoreKey(s.registration.skaterId, s.elementCategoryId, s.segmentId), s.value);
+    scoredSegmentIds.add(s.segmentId);
+  }
+
+  const rostersBySegment = new Map<string, RosterScore[]>();
+
+  for (const roster of rosters) {
+    const slotsBySegment = new Map<string, SlotResult[]>();
+    for (const pick of roster.picks) {
+      const segmentId = pick.slot.segmentId;
+      if (!segmentId) continue;
+      const key = scoreKey(pick.skaterId, pick.slot.elementCategoryId, segmentId);
+      const slotResult: SlotResult = {
+        slotId: pick.slotId,
+        slotLabel: pick.slot.label,
+        skaterId: pick.skaterId,
+        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        points: scoreMap.get(key) ?? 0,
+      };
+      if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
+      slotsBySegment.get(segmentId)!.push(slotResult);
+    }
+
+    for (const [segmentId, slots] of slotsBySegment) {
+      if (!rostersBySegment.has(segmentId)) rostersBySegment.set(segmentId, []);
+      rostersBySegment.get(segmentId)!.push({
+        rosterId: roster.id,
+        userId: roster.userId,
+        userName: roster.user.name,
+        total: slots.reduce((sum, s) => sum + s.points, 0),
+        slots,
+      });
+    }
+  }
+
+  const result = new Map<string, SegmentLeaderboard>();
+  for (const [segmentId, boardRosters] of rostersBySegment) {
+    result.set(segmentId, {
+      segmentId,
+      rosters: boardRosters.sort((a, b) => b.total - a.total),
+      hasScores: scoredSegmentIds.has(segmentId),
+    });
+  }
+  return result;
+}
+
 /** Ranking global: suma los totales de cada usuario a través de todos los eventos. */
 export async function computeGlobalLeaderboard() {
   const events = await prisma.event.findMany({ select: { id: true, name: true } });
