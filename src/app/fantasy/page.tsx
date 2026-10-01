@@ -196,30 +196,16 @@ export default async function FantasyHubPage({
             evento ahí) y dejando la fila "Largo" con huecos vacíos en esas
             columnas. Ahora cada columna (disciplina+género) es independiente
             — una lista propia de sus eventos, cada uno con sus 1 o 2
-            segmentos reales como chips en línea — así que ninguna columna
-            fuerza la altura de las demás; se mantiene el mismo formato de
-            columnas con cabecera y scroll horizontal de antes. */}
+            segmentos reales (con su badge de estado y, si has iniciado
+            sesión, si ya tienes draft hecho — igual que antes) — así que
+            ninguna columna fuerza la altura de las demás; se mantiene el
+            mismo formato de columnas con cabecera y scroll horizontal de
+            antes. */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
-          <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+          <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
               {t.draftStatus(activeCompetition.name)}
             </h2>
-            {columns.length > 0 && (
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-500">
-                {(["proximamente", "abierto", "cerrado"] as const).map((state) => (
-                  <span key={state} className="flex items-center gap-1.5">
-                    <span className={`h-2 w-2 rounded-full border ${stateBadge[state].className}`} />
-                    {stateBadge[state].label}
-                  </span>
-                ))}
-                {session && (
-                  <span className="flex items-center gap-1.5">
-                    <span className="h-2 w-2 rounded-full bg-indigo-500" />
-                    {t.legendDrafted}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
 
           {columns.length === 0 ? (
@@ -234,66 +220,70 @@ export default async function FantasyHubPage({
                     (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
                   );
                   return (
-                    <div key={col.key} className="w-48 shrink-0 space-y-2.5">
+                    <div key={col.key} className="w-56 shrink-0 space-y-2.5">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2 truncate">
                         {col.label}
                       </p>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                       {eventsInColumn.map((ev) => {
                         const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
                         return (
-                          <div key={ev.id} className="flex items-center justify-between gap-2">
-                            <span className="text-xs text-slate-400 truncate">
+                          <div key={ev.id} className="space-y-1">
+                            <p className="text-[11px] text-slate-500 uppercase tracking-wide truncate">
                               {translateCategoryName(ev.category.name, locale)}
                               {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
-                            </span>
-                            <div className="flex items-center gap-1 shrink-0">
-                              {orderedSegments.map((segment, segIndex) => {
-                                const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
-                                const draftStatus = getSegmentDraftStatus(
-                                  segment,
-                                  ev.rosterLocksAt,
-                                  slotsForSegment.length > 0
-                                );
-                                const state: CellEvent["state"] =
-                                  draftStatus === "UPCOMING"
-                                    ? "proximamente"
-                                    : draftStatus === "CLOSED"
-                                      ? "cerrado"
-                                      : "abierto";
-                                const badge = stateBadge[state];
-                                const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
-                                const rowLabel = ROW_LABELS[segIndex] ?? segment.name;
+                            </p>
+                            {orderedSegments.map((segment, segIndex) => {
+                              const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
+                              const draftStatus = getSegmentDraftStatus(
+                                segment,
+                                ev.rosterLocksAt,
+                                slotsForSegment.length > 0
+                              );
+                              const state: CellEvent["state"] =
+                                draftStatus === "UPCOMING"
+                                  ? "proximamente"
+                                  : draftStatus === "CLOSED"
+                                    ? "cerrado"
+                                    : "abierto";
+                              const badge = stateBadge[state];
+                              const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
+                              const rowLabel = ROW_LABELS[segIndex] ?? segment.name;
 
-                                const chip = (
+                              const content = (
+                                <div className="flex items-center justify-between gap-2">
+                                  {orderedSegments.length > 1 && (
+                                    <span className="text-[10px] text-slate-500 shrink-0">{rowLabel}</span>
+                                  )}
                                   <span
-                                    title={`${rowLabel} · ${badge.label}${
-                                      session && state !== "proximamente"
-                                        ? ` · ${drafted ? t.alreadyDrafted : t.notDrafted}`
-                                        : ""
-                                    }`}
-                                    className={`relative flex h-6 w-6 items-center justify-center rounded-md border text-[10px] font-bold ${badge.className}`}
+                                    className={`px-2 py-0.5 text-[11px] font-semibold rounded-full border ${badge.className}`}
                                   >
-                                    {rowLabel.charAt(0)}
-                                    {session && state !== "proximamente" && drafted && (
-                                      <span className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 rounded-full bg-indigo-500" />
-                                    )}
+                                    {badge.label}
                                   </span>
-                                );
+                                  {session && state !== "proximamente" && (
+                                    <span
+                                      className={`text-[11px] font-semibold ${
+                                        drafted ? "text-indigo-400" : "text-slate-500"
+                                      }`}
+                                    >
+                                      {drafted ? t.alreadyDrafted : t.notDrafted}
+                                    </span>
+                                  )}
+                                </div>
+                              );
 
-                                return state === "proximamente" ? (
-                                  <span key={segment.id}>{chip}</span>
-                                ) : (
-                                  <Link
-                                    key={segment.id}
-                                    href={`/events/${ev.id}`}
-                                    className="hover:opacity-80 transition"
-                                  >
-                                    {chip}
-                                  </Link>
-                                );
-                              })}
-                            </div>
+                              return state === "proximamente" ? (
+                                <div key={segment.id}>{content}</div>
+                              ) : (
+                                <Link
+                                  key={segment.id}
+                                  href={`/events/${ev.id}`}
+                                  className="block hover:opacity-80 transition"
+                                >
+                                  {content}
+                                </Link>
+                              );
+                            })}
                           </div>
                         );
                       })}
