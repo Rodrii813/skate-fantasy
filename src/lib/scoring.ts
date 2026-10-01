@@ -1,5 +1,34 @@
 import { prisma } from "./prisma";
 
+// Las bases de datos serverless (Neon, la que usa este proyecto) tienen un
+// límite bajo de conexiones concurrentes. computeGlobalLeaderboard,
+// computeCompetitionFantasyLeaderboard y computeLeagueLeaderboard lanzan 2
+// consultas por evento con Promise.all — con una competición de 15-20
+// pruebas eso son 30-40 conexiones a la vez, y desde que el Fantasy Hub y el
+// nuevo /fantasy/leaderboard las calculan en CADA visita (antes solo al
+// pulsar la pestaña "Global", así que rara vez se llegaba a ejercitar a este
+// tamaño) empezó a agotar el pool y tirar la página entera con un error de
+// Server Component. mapWithConcurrency limita cuántas promesas están en
+// vuelo a la vez, en vez de lanzarlas todas de golpe.
+export async function mapWithConcurrency<T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T) => Promise<R>
+): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+  async function worker() {
+    for (;;) {
+      const current = nextIndex++;
+      if (current >= items.length) return;
+      results[current] = await fn(items[current]);
+    }
+  }
+  const workerCount = Math.min(limit, items.length);
+  await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
 export type SlotResult = {
   slotId: string;
   slotLabel: string;
@@ -184,8 +213,12 @@ export async function computeGlobalLeaderboard() {
   // (await dentro de un for), lo que son N idas y vueltas seguidas a la
   // base de datos. Con muchos eventos eso se notaba como lentitud real,
   // sobre todo con la latencia añadida de una base de datos serverless
-  // (Neon). Promise.all lanza todas las consultas a la vez.
-  const boards = await Promise.all(events.map((event) => computeEventLeaderboard(event.id)));
+  // (Neon). mapWithConcurrency lanza varias a la vez pero con un límite,
+  // para no agotar el pool de conexiones (ver el comentario junto a su
+  // definición, arriba).
+  const boards = await mapWithConcurrency(events, 5, (event: { id: string }) =>
+    computeEventLeaderboard(event.id)
+  );
 
   for (const board of boards) {
     for (const row of board) {
@@ -226,7 +259,9 @@ export async function computeCompetitionFantasyLeaderboard(
 
   const totalsByUser = new Map<string, { userName: string; total: number; eventsPlayed: number }>();
 
-  const boards = await Promise.all(events.map((event) => computeEventLeaderboard(event.id)));
+  const boards = await mapWithConcurrency(events, 5, (event: { id: string }) =>
+    computeEventLeaderboard(event.id)
+  );
 
   for (const board of boards) {
     for (const row of board) {
@@ -277,7 +312,9 @@ export async function computeLeagueLeaderboard(leagueId: string): Promise<League
     totalsByUser.set(m.userId, { userName: m.user.name, total: 0, eventsPlayed: 0 });
   }
 
-  const boards = await Promise.all(league.events.map(({ eventId }) => computeEventLeaderboard(eventId)));
+  const boards = await mapWithConcurrency(league.events, 5, ({ eventId }: { eventId: string }) =>
+    computeEventLeaderboard(eventId)
+  );
 
   for (const board of boards) {
     for (const row of board) {

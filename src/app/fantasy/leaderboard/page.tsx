@@ -3,7 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { isSegmentLocked, effectiveLocksAt } from "@/lib/segments";
-import { computeCompetitionFantasyLeaderboard, computeEventLeaderboardBySegment } from "@/lib/scoring";
+import {
+  computeCompetitionFantasyLeaderboard,
+  computeEventLeaderboardBySegment,
+  mapWithConcurrency,
+} from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
@@ -122,15 +126,22 @@ export default async function FantasyLeaderboardPage({
 
   const ROW_LABELS = [tf.shortLabel, tf.longLabel] as const;
 
+  // mapWithConcurrency en vez de Promise.all: esta página ya calcula
+  // computeCompetitionFantasyLeaderboard (otro lote de consultas por
+  // evento) más arriba, así que lanzar TODOS los eventos de golpe aquí
+  // también agotaba el pool de conexiones de Neon y tiraba la página
+  // entera — ver el comentario junto a mapWithConcurrency en scoring.ts.
   const eventsWithSegments = activeCompetition.events.filter((ev) => ev.segments.length > 0);
   const boardsByEvent = new Map<string, Awaited<ReturnType<typeof computeEventLeaderboardBySegment>>>(
-    await Promise.all(
-      eventsWithSegments.map(
-        async (ev): Promise<[string, Awaited<ReturnType<typeof computeEventLeaderboardBySegment>>]> => [
-          ev.id,
-          await computeEventLeaderboardBySegment(ev.id),
-        ]
-      )
+    await mapWithConcurrency(
+      eventsWithSegments,
+      5,
+      async (
+        ev: (typeof eventsWithSegments)[number]
+      ): Promise<[string, Awaited<ReturnType<typeof computeEventLeaderboardBySegment>>]> => [
+        ev.id,
+        await computeEventLeaderboardBySegment(ev.id),
+      ]
     )
   );
 

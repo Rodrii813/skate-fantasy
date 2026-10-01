@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { computeLeagueLeaderboard } from "@/lib/scoring";
+import { computeLeagueLeaderboard, mapWithConcurrency } from "@/lib/scoring";
 
 export type MyLeagueRank = {
   id: string;
@@ -20,16 +20,18 @@ export async function getMyLeagueRanks(userId: string): Promise<MyLeagueRank[]> 
     orderBy: { createdAt: "asc" },
   });
 
-  return Promise.all(
-    leagues.map(async (league) => {
-      const ranking = await computeLeagueLeaderboard(league.id);
-      const index = ranking.findIndex((r) => r.userId === userId);
-      return {
-        id: league.id,
-        name: league.name,
-        rank: index === -1 ? null : index + 1,
-        total: ranking.length,
-      };
-    })
-  );
+  // mapWithConcurrency (no Promise.all suelto): computeLeagueLeaderboard ya
+  // hace sus propias consultas concurrentes por evento, así que lanzar
+  // además todas las ligas a la vez multiplicaba la presión sobre el pool de
+  // conexiones de Neon — ver el comentario junto a mapWithConcurrency.
+  return mapWithConcurrency(leagues, 3, async (league: { id: string; name: string }) => {
+    const ranking = await computeLeagueLeaderboard(league.id);
+    const index = ranking.findIndex((r) => r.userId === userId);
+    return {
+      id: league.id,
+      name: league.name,
+      rank: index === -1 ? null : index + 1,
+      total: ranking.length,
+    };
+  });
 }
