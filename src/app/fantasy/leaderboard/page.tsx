@@ -159,14 +159,19 @@ export default async function FantasyLeaderboardPage({
             isTest: Boolean(ev.isTest),
             segments: orderedSegments.map((segment, segIndex) => {
               const segmentBoard = board?.get(segment.id);
+              const segmentLabel = ROW_LABELS[segIndex] ?? segment.name;
               return {
                 id: segment.id,
-                label: ROW_LABELS[segIndex] ?? segment.name,
+                label: segmentLabel,
                 showLabel: orderedSegments.length > 1,
                 locked: isSegmentLocked(segment, ev.rosterLocksAt),
                 deadlineIso: effectiveLocksAt(segment, ev.rosterLocksAt).toISOString(),
                 hasScores: segmentBoard?.hasScores ?? false,
                 rosters: segmentBoard?.rosters ?? [],
+                // Formateado aquí, en el servidor: ProgramScoresAccordion es
+                // un Client Component y no puede recibir una función como
+                // prop (ver el comentario en emptyText, en su definición).
+                emptyText: t.emptySegment(segmentLabel),
               };
             }),
           };
@@ -321,7 +326,6 @@ export default async function FantasyLeaderboardPage({
               columns={programScoresColumns}
               expandAllLabel={tf.expandAll}
               collapseAllLabel={tf.collapseAll}
-              emptySegmentText={t.emptySegment}
             />
           )}
         </div>

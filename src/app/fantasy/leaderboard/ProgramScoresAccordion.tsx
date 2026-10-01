@@ -22,6 +22,11 @@ export interface ProgramScoresSegment {
   deadlineIso: string;
   hasScores: boolean;
   rosters: RosterScore[];
+  // Texto ya formateado en el servidor, no una función: un Server Component
+  // no puede pasarle una función a un Client Component como este — Next.js
+  // lo rechaza en tiempo de ejecución con "Functions cannot be passed
+  // directly to Client Components" (el fallo real de /fantasy/leaderboard).
+  emptyText: string;
 }
 
 export interface ProgramScoresEvent {
@@ -41,12 +46,10 @@ export default function ProgramScoresAccordion({
   columns,
   expandAllLabel,
   collapseAllLabel,
-  emptySegmentText,
 }: {
   columns: ProgramScoresColumn[];
   expandAllLabel: string;
   collapseAllLabel: string;
-  emptySegmentText: (label: string) => string;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(columns.map((c) => c.key)));
 
@@ -120,7 +123,7 @@ export default function ProgramScoresAccordion({
                             {!seg.locked ? (
                               <LockedNotice label={seg.label} deadline={seg.deadlineIso} />
                             ) : seg.rosters.length === 0 ? (
-                              <EmptyNotice text={emptySegmentText(seg.label)} />
+                              <EmptyNotice text={seg.emptyText} />
                             ) : !seg.hasScores ? (
                               <PendingScoresNotice label={seg.label} />
                             ) : (
