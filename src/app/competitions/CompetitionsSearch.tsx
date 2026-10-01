@@ -14,6 +14,7 @@ interface EventItem {
   rosterLocksAt: Date;
   discipline: { name: string };
   category: { name: string };
+  showFormat: "QUARTET" | "SMALL_GROUP" | "LARGE_GROUP" | null;
   _count: { registrations: number; predictions: number };
 }
 
@@ -85,7 +86,8 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
   // grupo se puede plegar, igual que los días en /calendario.
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const { locale } = useLocale();
-  const t = getDictionary(locale).competitionsHub;
+  const dict = getDictionary(locale);
+  const t = dict.competitionsHub;
   const dateLocale = locale === "en" ? "en-US" : "es-ES";
 
   function toggleGroup(key: string) {
@@ -129,7 +131,8 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
             normalize(ev.discipline.name).includes(q) ||
             normalize(ev.category.name).includes(q) ||
             normalize(translateDisciplineName(ev.discipline.name, locale)).includes(q) ||
-            normalize(translateCategoryName(ev.category.name, locale)).includes(q)
+            normalize(translateCategoryName(ev.category.name, locale)).includes(q) ||
+            (ev.showFormat ? normalize(dict.common.showFormat[ev.showFormat]).includes(q) : false)
           );
         });
 
@@ -343,6 +346,9 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                             </span>
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-white/10 text-ice-100/70 border border-white/15">
                               {translateCategoryName(event.category.name, locale)}
+                              {event.showFormat
+                                ? ` · ${dict.common.showFormat[event.showFormat]}`
+                                : ""}
                             </span>
                             {badgeLabel && (
                               <span

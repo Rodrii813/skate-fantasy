@@ -43,6 +43,10 @@ export default async function NewLeaguePage() {
           locale
         )}${
           e.gender ? ` · ${genderLabel[e.gender as keyof typeof genderLabel] ?? e.gender}` : ""
+        }${
+          e.showFormat
+            ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}`
+            : ""
         } — ${e.name}`,
       })),
     }));

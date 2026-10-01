@@ -157,6 +157,9 @@ export default async function CompetitionDetailPage({
                   {translateDisciplineName(event.discipline.name, locale)} ·{" "}
                   {translateCategoryName(event.category.name, locale)}
                   {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                  {event.showFormat
+                    ? ` · ${dict.common.showFormat[event.showFormat as keyof typeof dict.common.showFormat]}`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -307,6 +310,9 @@ export default async function CompetitionDetailPage({
                     {translateDisciplineName(ev.discipline.name, locale)} ·{" "}
                     {translateCategoryName(ev.category.name, locale)}
                     {ev.gender ? ` · ${genderLabel[ev.gender]}` : ""}
+                    {ev.showFormat
+                      ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
+                      : ""}
                     <span className="ml-1.5 text-[10px] font-mono text-slate-500">
                       ({ev._count.registrations})
                     </span>
@@ -328,6 +334,9 @@ export default async function CompetitionDetailPage({
                         <span className="text-xs font-mono bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
                           {translateCategoryName(activeEvent.category.name, locale)}
                           {activeEvent.gender ? ` · ${genderLabel[activeEvent.gender]}` : ""}
+                          {activeEvent.showFormat
+                            ? ` · ${dict.common.showFormat[activeEvent.showFormat as keyof typeof dict.common.showFormat]}`
+                            : ""}
                         </span>
                       </div>
                       <h2 className="text-2xl font-extrabold text-slate-50 tracking-tight">

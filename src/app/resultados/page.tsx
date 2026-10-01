@@ -108,6 +108,9 @@ export default async function ResultadosPage() {
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
                               {translateCategoryName(event.category.name, locale)}
                               {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                              {event.showFormat
+                                ? ` · ${dict.common.showFormat[event.showFormat as keyof typeof dict.common.showFormat]}`
+                                : ""}
                             </span>
                             {badgeLabel && (
                               <span

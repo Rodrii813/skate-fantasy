@@ -176,6 +176,9 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
                   {translateDisciplineName(le.event.discipline.name, locale)} ·{" "}
                   {translateCategoryName(le.event.category.name, locale)}
                   {le.event.gender ? ` · ${genderLabel[le.event.gender as keyof typeof genderLabel] ?? le.event.gender}` : ""}
+                  {le.event.showFormat
+                    ? ` · ${dict.common.showFormat[le.event.showFormat as keyof typeof dict.common.showFormat]}`
+                    : ""}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">
                   {le.event.competition.name} — {le.event.name}

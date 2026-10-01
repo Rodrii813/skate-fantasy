@@ -114,6 +114,9 @@ export default async function CalendarioPage() {
                   {translateDisciplineName(event.discipline.name, locale)} ·{" "}
                   {translateCategoryName(event.category.name, locale)}
                   {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                  {event.showFormat
+                    ? ` · ${dict.common.showFormat[event.showFormat as keyof typeof dict.common.showFormat]}`
+                    : ""}
                 </p>
               </div>
             </div>
@@ -204,6 +207,9 @@ export default async function CalendarioPage() {
                       {translateDisciplineName(event.discipline.name, locale)} ·{" "}
                       {translateCategoryName(event.category.name, locale)}
                       {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
+                      {event.showFormat
+                        ? ` · ${dict.common.showFormat[event.showFormat as keyof typeof dict.common.showFormat]}`
+                        : ""}
                     </p>
                   </div>
                   <span className="whitespace-nowrap rounded-full border border-white/15 px-3 py-1 text-xs text-ice-100/80">

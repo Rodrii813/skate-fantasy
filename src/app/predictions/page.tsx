@@ -264,6 +264,9 @@ export default async function PredictionsPage({
                           >
                             {translateCategoryName(e.category.name, locale)}
                             {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
+                            {e.showFormat
+                              ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}`
+                              : ""}
                             {e.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                           </Link>
                         ))}
