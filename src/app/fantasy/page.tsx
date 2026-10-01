@@ -7,6 +7,8 @@ import { computeEventLeaderboard, computeCompetitionFantasyLeaderboard } from "@
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
+import DraftStatusAccordion, { type DraftStatusColumn } from "./DraftStatusAccordion";
+import ArchivedCompetitionSelect from "./ArchivedCompetitionSelect";
 
 export const dynamic = "force-dynamic";
 
@@ -140,6 +142,66 @@ export default async function FantasyHubPage({
       tab === "competition" ? "&rank=competition" : `&event=${eventId ?? rankEventId ?? ""}`
     }`;
 
+  // Activas (pestañas) vs archivadas (desplegable aparte) — una competición
+  // ya terminada (fecha de fin pasada) no necesita su propia pestaña
+  // permanente; con varias temporadas acumuladas esa fila de pestañas se
+  // haría interminable. Si TODAS las competiciones ya terminaron (ninguna
+  // activa), se muestran igualmente como pestañas para no dejar la página
+  // sin ningún selector visible.
+  const now = new Date();
+  const activeCompetitions = competitions.filter((c) => c.endDate >= now);
+  const archivedCompetitions = competitions.filter((c) => c.endDate < now);
+  const competitionTabs = activeCompetitions.length > 0 ? activeCompetitions : competitions;
+  const archivedForSelect = activeCompetitions.length > 0 ? archivedCompetitions : [];
+
+  // Datos para el acordeón de Draft Status (ver DraftStatusAccordion.tsx):
+  // todo ya traducido/calculado aquí en el servidor, el componente cliente
+  // solo decide qué disciplina está plegada.
+  const draftStatusColumns: DraftStatusColumn[] = columns.map((col) => {
+    const eventsInColumn = activeCompetition.events.filter(
+      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
+    );
+    return {
+      key: col.key,
+      label: col.label,
+      events: eventsInColumn.map((ev) => {
+        const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
+        const categoryLabel = `${translateCategoryName(ev.category.name, locale)}${
+          ev.showFormat
+            ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
+            : ""
+        }`;
+        return {
+          id: ev.id,
+          categoryLabel,
+          isTest: Boolean(ev.isTest),
+          segments: orderedSegments.map((segment, segIndex) => {
+            const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
+            const draftStatus = getSegmentDraftStatus(
+              segment,
+              ev.rosterLocksAt,
+              slotsForSegment.length > 0
+            );
+            const state: CellEvent["state"] =
+              draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
+            const badge = stateBadge[state];
+            const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
+            return {
+              id: segment.id,
+              label: ROW_LABELS[segIndex] ?? segment.name,
+              showLabel: orderedSegments.length > 1,
+              badgeLabel: badge.label,
+              badgeClassName: badge.className,
+              drafted,
+              draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
+              href: state === "proximamente" ? null : `/events/${ev.id}`,
+            };
+          }),
+        };
+      }),
+    };
+  });
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -168,9 +230,30 @@ export default async function FantasyHubPage({
           <span className="text-indigo-400 text-xs font-semibold whitespace-nowrap">{t.leaguesCardCta} →</span>
         </Link>
 
-        {/* Selector de Competición */}
+        {/* Accesos directos: antes había que localizar la tarjeta o el
+            estado concreto para entrar a draftear o ver el ranking; ahora
+            dos botones llevan directamente a esas secciones de esta misma
+            página (sin navegar a otra URL, solo un salto de ancla). */}
         <div className="flex flex-wrap gap-2">
-          {competitions.map((c) => (
+          <a
+            href="#draft-room"
+            className="flex-1 min-w-[160px] text-center rounded-xl border border-indigo-500/40 bg-indigo-600/15 px-4 py-2.5 text-sm font-bold text-indigo-300 transition hover:border-indigo-500/70 hover:bg-indigo-600/25"
+          >
+            {t.draftRoomCta}
+          </a>
+          <a
+            href="#leaderboard"
+            className="flex-1 min-w-[160px] text-center rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-500/70 hover:bg-amber-500/20"
+          >
+            {t.leaderboardCta}
+          </a>
+        </div>
+
+        {/* Selector de Competición: activas como pestañas, terminadas en un
+            desplegable aparte (ver comentario junto a `archivedCompetitions`
+            más arriba). */}
+        <div className="flex flex-wrap items-center gap-2">
+          {competitionTabs.map((c) => (
             <Link
               key={c.id}
               href={`/fantasy?competition=${c.id}`}
@@ -183,6 +266,13 @@ export default async function FantasyHubPage({
               {c.name}
             </Link>
           ))}
+          {archivedForSelect.length > 0 && (
+            <ArchivedCompetitionSelect
+              competitions={archivedForSelect}
+              selectedId={archivedForSelect.some((c) => c.id === activeCompetition.id) ? activeCompetition.id : null}
+              placeholder={t.archivedCompetitionsPlaceholder}
+            />
+          )}
         </div>
 
         {/* Draft Status: antes era una tabla matriz (filas = Corto/Largo,
@@ -194,14 +284,12 @@ export default async function FantasyHubPage({
             categorías apiladas en la fila "Corto" por defecto, inflando esa
             fila para TODAS las columnas (aunque Parejas solo tuviera 1
             evento ahí) y dejando la fila "Largo" con huecos vacíos en esas
-            columnas. Ahora cada columna (disciplina+género) es independiente
-            — una lista propia de sus eventos, cada uno con sus 1 o 2
-            segmentos reales (con su badge de estado y, si has iniciado
-            sesión, si ya tienes draft hecho — igual que antes) — así que
-            ninguna columna fuerza la altura de las demás; se mantiene el
-            mismo formato de columnas con cabecera y scroll horizontal de
-            antes. */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
+            columnas. Luego pasó a columnas independientes con scroll
+            horizontal. Ahora, con muchas más disciplinas/categorías que las
+            4 de referencia, cada disciplina+género es una fila plegable
+            (acordeón) que empieza cerrada — mismo patrón que /calendario y
+            /competitions — para que la lista no se haga interminable. */}
+        <div id="draft-room" className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
               {t.draftStatus(activeCompetition.name)}
@@ -213,92 +301,16 @@ export default async function FantasyHubPage({
               {t.noEvents}
             </p>
           ) : (
-            <div className="overflow-x-auto">
-              <div className="flex gap-6 p-4 min-w-min">
-                {columns.map((col) => {
-                  const eventsInColumn = activeCompetition.events.filter(
-                    (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
-                  );
-                  return (
-                    <div key={col.key} className="w-56 shrink-0 space-y-2.5">
-                      <p className="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2 truncate">
-                        {col.label}
-                      </p>
-                      <div className="space-y-3">
-                      {eventsInColumn.map((ev) => {
-                        const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
-                        return (
-                          <div key={ev.id} className="space-y-1">
-                            <p className="text-[11px] text-slate-500 uppercase tracking-wide truncate">
-                              {translateCategoryName(ev.category.name, locale)}
-                              {ev.showFormat && ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`}
-                              {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
-                            </p>
-                            {orderedSegments.map((segment, segIndex) => {
-                              const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
-                              const draftStatus = getSegmentDraftStatus(
-                                segment,
-                                ev.rosterLocksAt,
-                                slotsForSegment.length > 0
-                              );
-                              const state: CellEvent["state"] =
-                                draftStatus === "UPCOMING"
-                                  ? "proximamente"
-                                  : draftStatus === "CLOSED"
-                                    ? "cerrado"
-                                    : "abierto";
-                              const badge = stateBadge[state];
-                              const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
-                              const rowLabel = ROW_LABELS[segIndex] ?? segment.name;
-
-                              const content = (
-                                <div className="flex items-center justify-between gap-2">
-                                  {orderedSegments.length > 1 && (
-                                    <span className="text-[10px] text-slate-500 shrink-0">{rowLabel}</span>
-                                  )}
-                                  <span
-                                    className={`px-2 py-0.5 text-[11px] font-semibold rounded-full border ${badge.className}`}
-                                  >
-                                    {badge.label}
-                                  </span>
-                                  {session && state !== "proximamente" && (
-                                    <span
-                                      className={`text-[11px] font-semibold ${
-                                        drafted ? "text-indigo-400" : "text-slate-500"
-                                      }`}
-                                    >
-                                      {drafted ? t.alreadyDrafted : t.notDrafted}
-                                    </span>
-                                  )}
-                                </div>
-                              );
-
-                              return state === "proximamente" ? (
-                                <div key={segment.id}>{content}</div>
-                              ) : (
-                                <Link
-                                  key={segment.id}
-                                  href={`/events/${ev.id}`}
-                                  className="block hover:opacity-80 transition"
-                                >
-                                  {content}
-                                </Link>
-                              );
-                            })}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-              </div>
-            </div>
+            <DraftStatusAccordion
+              columns={draftStatusColumns}
+              expandAllLabel={t.expandAll}
+              collapseAllLabel={t.collapseAll}
+            />
           )}
         </div>
 
         {/* Ranking Fantasy */}
-        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
+        <div id="leaderboard" className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
             <div className="flex gap-2">
               <Link
