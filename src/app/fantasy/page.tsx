@@ -231,6 +231,7 @@ export default async function FantasyHubPage({
                           <div key={ev.id} className="space-y-1">
                             <p className="text-[11px] text-slate-500 uppercase tracking-wide truncate">
                               {translateCategoryName(ev.category.name, locale)}
+                              {ev.showFormat && ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`}
                               {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                             </p>
                             {orderedSegments.map((segment, segIndex) => {
@@ -337,6 +338,9 @@ export default async function FantasyHubPage({
                     {translateDisciplineName(e.discipline.name, locale)} ·{" "}
                     {translateCategoryName(e.category.name, locale)}
                     {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
+                    {e.showFormat
+                      ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}`
+                      : ""}
                   </Link>
                 ))}
               </div>

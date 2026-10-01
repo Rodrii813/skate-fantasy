@@ -86,6 +86,17 @@ export const dictionaries = {
         FINISHED: "Finalizado",
       },
       gender: { FEMALE: "Femenino", MALE: "Masculino" },
+      // Los 3 formatos de la disciplina Show (ver Event.showFormat en el
+      // esquema) — Cuartetos/Grupos Pequeños/Grupos Grandes son
+      // competiciones separadas dentro de Show, así que hace falta
+      // distinguirlas donde se liste más de un evento de Show (p.ej. el
+      // Draft Status de /fantasy, donde todos comparten la misma
+      // categoría de edad y si no se distinguen parecen eventos duplicados).
+      showFormat: {
+        QUARTET: "Cuartetos",
+        SMALL_GROUP: "Grupos Pequeños",
+        LARGE_GROUP: "Grupos Grandes",
+      },
       skater: (plural: boolean, female: boolean) =>
         female ? (plural ? "Patinadoras" : "Patinadora") : plural ? "Patinadores" : "Patinador",
       searchSkaters: "Buscar patinadores...",
@@ -743,6 +754,11 @@ export const dictionaries = {
         FINISHED: "Finished",
       },
       gender: { FEMALE: "Ladies", MALE: "Men" },
+      showFormat: {
+        QUARTET: "Quartets",
+        SMALL_GROUP: "Small Groups",
+        LARGE_GROUP: "Large Groups",
+      },
       skater: (plural: boolean, female: boolean) =>
         female ? (plural ? "Skaters" : "Skater") : plural ? "Skaters" : "Skater",
       searchSkaters: "Search skaters...",
