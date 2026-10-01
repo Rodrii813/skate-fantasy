@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import CreateLeagueForm from "./CreateLeagueForm";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +38,10 @@ export default async function NewLeaguePage() {
       name: c.name,
       events: c.events.map((e) => ({
         id: e.id,
-        label: `${e.discipline.name} · ${e.category.name}${
+        label: `${translateDisciplineName(e.discipline.name, locale)} · ${translateCategoryName(
+          e.category.name,
+          locale
+        )}${
           e.gender ? ` · ${genderLabel[e.gender as keyof typeof genderLabel] ?? e.gender}` : ""
         } — ${e.name}`,
       })),

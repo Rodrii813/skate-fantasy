@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useTimezone } from "./TimezoneProvider";
 import { VENUE_TIMEZONE } from "@/lib/timezone";
 import { groupCalendarRowsByVenueDay, type CalendarRow } from "@/lib/calendarGrouping";
+import { useLocale } from "@/lib/i18n/LocaleContext";
 
 // Cada fila del calendario ya viene renderizada desde el Server Component
 // (con sus botones de Predicción/Draft/Resultados, traducciones, etc.) — este
@@ -80,6 +81,7 @@ export default function CalendarDayGroups({
 }) {
   const { timeZone, mounted } = useTimezone();
   const effectiveTimeZone = mounted ? timeZone : VENUE_TIMEZONE;
+  const { locale } = useLocale();
 
   const [competitionFilter, setCompetitionFilter] = useState("all");
   const [disciplineFilter, setDisciplineFilter] = useState("all");
@@ -121,8 +123,8 @@ export default function CalendarDayGroups({
       segmentId: null,
       event: row,
     }));
-    return groupCalendarRowsByVenueDay(calendarRows, effectiveTimeZone);
-  }, [filteredRows, effectiveTimeZone]);
+    return groupCalendarRowsByVenueDay(calendarRows, effectiveTimeZone, locale);
+  }, [filteredRows, effectiveTimeZone, locale]);
 
   function toggleDay(key: string) {
     setCollapsedDays((prev) => {

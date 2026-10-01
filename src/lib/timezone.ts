@@ -90,15 +90,21 @@ export function detectDeviceTimeZone(): string {
   }
 }
 
-/** Formatea un instante en una zona horaria concreta, en español. */
+/**
+ * Formatea un instante en una zona horaria concreta, en el idioma indicado
+ * ("es" -> es-ES, "en" -> en-US). Por defecto español, para no cambiar el
+ * comportamiento de las llamadas existentes que todavía no pasan `locale`.
+ */
 export function formatInTimeZone(
   value: Date | string,
   timeZone: string,
-  options: Intl.DateTimeFormatOptions
+  options: Intl.DateTimeFormatOptions,
+  locale: "es" | "en" = "es"
 ): string {
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat("es-ES", { ...options, timeZone }).format(date);
+  const intlLocale = locale === "en" ? "en-US" : "es-ES";
+  return new Intl.DateTimeFormat(intlLocale, { ...options, timeZone }).format(date);
 }
 
 /** Lista de zonas horarias soportadas por el runtime, si el motor la expone. */

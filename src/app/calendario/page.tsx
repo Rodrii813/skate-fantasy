@@ -7,6 +7,7 @@ import { buildCalendarRows } from "@/lib/calendarGrouping";
 import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus } from "@/lib/segments";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,8 @@ export async function generateMetadata() {
 }
 
 export default async function CalendarioPage() {
-  const dict = getDictionary(getLocale());
+  const locale = getLocale();
+  const dict = getDictionary(locale);
   const t = dict.calendario;
   const statusLabel = dict.common.status;
   const genderLabel = dict.common.gender;
@@ -85,7 +87,7 @@ export default async function CalendarioPage() {
       key: `${event.id}-${i}`,
       scheduledAt: row.scheduledAt.toISOString(),
       competitionName: event.competition.name,
-      disciplineName: event.discipline.name,
+      disciplineName: translateDisciplineName(event.discipline.name, locale),
       status: event.status,
       node: (
         <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 transition hover:border-white/25 hover:bg-white/10">
@@ -109,7 +111,8 @@ export default async function CalendarioPage() {
                   )}
                 </p>
                 <p className="text-sm text-ice-100/60">
-                  {event.discipline.name} · {event.category.name}
+                  {translateDisciplineName(event.discipline.name, locale)} ·{" "}
+                  {translateCategoryName(event.category.name, locale)}
                   {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
                 </p>
               </div>
@@ -198,7 +201,8 @@ export default async function CalendarioPage() {
                     </p>
                     <p className="font-display text-base font-semibold text-white">{event.name}</p>
                     <p className="text-sm text-ice-100/60">
-                      {event.discipline.name} · {event.category.name}
+                      {translateDisciplineName(event.discipline.name, locale)} ·{" "}
+                      {translateCategoryName(event.category.name, locale)}
                       {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
                     </p>
                   </div>

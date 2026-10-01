@@ -6,6 +6,7 @@ import { getSegmentDraftStatus } from "@/lib/segments";
 import { computeEventLeaderboard, computeCompetitionFantasyLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
 
@@ -89,11 +90,12 @@ export default async function FantasyHubPage({
   for (const ev of activeCompetition.events) {
     const key = `${ev.disciplineId}__${ev.gender ?? "none"}`;
     if (!columns.find((c) => c.key === key)) {
+      const translatedDisciplineName = translateDisciplineName(ev.discipline.name, locale);
       columns.push({
         key,
-        disciplineName: ev.discipline.name,
+        disciplineName: translatedDisciplineName,
         gender: ev.gender,
-        label: `${ev.discipline.name}${ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""}`,
+        label: `${translatedDisciplineName}${ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""}`,
       });
     }
   }
@@ -131,7 +133,7 @@ export default async function FantasyHubPage({
         return {
           eventId: ev.id,
           eventName: ev.name,
-          categoryName: ev.category.name,
+          categoryName: translateCategoryName(ev.category.name, locale),
           state,
           drafted,
           isTest: Boolean(ev.isTest),
@@ -343,7 +345,8 @@ export default async function FantasyHubPage({
                         : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
                     }`}
                   >
-                    {e.discipline.name} · {e.category.name}
+                    {translateDisciplineName(e.discipline.name, locale)} ·{" "}
+                    {translateCategoryName(e.category.name, locale)}
                     {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
                   </Link>
                 ))}

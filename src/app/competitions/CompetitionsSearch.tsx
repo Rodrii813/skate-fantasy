@@ -5,6 +5,7 @@ import Link from "next/link";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 interface EventItem {
   id: string;
@@ -126,7 +127,9 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
           return (
             normalize(ev.name).includes(q) ||
             normalize(ev.discipline.name).includes(q) ||
-            normalize(ev.category.name).includes(q)
+            normalize(ev.category.name).includes(q) ||
+            normalize(translateDisciplineName(ev.discipline.name, locale)).includes(q) ||
+            normalize(translateCategoryName(ev.category.name, locale)).includes(q)
           );
         });
 
@@ -134,7 +137,7 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
         return { ...comp, events: matchingEvents };
       })
       .filter((c): c is CompetitionItem => c !== null);
-  }, [competitions, query, statusFilter, yearFilter]);
+  }, [competitions, query, statusFilter, yearFilter, locale]);
 
   // Si cambia la búsqueda o los filtros, se vuelve a empezar por la primera
   // "página" de resultados en vez de mantener un contador que ya no
@@ -310,7 +313,7 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                             className="flex w-full items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-left transition hover:border-white/20"
                           >
                             <span className="text-xs font-bold uppercase tracking-wide text-ice-100/70">
-                              {group.disciplineName}{" "}
+                              {translateDisciplineName(group.disciplineName, locale)}{" "}
                               <span className="font-normal normal-case text-ice-100/40">
                                 ({group.events.length})
                               </span>
@@ -336,10 +339,10 @@ export default function CompetitionsSearch({ competitions }: { competitions: Com
                         <div className="space-y-1.5">
                           <div className="flex items-center gap-2.5">
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-accent/10 border border-accent/30 text-accent">
-                              {event.discipline.name}
+                              {translateDisciplineName(event.discipline.name, locale)}
                             </span>
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-white/10 text-ice-100/70 border border-white/15">
-                              {event.category.name}
+                              {translateCategoryName(event.category.name, locale)}
                             </span>
                             {badgeLabel && (
                               <span

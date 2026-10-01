@@ -8,6 +8,7 @@ import CalendarDayGroups, { type CalendarDayRow } from "@/app/_components/Calend
 import { buildCalendarRows } from "@/lib/calendarGrouping";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
 
@@ -132,7 +133,7 @@ export default async function CompetitionDetailPage({
     return {
       key: `${event.id}-${i}`,
       scheduledAt: row.scheduledAt.toISOString(),
-      disciplineName: event.discipline.name,
+      disciplineName: translateDisciplineName(event.discipline.name, locale),
       status: event.status,
       node: (
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 px-4 py-3">
@@ -153,7 +154,8 @@ export default async function CompetitionDetailPage({
                   )}
                 </p>
                 <p className="text-xs text-slate-400">
-                  {event.discipline.name} · {event.category.name}
+                  {translateDisciplineName(event.discipline.name, locale)} ·{" "}
+                  {translateCategoryName(event.category.name, locale)}
                   {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
                 </p>
               </div>
@@ -302,7 +304,8 @@ export default async function CompetitionDetailPage({
                         : "border-transparent text-slate-500 hover:text-slate-300"
                     }`}
                   >
-                    {ev.discipline.name} · {ev.category.name}
+                    {translateDisciplineName(ev.discipline.name, locale)} ·{" "}
+                    {translateCategoryName(ev.category.name, locale)}
                     {ev.gender ? ` · ${genderLabel[ev.gender]}` : ""}
                     <span className="ml-1.5 text-[10px] font-mono text-slate-500">
                       ({ev._count.registrations})
@@ -320,10 +323,10 @@ export default async function CompetitionDetailPage({
                     <div>
                       <div className="flex items-center gap-2 mb-2">
                         <span className="text-xs font-mono bg-indigo-950 text-indigo-400 border border-indigo-800 px-2 py-0.5 rounded">
-                          {activeEvent.discipline.name}
+                          {translateDisciplineName(activeEvent.discipline.name, locale)}
                         </span>
                         <span className="text-xs font-mono bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded">
-                          {activeEvent.category.name}
+                          {translateCategoryName(activeEvent.category.name, locale)}
                           {activeEvent.gender ? ` · ${genderLabel[activeEvent.gender]}` : ""}
                         </span>
                       </div>

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { computeLeagueLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import JoinLeagueForm from "../JoinLeagueForm";
 import CopyCodeButton from "./CopyCodeButton";
 import CopyLinkButton from "./CopyLinkButton";
@@ -172,7 +173,8 @@ export default async function LeagueDetailPage({ params }: { params: { id: strin
                 className="block p-4 hover:bg-slate-800/30 transition"
               >
                 <p className="text-sm font-semibold text-slate-100">
-                  {le.event.discipline.name} · {le.event.category.name}
+                  {translateDisciplineName(le.event.discipline.name, locale)} ·{" "}
+                  {translateCategoryName(le.event.category.name, locale)}
                   {le.event.gender ? ` · ${genderLabel[le.event.gender as keyof typeof genderLabel] ?? le.event.gender}` : ""}
                 </p>
                 <p className="text-xs text-slate-500 mt-0.5">

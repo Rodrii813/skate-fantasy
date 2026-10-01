@@ -4,6 +4,7 @@ import { computeSegmentResultBlocks } from "@/lib/segmentResults";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +82,7 @@ export default async function ResultadosPage() {
           disciplineOrder.map((disciplineName) => (
             <section key={disciplineName} className="space-y-4">
               <h2 className="text-lg font-bold uppercase tracking-wider text-indigo-400 border-b border-slate-800 pb-2">
-                {disciplineName}
+                {translateDisciplineName(disciplineName, locale)}
               </h2>
 
               <div className="grid gap-4">
@@ -105,7 +106,7 @@ export default async function ResultadosPage() {
                         <div>
                           <div className="flex items-center gap-2 flex-wrap mb-1">
                             <span className="text-xs font-medium px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
-                              {event.category.name}
+                              {translateCategoryName(event.category.name, locale)}
                               {event.gender ? ` · ${genderLabel[event.gender]}` : ""}
                             </span>
                             {badgeLabel && (

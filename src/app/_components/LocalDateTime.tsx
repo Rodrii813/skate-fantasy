@@ -2,6 +2,7 @@
 
 import { useTimezone } from "./TimezoneProvider";
 import { formatInTimeZone, VENUE_TIMEZONE } from "@/lib/timezone";
+import { useLocale } from "@/lib/i18n/LocaleContext";
 
 /**
  * Muestra un instante (ISO string o Date) formateado en la zona horaria
@@ -22,10 +23,13 @@ export default function LocalDateTime({
   className?: string;
 }) {
   const { timeZone, mounted } = useTimezone();
+  const { locale } = useLocale();
 
   if (!value) return <span className={className}>—</span>;
 
   const displayTimeZone = mounted ? timeZone : VENUE_TIMEZONE;
 
-  return <span className={className}>{formatInTimeZone(value, displayTimeZone, options)}</span>;
+  return (
+    <span className={className}>{formatInTimeZone(value, displayTimeZone, options, locale)}</span>
+  );
 }

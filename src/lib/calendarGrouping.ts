@@ -15,7 +15,8 @@ export interface DayGroup<T> {
  * no duplicar el criterio de agrupación.
  */
 export function groupEventsByVenueDay<T extends { scheduledAt: Date | null }>(
-  events: T[]
+  events: T[],
+  locale: "es" | "en" = "es"
 ): DayGroup<T>[] {
   const scheduled = events
     .filter((e): e is T & { scheduledAt: Date } => Boolean(e.scheduledAt))
@@ -30,11 +31,12 @@ export function groupEventsByVenueDay<T extends { scheduledAt: Date | null }>(
     });
     let group = dayGroups.find((g) => g.key === key);
     if (!group) {
-      const label = formatInTimeZone(event.scheduledAt, VENUE_TIMEZONE, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
+      const label = formatInTimeZone(
+        event.scheduledAt,
+        VENUE_TIMEZONE,
+        { weekday: "long", day: "numeric", month: "long" },
+        locale
+      );
       group = { key, label, events: [] };
       dayGroups.push(group);
     }
@@ -154,7 +156,8 @@ export function buildCalendarRows<T extends CalendarEventInput>(events: T[]): Ca
  */
 export function groupCalendarRowsByVenueDay<T>(
   rows: CalendarRow<T>[],
-  timeZone: string = VENUE_TIMEZONE
+  timeZone: string = VENUE_TIMEZONE,
+  locale: "es" | "en" = "es"
 ): DayGroup<CalendarRow<T>>[] {
   const sorted = [...rows].sort((a, b) => a.scheduledAt.getTime() - b.scheduledAt.getTime());
 
@@ -167,11 +170,12 @@ export function groupCalendarRowsByVenueDay<T>(
     });
     let group = dayGroups.find((g) => g.key === key);
     if (!group) {
-      const label = formatInTimeZone(row.scheduledAt, timeZone, {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-      });
+      const label = formatInTimeZone(
+        row.scheduledAt,
+        timeZone,
+        { weekday: "long", day: "numeric", month: "long" },
+        locale
+      );
       group = { key, label, events: [] };
       dayGroups.push(group);
     }

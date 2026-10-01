@@ -8,6 +8,7 @@ import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderbo
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import TestEventBanner from "@/app/_components/TestEventBanner";
+import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
 
@@ -248,7 +249,7 @@ export default async function PredictionsPage({
                   {eventsByDiscipline.map(({ disciplineName, events }) => (
                     <div key={disciplineName} className="space-y-1.5">
                       <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-                        {disciplineName}
+                        {translateDisciplineName(disciplineName, locale)}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {events.map((e) => (
@@ -261,7 +262,7 @@ export default async function PredictionsPage({
                                 : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
                             }`}
                           >
-                            {e.category.name}
+                            {translateCategoryName(e.category.name, locale)}
                             {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
                             {e.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                           </Link>
