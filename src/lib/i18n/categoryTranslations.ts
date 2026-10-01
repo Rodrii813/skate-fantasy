@@ -34,9 +34,9 @@ const DISCIPLINE_NAME_EN: Record<string, string> = {
 };
 
 const CATEGORY_NAME_EN: Record<string, string> = {
-  benjamin: "Bantam",
-  "alevin": "Pre-Novice",
-  infantil: "Juvenile",
+  benjamin: "Mini",
+  alevin: "Mini",
+  infantil: "Espoir",
   cadete: "Cadet",
   juvenil: "Youth",
   junior: "Junior",
