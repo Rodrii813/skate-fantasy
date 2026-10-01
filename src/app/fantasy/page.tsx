@@ -30,7 +30,7 @@ export async function generateMetadata() {
 export default async function FantasyHubPage({
   searchParams,
 }: {
-  searchParams: { competition?: string; event?: string; rank?: string };
+  searchParams: { competition?: string; event?: string; rank?: string; page?: string };
 }) {
   const session = await getServerSession(authOptions);
   const locale = getLocale();
@@ -140,7 +140,34 @@ export default async function FantasyHubPage({
   const rankHref = (tab: "event" | "competition", eventId?: string) =>
     `/fantasy?competition=${activeCompetition.id}${
       tab === "competition" ? "&rank=competition" : `&event=${eventId ?? rankEventId ?? ""}`
-    }`;
+    }#leaderboard`;
+
+  // Paginación del ranking: con muchos participantes la tabla se hacía
+  // interminable (igual que el motivo del acordeón de Draft Status). Se
+  // pagina por URL (?page=N), no con estado de cliente, para mantener el
+  // mismo patrón que el resto de esta página (pestañas y selector de
+  // competición también son enlaces). Cambiar de pestaña o de evento
+  // siempre vuelve a la página 1 (rankHref no incluye `page`).
+  const RANK_PAGE_SIZE = 15;
+  const fullRanking = rankTab === "event" ? eventRanking : competitionRanking;
+  const totalRankPages = Math.max(1, Math.ceil(fullRanking.length / RANK_PAGE_SIZE));
+  const currentRankPage = Math.min(Math.max(1, Number(searchParams.page) || 1), totalRankPages);
+  const ranking = fullRanking.slice(
+    (currentRankPage - 1) * RANK_PAGE_SIZE,
+    currentRankPage * RANK_PAGE_SIZE
+  );
+
+  const rankPageHref = (page: number) => {
+    const params = new URLSearchParams();
+    params.set("competition", activeCompetition.id);
+    if (rankTab === "competition") {
+      params.set("rank", "competition");
+    } else if (rankEventId) {
+      params.set("event", rankEventId);
+    }
+    if (page > 1) params.set("page", String(page));
+    return `/fantasy?${params.toString()}#leaderboard`;
+  };
 
   // Activas (pestañas) vs archivadas (desplegable aparte) — una competición
   // ya terminada (fecha de fin pasada) no necesita su propia pestaña
@@ -370,16 +397,12 @@ export default async function FantasyHubPage({
             </div>
           )}
 
-          {(() => {
-            const ranking = rankTab === "event" ? eventRanking : competitionRanking;
-            if (ranking.length === 0) {
-              return (
-                <p className="p-8 text-center text-xs text-slate-400">
-                  {t.noRankableRosters}
-                </p>
-              );
-            }
-            return (
+          {fullRanking.length === 0 ? (
+            <p className="p-8 text-center text-xs text-slate-400">
+              {t.noRankableRosters}
+            </p>
+          ) : (
+            <>
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-sm">
                   <thead>
@@ -393,32 +416,71 @@ export default async function FantasyHubPage({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/70">
-                    {ranking.map((row: any, index: number) => (
-                      <tr
-                        key={rankTab === "event" ? row.rosterId : row.userId}
-                        className="hover:bg-slate-800/30 transition font-mono"
-                      >
-                        <td className="py-3 px-4 font-bold text-slate-400">
-                          {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
-                        </td>
-                        <td className="py-3 px-4 font-sans font-semibold text-slate-200">
-                          {row.userName}
-                        </td>
-                        {rankTab === "competition" && (
-                          <td className="py-3 px-4 text-center text-slate-400 font-sans text-xs">
-                            {row.eventsPlayed}
+                    {ranking.map((row: any, index: number) => {
+                      const absoluteIndex = (currentRankPage - 1) * RANK_PAGE_SIZE + index;
+                      return (
+                        <tr
+                          key={rankTab === "event" ? row.rosterId : row.userId}
+                          className="hover:bg-slate-800/30 transition font-mono"
+                        >
+                          <td className="py-3 px-4 font-bold text-slate-400">
+                            {absoluteIndex === 0
+                              ? "🥇"
+                              : absoluteIndex === 1
+                                ? "🥈"
+                                : absoluteIndex === 2
+                                  ? "🥉"
+                                  : `#${absoluteIndex + 1}`}
                           </td>
-                        )}
-                        <td className="py-3 px-4 text-right font-bold text-indigo-400">
-                          {row.total.toFixed(2)} {t.pointsSuffix}
-                        </td>
-                      </tr>
-                    ))}
+                          <td className="py-3 px-4 font-sans font-semibold text-slate-200">
+                            {row.userName}
+                          </td>
+                          {rankTab === "competition" && (
+                            <td className="py-3 px-4 text-center text-slate-400 font-sans text-xs">
+                              {row.eventsPlayed}
+                            </td>
+                          )}
+                          <td className="py-3 px-4 text-right font-bold text-indigo-400">
+                            {row.total.toFixed(2)} {t.pointsSuffix}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
-            );
-          })()}
+
+              {totalRankPages > 1 && (
+                <div className="flex items-center justify-center gap-3 p-4 border-t border-slate-800 text-xs">
+                  {currentRankPage > 1 ? (
+                    <Link
+                      href={rankPageHref(currentRankPage - 1)}
+                      className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 transition hover:border-slate-600 hover:text-white"
+                    >
+                      {t.prevPage}
+                    </Link>
+                  ) : (
+                    <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">
+                      {t.prevPage}
+                    </span>
+                  )}
+                  <span className="text-slate-400">{t.pageOf(currentRankPage, totalRankPages)}</span>
+                  {currentRankPage < totalRankPages ? (
+                    <Link
+                      href={rankPageHref(currentRankPage + 1)}
+                      className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 transition hover:border-slate-600 hover:text-white"
+                    >
+                      {t.nextPage}
+                    </Link>
+                  ) : (
+                    <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">
+                      {t.nextPage}
+                    </span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>

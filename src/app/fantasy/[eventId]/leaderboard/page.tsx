@@ -1,55 +1,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import {
-  computeEventLeaderboard,
-  computeEventLeaderboardBySegment,
-  type RosterScore,
-} from "@/lib/scoring";
+import { computeEventLeaderboard, computeEventLeaderboardBySegment } from "@/lib/scoring";
 import { isSegmentLocked, effectiveLocksAt } from "@/lib/segments";
 import LocalDateTime from "@/app/_components/LocalDateTime";
+import PaginatedRosterList from "./PaginatedRosterList";
 
 export const dynamic = "force-dynamic";
-
-const medal = ["🥇", "🥈", "🥉"];
-
-// Un roster + su desglose de puntos por slot, plegable. Se reutiliza tanto
-// para el caso con segmentos (Corto/Largo, cada uno con su propia tanda)
-// como para el caso legado sin segmentos configurados (un único roster).
-function RosterCard({ roster, index }: { roster: RosterScore; index: number }) {
-  return (
-    <details
-      key={roster.rosterId}
-      className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden"
-      open={index < 3}
-    >
-      <summary className="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-lg font-black text-slate-400 w-10 shrink-0 text-center">
-            {medal[index] || `#${index + 1}`}
-          </span>
-          <span className="font-semibold text-slate-100 truncate">{roster.userName}</span>
-        </div>
-        <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono font-bold text-indigo-400 text-lg">{roster.total.toFixed(2)} pts</span>
-          <span className="text-slate-500 text-xs transition group-open:rotate-90">▶</span>
-        </div>
-      </summary>
-
-      <div className="border-t border-slate-800 divide-y divide-slate-800/80">
-        {roster.slots.map((slot) => (
-          <div key={slot.slotId} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
-            <div className="min-w-0">
-              <p className="text-slate-400">{slot.slotLabel}</p>
-              <p className="text-slate-200 font-semibold truncate">{slot.skaterName}</p>
-            </div>
-            <span className="font-mono font-bold text-slate-300 shrink-0">{slot.points.toFixed(2)} pts</span>
-          </div>
-        ))}
-      </div>
-    </details>
-  );
-}
 
 function LockedNotice({ label, deadline }: { label: string; deadline: string }) {
   return (
@@ -146,11 +103,7 @@ export default async function EventFantasyLeaderboardPage({
           ) : legacyBoard.length === 0 ? (
             <EmptyNotice text="Nadie ha guardado una alineación de fantasy para este evento todavía." />
           ) : (
-            <div className="space-y-3">
-              {legacyBoard.map((roster, index) => (
-                <RosterCard key={roster.rosterId} roster={roster} index={index} />
-              ))}
-            </div>
+            <PaginatedRosterList rosters={legacyBoard} />
           )
         ) : (
           <div className="space-y-8">
@@ -173,11 +126,7 @@ export default async function EventFantasyLeaderboardPage({
                   ) : !segmentBoard.hasScores ? (
                     <PendingScoresNotice label={segment.name} />
                   ) : (
-                    <div className="space-y-3">
-                      {segmentBoard.rosters.map((roster, index) => (
-                        <RosterCard key={roster.rosterId} roster={roster} index={index} />
-                      ))}
-                    </div>
+                    <PaginatedRosterList rosters={segmentBoard.rosters} />
                   )}
                 </section>
               );

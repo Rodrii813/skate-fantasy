@@ -348,6 +348,9 @@ export const dictionaries = {
       leaderboardCta: "🏆 Leaderboard",
       expandAll: "Desplegar todo",
       collapseAll: "Plegar todo",
+      prevPage: "← Anterior",
+      nextPage: "Siguiente →",
+      pageOf: (current: number, total: number) => `Página ${current} de ${total}`,
     },
     fantasyRoster: {
       deadline: "Cierre",
@@ -1015,6 +1018,9 @@ export const dictionaries = {
       leaderboardCta: "🏆 Leaderboard",
       expandAll: "Expand all",
       collapseAll: "Collapse all",
+      prevPage: "← Previous",
+      nextPage: "Next →",
+      pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
     },
     fantasyRoster: {
       deadline: "Deadline",
