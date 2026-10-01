@@ -187,15 +187,18 @@ export default async function FantasyHubPage({
 
         {/* Draft Status: antes era una tabla matriz (filas = Corto/Largo,
             columnas = disciplina+género), donde cada celda apilaba verticalmente
-            TODOS los eventos de esa combinación que cayeran en esa fila — con
-            una disciplina como Show (varias categorías: Cuartetos, Grupos
-            Pequeños, Grupos Grandes...) eso dejaba columnas desiguales y muy
-            altas, además de forzar scroll horizontal con 5+ columnas de
-            180px cada una. Ahora es una rejilla de tarjetas (una por
-            disciplina+género) y, dentro de cada una, una fila por evento con
-            sus 1-2 segmentos como chips compactos en línea — mismo contenido,
-            una fracción del espacio, y se adapta mejor a cada competición
-            tenga 2 o 10 disciplinas distintas. */}
+            TODOS los eventos de esa combinación que cayeran en esa fila — y
+            una fila ("Corto"/"Largo") comparte altura entre TODAS las
+            columnas de una tabla HTML, así que una disciplina sin esa
+            distinción (Show, Precisión: un único segmento) metía sus varias
+            categorías apiladas en la fila "Corto" por defecto, inflando esa
+            fila para TODAS las columnas (aunque Parejas solo tuviera 1
+            evento ahí) y dejando la fila "Largo" con huecos vacíos en esas
+            columnas. Ahora cada columna (disciplina+género) es independiente
+            — una lista propia de sus eventos, cada uno con sus 1 o 2
+            segmentos reales como chips en línea — así que ninguna columna
+            fuerza la altura de las demás; se mantiene el mismo formato de
+            columnas con cabecera y scroll horizontal de antes. */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
           <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
             <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
@@ -224,20 +227,18 @@ export default async function FantasyHubPage({
               {t.noEvents}
             </p>
           ) : (
-            <div className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-3">
-              {columns.map((col) => {
-                const eventsInColumn = activeCompetition.events.filter(
-                  (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
-                );
-                return (
-                  <div
-                    key={col.key}
-                    className="bg-slate-950/50 border border-slate-800 rounded-xl p-3.5 space-y-2.5"
-                  >
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-300 truncate">
-                      {col.label}
-                    </p>
-                    <div className="space-y-1.5">
+            <div className="overflow-x-auto">
+              <div className="flex gap-6 p-4 min-w-min">
+                {columns.map((col) => {
+                  const eventsInColumn = activeCompetition.events.filter(
+                    (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
+                  );
+                  return (
+                    <div key={col.key} className="w-48 shrink-0 space-y-2.5">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-300 border-b border-slate-800 pb-2 truncate">
+                        {col.label}
+                      </p>
+                      <div className="space-y-2">
                       {eventsInColumn.map((ev) => {
                         const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
                         return (
@@ -300,6 +301,7 @@ export default async function FantasyHubPage({
                   </div>
                 );
               })}
+              </div>
             </div>
           )}
         </div>
