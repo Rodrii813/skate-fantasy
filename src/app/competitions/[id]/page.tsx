@@ -31,7 +31,12 @@ export default async function CompetitionDetailPage({
   const competition = await prisma.competition.findUnique({
     where: { id: params.id },
     include: {
+      // Mismo criterio que /calendario y /competitions: un evento "de
+      // prueba" no es competición real, así que no debe listarse en la ficha
+      // pública de la competición — sigue siendo accesible desde /fantasy y
+      // /predictions para que la gente practique.
       events: {
+        where: { isTest: false },
         include: {
           discipline: true,
           category: true,

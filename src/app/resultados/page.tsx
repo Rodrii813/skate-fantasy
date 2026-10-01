@@ -23,7 +23,11 @@ export default async function ResultadosPage() {
   const genderLabel = dict.common.gender;
 
   const events = await prisma.event.findMany({
-    where: { status: { in: ["LOCKED", "RESULTS_IN", "FINISHED"] } },
+    // Igual que en /calendario, /competitions y la portada: un evento de
+    // prueba (ver admin/events) no es competición real y no debe mezclarse
+    // con resultados reales, aunque alguien lo marque como terminado para
+    // probar cómo se ve esa pantalla.
+    where: { status: { in: ["LOCKED", "RESULTS_IN", "FINISHED"] }, isTest: false },
     include: {
       competition: true,
       discipline: true,

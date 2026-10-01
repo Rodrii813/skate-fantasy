@@ -16,7 +16,11 @@ export default async function CompetitionsPage() {
   const competitions = await prisma.competition.findMany({
     orderBy: { startDate: "asc" },
     include: {
+      // Los eventos "de prueba" (ver admin/events) no son competición real,
+      // así que no deben listarse aquí — igual que en /calendario. Siguen
+      // siendo accesibles desde /fantasy y /predictions para practicar.
       events: {
+        where: { isTest: false },
         include: {
           discipline: true,
           category: true,

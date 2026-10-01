@@ -36,6 +36,9 @@ export default async function HomePage() {
     where: {
       rosterLocksAt: { gte: now },
       status: "UPCOMING",
+      // No queremos que el evento "de prueba" (ver admin/events) pueda salir
+      // en la portada como si fuera una prueba real en directo.
+      isTest: false,
     },
     include: {
       competition: true,

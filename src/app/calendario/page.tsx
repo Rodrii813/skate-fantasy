@@ -22,6 +22,12 @@ export default async function CalendarioPage() {
   const genderLabel = dict.common.gender;
 
   const events = await prisma.event.findMany({
+    // Los eventos marcados como "de prueba" (ver admin/events) no son
+    // competición real, así que no pintan nada en el calendario público —
+    // quedaría raro un "evento" ahí en medio de fechas reales. Siguen
+    // existiendo y siendo accesibles desde /fantasy y /predictions (con su
+    // aviso 🧪), que es donde de verdad sirven para practicar.
+    where: { isTest: false },
     include: {
       competition: true,
       discipline: true,
