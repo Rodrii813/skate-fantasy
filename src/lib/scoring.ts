@@ -293,6 +293,76 @@ export async function computeLeagueLeaderboard(leagueId: string): Promise<League
     .sort((a, b) => b.total - a.total);
 }
 
+export type MyEventPicks = {
+  eventId: string;
+  rosterId: string;
+  slotsBySegment: Map<string, SlotResult[]>;
+  // Segmentos con al menos una puntuación oficial cargada — mismo motivo que
+  // SegmentLeaderboard.hasScores: un segmento puede estar cerrado sin
+  // resultados subidos todavía, y ahí hay que mostrar "pendiente" en vez de
+  // puntos a 0 (que parecería que el patinador elegido sacó cero).
+  hasScoresBySegment: Set<string>;
+};
+
+/**
+ * Para el Fantasy Hub (/fantasy): el equipo que YO he elegido en cada evento
+ * de una competición, con sus puntos si ya hay resultados — para mostrarlo
+ * directamente al desplegar cada disciplina, sin tener que entrar al Draft
+ * Room. Dos consultas en total para toda la competición (no una por evento),
+ * igual que el resto de funciones de este archivo evitan N+1.
+ */
+export async function computeMyPicksForCompetition(
+  competitionId: string,
+  userId: string
+): Promise<Map<string, MyEventPicks>> {
+  const rosters = await prisma.fantasyRoster.findMany({
+    where: { userId, event: { competitionId } },
+    include: { picks: { include: { slot: true, skater: true } } },
+  });
+
+  const result = new Map<string, MyEventPicks>();
+  if (rosters.length === 0) return result;
+
+  const eventIds = rosters.map((r) => r.eventId);
+  const scores = await prisma.elementScore.findMany({
+    where: { registration: { eventId: { in: eventIds } } },
+    include: { registration: true },
+  });
+
+  const scoreKey = (skaterId: string, elementCategoryId: string, segmentId: string) =>
+    `${skaterId}__${elementCategoryId}__${segmentId}`;
+
+  const scoreMap = new Map<string, number>();
+  const scoredSegmentIds = new Set<string>();
+  for (const s of scores) {
+    scoreMap.set(scoreKey(s.registration.skaterId, s.elementCategoryId, s.segmentId), s.value);
+    scoredSegmentIds.add(s.segmentId);
+  }
+
+  for (const roster of rosters) {
+    const slotsBySegment = new Map<string, SlotResult[]>();
+    const hasScoresBySegment = new Set<string>();
+    for (const pick of roster.picks) {
+      const segmentId = pick.slot.segmentId;
+      if (!segmentId) continue;
+      const key = scoreKey(pick.skaterId, pick.slot.elementCategoryId, segmentId);
+      const slotResult: SlotResult = {
+        slotId: pick.slotId,
+        slotLabel: pick.slot.label,
+        skaterId: pick.skaterId,
+        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        points: scoreMap.get(key) ?? 0,
+      };
+      if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
+      slotsBySegment.get(segmentId)!.push(slotResult);
+      if (scoredSegmentIds.has(segmentId)) hasScoresBySegment.add(segmentId);
+    }
+    result.set(roster.eventId, { eventId: roster.eventId, rosterId: roster.id, slotsBySegment, hasScoresBySegment });
+  }
+
+  return result;
+}
+
 export type PredictionScore = {
   userId: string;
   userName: string;

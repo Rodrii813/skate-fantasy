@@ -14,6 +14,13 @@ import { useState } from "react";
 // actual ya tiene draft hecho) se calcula en el servidor (fantasy/page.tsx)
 // y llega aquí ya resuelto; este componente solo decide qué está plegado.
 
+export interface DraftStatusPick {
+  slotId: string;
+  slotLabel: string;
+  skaterName: string;
+  points: number | null; // null = todavía sin puntuación oficial publicada
+}
+
 export interface DraftStatusSegment {
   id: string;
   label: string;
@@ -23,6 +30,11 @@ export interface DraftStatusSegment {
   drafted: boolean;
   draftedText: string | null;
   href: string | null;
+  // Tu equipo en este segmento, ya resuelto en el servidor — null si no has
+  // hecho draft aquí todavía. Se muestra directamente al desplegar la
+  // disciplina (sin un toggle aparte), igual que en la referencia.
+  myPicks: DraftStatusPick[] | null;
+  myTotal: number | null;
 }
 
 export interface DraftStatusEvent {
@@ -111,7 +123,7 @@ export default function DraftStatusAccordion({
                         {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                       </p>
                       {ev.segments.map((seg) => {
-                        const content = (
+                        const header = (
                           <div className="flex items-center justify-between gap-2">
                             {seg.showLabel && (
                               <span className="shrink-0 text-[10px] text-slate-500">{seg.label}</span>
@@ -121,24 +133,57 @@ export default function DraftStatusAccordion({
                             >
                               {seg.badgeLabel}
                             </span>
-                            {seg.draftedText && (
-                              <span
-                                className={`text-[11px] font-semibold ${
-                                  seg.drafted ? "text-indigo-400" : "text-slate-500"
-                                }`}
-                              >
-                                {seg.draftedText}
+                            {seg.myTotal !== null ? (
+                              <span className="text-[11px] font-bold text-indigo-400">
+                                {seg.myTotal.toFixed(2)}
                               </span>
+                            ) : (
+                              seg.draftedText && (
+                                <span
+                                  className={`text-[11px] font-semibold ${
+                                    seg.drafted ? "text-indigo-400" : "text-slate-500"
+                                  }`}
+                                >
+                                  {seg.draftedText}
+                                </span>
+                              )
                             )}
                           </div>
                         );
 
-                        return seg.href ? (
-                          <Link key={seg.id} href={seg.href} className="block transition hover:opacity-80">
-                            {content}
+                        const headerBlock = seg.href ? (
+                          <Link href={seg.href} className="block transition hover:opacity-80">
+                            {header}
                           </Link>
                         ) : (
-                          <div key={seg.id}>{content}</div>
+                          <div>{header}</div>
+                        );
+
+                        // Tu equipo ya elegido en este segmento, siempre
+                        // visible al desplegar la disciplina (sin un toggle
+                        // aparte) — igual que en la referencia.
+                        return (
+                          <div key={seg.id} className="space-y-1">
+                            {headerBlock}
+                            {seg.myPicks && seg.myPicks.length > 0 && (
+                              <div className="rounded-lg border border-slate-800 bg-slate-950/60 divide-y divide-slate-800/80 overflow-hidden">
+                                {seg.myPicks.map((pick) => (
+                                  <div
+                                    key={pick.slotId}
+                                    className="flex items-center justify-between gap-2 px-2 py-1 text-[10px]"
+                                  >
+                                    <div className="min-w-0">
+                                      <p className="text-slate-500 truncate">{pick.slotLabel}</p>
+                                      <p className="text-slate-300 font-semibold truncate">{pick.skaterName}</p>
+                                    </div>
+                                    <span className="shrink-0 font-mono font-bold text-slate-400">
+                                      {pick.points === null ? "—" : pick.points.toFixed(2)}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         );
                       })}
                     </div>

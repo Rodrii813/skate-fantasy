@@ -3,12 +3,14 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSegmentDraftStatus } from "@/lib/segments";
-import { computeEventLeaderboard, computeCompetitionFantasyLeaderboard } from "@/lib/scoring";
+import { computeCompetitionFantasyLeaderboard, computeMyPicksForCompetition } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import DraftStatusAccordion, { type DraftStatusColumn } from "./DraftStatusAccordion";
 import ArchivedCompetitionSelect from "./ArchivedCompetitionSelect";
+import RankSummaryCards from "./RankSummaryCards";
+import { getMyLeagueRanks } from "./rankSummary";
 
 export const dynamic = "force-dynamic";
 
@@ -17,25 +19,28 @@ export async function generateMetadata() {
   return { title: t.title, description: t.description };
 }
 
-// /fantasy es el hub del modo Fantasy: selector Competición → Evento
-// presentado como tabla "Draft Status" (filas = segmento Corto/Largo,
-// columnas = combinaciones disciplina+género que existan de verdad en la
-// competición elegida, construidas dinámicamente — no hay nombres fijos
-// tipo "Men/Women" porque el catálogo de disciplinas es editable desde
-// admin), y debajo el Ranking Fantasy con las dos vistas: por evento
-// (reutiliza computeEventLeaderboard) y global por competición (nueva
-// computeCompetitionFantasyLeaderboard, que sí es nueva pero construida
-// sumando computeEventLeaderboard evento a evento, no reimplementando la
-// puntuación).
+// /fantasy es el Fantasy Hub (el "dashboard" en la jerga de la referencia
+// que trajo el usuario): selector de Competición, tus tarjetas de resumen
+// (puesto global de la competición y puesto en cada liga privada a la que
+// pertenezcas — RankSummaryCards, compartido con /fantasy/leaderboard) y la
+// tabla "Draft Status" (columnas = combinaciones disciplina+género que
+// existan de verdad en la competición, en acordeón por disciplina porque hay
+// muchas más categorías que en la referencia) con tu equipo ya elegido
+// (computeMyPicksForCompetition) visible al desplegar cada disciplina. La
+// clasificación completa de TODOS los participantes — antes vivía aquí mismo
+// con pestañas "por evento/global" — ahora es su propia página,
+// /fantasy/leaderboard, igual que draftear ya era su propia página
+// (/events/[id], el "Draft Room").
 export default async function FantasyHubPage({
   searchParams,
 }: {
-  searchParams: { competition?: string; event?: string; rank?: string; page?: string };
+  searchParams: { competition?: string };
 }) {
   const session = await getServerSession(authOptions);
   const locale = getLocale();
   const dict = getDictionary(locale);
   const t = dict.fantasyHub;
+  const tl = dict.fantasyLeaderboard;
   const genderLabel = dict.common.gender;
   const ROW_LABELS = [t.shortLabel, t.longLabel] as const;
 
@@ -71,9 +76,19 @@ export default async function FantasyHubPage({
   const activeCompetition =
     competitions.find((c) => c.id === selectedCompetitionId) || competitions[0];
 
-  // Picks ya guardados por el usuario actual en ESTA competición, para
-  // marcar en la tabla qué segmentos ya tiene "draft hecho".
+  // Puesto global de la competición, para la tarjeta "Global" (misma
+  // clasificación que usa /fantasy/leaderboard).
+  const competitionRanking = await computeCompetitionFantasyLeaderboard(activeCompetition.id);
+
+  // Picks ya guardados por el usuario actual en ESTA competición: para
+  // marcar en la tabla qué segmentos ya tiene "draft hecho", para mostrar
+  // directamente su equipo (con puntos si ya hay resultados) al desplegar
+  // cada disciplina (computeMyPicksForCompetition), para su puesto en la
+  // tarjeta "Global" y para sus tarjetas de liga privada.
   let draftedSlotIds = new Set<string>();
+  let myPicksByEvent: Awaited<ReturnType<typeof computeMyPicksForCompetition>> = new Map();
+  let myLeagueRanks: Awaited<ReturnType<typeof getMyLeagueRanks>> = [];
+  let myGlobalRank: number | null = null;
   if (session?.user?.email) {
     const user = await prisma.user.findUnique({ where: { email: session.user.email } });
     if (user) {
@@ -82,6 +97,10 @@ export default async function FantasyHubPage({
         include: { picks: { select: { slotId: true } } },
       });
       draftedSlotIds = new Set(rosters.flatMap((r) => r.picks.map((p) => p.slotId)));
+      myPicksByEvent = await computeMyPicksForCompetition(activeCompetition.id, user.id);
+      myLeagueRanks = await getMyLeagueRanks(user.id);
+      const index = competitionRanking.findIndex((r) => r.userId === user.id);
+      myGlobalRank = index === -1 ? null : index + 1;
     }
   }
 
@@ -118,55 +137,6 @@ export default async function FantasyHubPage({
       className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     },
     cerrado: { label: t.stateClosed, className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  };
-
-  // Ranking: por evento (con selector de evento propio) o global por
-  // competición — solo se calcula el de la pestaña activa. Antes se
-  // calculaban SIEMPRE los dos en cada carga de la página, y el ranking
-  // "global por competición" reutiliza computeEventLeaderboard EVENTO A
-  // EVENTO (ver src/lib/scoring.ts) — con una competición de 20 pruebas eso
-  // son ~20 consultas extra a la base de datos en cada visita a /fantasy,
-  // aunque quien la visite ni siquiera mire esa pestaña. Con esta página sin
-  // caché (force-dynamic), es tráfico a Neon que se repite en cada visita.
-  const rankTab = searchParams.rank === "competition" ? "competition" : "event";
-  const rankEventId = searchParams.event || activeCompetition.events[0]?.id;
-  const rankEvent = activeCompetition.events.find((e) => e.id === rankEventId);
-
-  const eventRanking =
-    rankEvent && rankTab === "event" ? await computeEventLeaderboard(rankEvent.id) : [];
-  const competitionRanking =
-    rankTab === "competition" ? await computeCompetitionFantasyLeaderboard(activeCompetition.id) : [];
-
-  const rankHref = (tab: "event" | "competition", eventId?: string) =>
-    `/fantasy?competition=${activeCompetition.id}${
-      tab === "competition" ? "&rank=competition" : `&event=${eventId ?? rankEventId ?? ""}`
-    }#leaderboard`;
-
-  // Paginación del ranking: con muchos participantes la tabla se hacía
-  // interminable (igual que el motivo del acordeón de Draft Status). Se
-  // pagina por URL (?page=N), no con estado de cliente, para mantener el
-  // mismo patrón que el resto de esta página (pestañas y selector de
-  // competición también son enlaces). Cambiar de pestaña o de evento
-  // siempre vuelve a la página 1 (rankHref no incluye `page`).
-  const RANK_PAGE_SIZE = 15;
-  const fullRanking = rankTab === "event" ? eventRanking : competitionRanking;
-  const totalRankPages = Math.max(1, Math.ceil(fullRanking.length / RANK_PAGE_SIZE));
-  const currentRankPage = Math.min(Math.max(1, Number(searchParams.page) || 1), totalRankPages);
-  const ranking = fullRanking.slice(
-    (currentRankPage - 1) * RANK_PAGE_SIZE,
-    currentRankPage * RANK_PAGE_SIZE
-  );
-
-  const rankPageHref = (page: number) => {
-    const params = new URLSearchParams();
-    params.set("competition", activeCompetition.id);
-    if (rankTab === "competition") {
-      params.set("rank", "competition");
-    } else if (rankEventId) {
-      params.set("event", rankEventId);
-    }
-    if (page > 1) params.set("page", String(page));
-    return `/fantasy?${params.toString()}#leaderboard`;
   };
 
   // Activas (pestañas) vs archivadas (desplegable aparte) — una competición
@@ -213,6 +183,22 @@ export default async function FantasyHubPage({
               draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
             const badge = stateBadge[state];
             const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
+
+            const myEventPicks = myPicksByEvent.get(ev.id);
+            const mySegmentSlots = myEventPicks?.slotsBySegment.get(segment.id) ?? null;
+            const hasScores = myEventPicks?.hasScoresBySegment.has(segment.id) ?? false;
+            const myPicks =
+              mySegmentSlots && mySegmentSlots.length > 0
+                ? mySegmentSlots.map((slot) => ({
+                    slotId: slot.slotId,
+                    slotLabel: slot.slotLabel,
+                    skaterName: slot.skaterName,
+                    points: hasScores ? slot.points : null,
+                  }))
+                : null;
+            const myTotal =
+              myPicks && hasScores ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
+
             return {
               id: segment.id,
               label: ROW_LABELS[segIndex] ?? segment.name,
@@ -221,7 +207,9 @@ export default async function FantasyHubPage({
               badgeClassName: badge.className,
               drafted,
               draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
-              href: state === "proximamente" ? null : `/events/${ev.id}`,
+              href: state === "proximamente" ? null : `/events/${ev.id}?segment=${segment.id}`,
+              myPicks,
+              myTotal,
             };
           }),
         };
@@ -268,12 +256,12 @@ export default async function FantasyHubPage({
           >
             {t.draftRoomCta}
           </a>
-          <a
-            href="#leaderboard"
+          <Link
+            href={`/fantasy/leaderboard?competition=${activeCompetition.id}`}
             className="flex-1 min-w-[160px] text-center rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-2.5 text-sm font-bold text-amber-300 transition hover:border-amber-500/70 hover:bg-amber-500/20"
           >
             {t.leaderboardCta}
-          </a>
+          </Link>
         </div>
 
         {/* Selector de Competición: activas como pestañas, terminadas en un
@@ -301,6 +289,22 @@ export default async function FantasyHubPage({
             />
           )}
         </div>
+
+        {/* Tarjetas de resumen: tu puesto global de esta competición y tu
+            puesto en cada liga privada — mismo componente que usa
+            /fantasy/leaderboard, para que el "Nº de Nº" se calcule siempre
+            igual. Clican a la clasificación completa. */}
+        <RankSummaryCards
+          globalLabel={tl.globalCardLabel}
+          globalRank={myGlobalRank}
+          globalTotal={competitionRanking.length}
+          globalHref={`/fantasy/leaderboard?competition=${activeCompetition.id}`}
+          leagues={myLeagueRanks}
+          joinLabel={tl.joinLeagueCardLabel}
+          joinHref="/fantasy/leagues"
+          ofWord={tl.ofWord}
+          noRankLabel={tl.noRankYet}
+        />
 
         {/* Draft Status: antes era una tabla matriz (filas = Corto/Largo,
             columnas = disciplina+género), donde cada celda apilaba verticalmente
@@ -333,153 +337,6 @@ export default async function FantasyHubPage({
               expandAllLabel={t.expandAll}
               collapseAllLabel={t.collapseAll}
             />
-          )}
-        </div>
-
-        {/* Ranking Fantasy */}
-        <div id="leaderboard" className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
-          <div className="p-4 border-b border-slate-800 flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2">
-              <Link
-                href={rankHref("event")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
-                  rankTab === "event"
-                    ? "bg-indigo-600 border-indigo-500 text-white"
-                    : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {t.byEvent}
-              </Link>
-              <Link
-                href={rankHref("competition")}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-lg border transition ${
-                  rankTab === "competition"
-                    ? "bg-indigo-600 border-indigo-500 text-white"
-                    : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                }`}
-              >
-                {t.global(activeCompetition.name)}
-              </Link>
-            </div>
-
-            {rankTab === "event" && activeCompetition.events.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {activeCompetition.events.map((e) => (
-                  <Link
-                    key={e.id}
-                    href={rankHref("event", e.id)}
-                    className={`text-[11px] px-2 py-1 rounded-lg border transition ${
-                      e.id === rankEvent?.id
-                        ? "bg-slate-700 border-slate-600 text-white"
-                        : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
-                    }`}
-                  >
-                    {translateDisciplineName(e.discipline.name, locale)} ·{" "}
-                    {translateCategoryName(e.category.name, locale)}
-                    {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
-                    {e.showFormat
-                      ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}`
-                      : ""}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {rankTab === "event" && rankEvent && (
-            <div className="p-4 border-b border-slate-800/80">
-              <Link
-                href={`/fantasy/${rankEvent.id}/leaderboard`}
-                className="text-xs text-amber-400 underline hover:text-amber-300"
-              >
-                {t.viewFullLeaderboard}
-              </Link>
-            </div>
-          )}
-
-          {fullRanking.length === 0 ? (
-            <p className="p-8 text-center text-xs text-slate-400">
-              {t.noRankableRosters}
-            </p>
-          ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="bg-slate-800/60 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
-                      <th className="py-3 px-4 w-16">{t.rank}</th>
-                      <th className="py-3 px-4">{t.coach}</th>
-                      {rankTab === "competition" && (
-                        <th className="py-3 px-4 text-center">{t.events}</th>
-                      )}
-                      <th className="py-3 px-4 text-right font-bold text-white">{t.points}</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-800/70">
-                    {ranking.map((row: any, index: number) => {
-                      const absoluteIndex = (currentRankPage - 1) * RANK_PAGE_SIZE + index;
-                      return (
-                        <tr
-                          key={rankTab === "event" ? row.rosterId : row.userId}
-                          className="hover:bg-slate-800/30 transition font-mono"
-                        >
-                          <td className="py-3 px-4 font-bold text-slate-400">
-                            {absoluteIndex === 0
-                              ? "🥇"
-                              : absoluteIndex === 1
-                                ? "🥈"
-                                : absoluteIndex === 2
-                                  ? "🥉"
-                                  : `#${absoluteIndex + 1}`}
-                          </td>
-                          <td className="py-3 px-4 font-sans font-semibold text-slate-200">
-                            {row.userName}
-                          </td>
-                          {rankTab === "competition" && (
-                            <td className="py-3 px-4 text-center text-slate-400 font-sans text-xs">
-                              {row.eventsPlayed}
-                            </td>
-                          )}
-                          <td className="py-3 px-4 text-right font-bold text-indigo-400">
-                            {row.total.toFixed(2)} {t.pointsSuffix}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {totalRankPages > 1 && (
-                <div className="flex items-center justify-center gap-3 p-4 border-t border-slate-800 text-xs">
-                  {currentRankPage > 1 ? (
-                    <Link
-                      href={rankPageHref(currentRankPage - 1)}
-                      className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 transition hover:border-slate-600 hover:text-white"
-                    >
-                      {t.prevPage}
-                    </Link>
-                  ) : (
-                    <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">
-                      {t.prevPage}
-                    </span>
-                  )}
-                  <span className="text-slate-400">{t.pageOf(currentRankPage, totalRankPages)}</span>
-                  {currentRankPage < totalRankPages ? (
-                    <Link
-                      href={rankPageHref(currentRankPage + 1)}
-                      className="rounded-lg border border-slate-700 px-3 py-1.5 text-slate-300 transition hover:border-slate-600 hover:text-white"
-                    >
-                      {t.nextPage}
-                    </Link>
-                  ) : (
-                    <span className="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">
-                      {t.nextPage}
-                    </span>
-                  )}
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>
