@@ -404,8 +404,6 @@ export default async function FantasyHubPage({
           ) : (
             <DraftStatusAccordion
               columns={draftStatusColumns}
-              expandAllLabel={t.expandAll}
-              collapseAllLabel={t.collapseAll}
               labels={{
                 openBadge: t.stateOpen,
                 upcomingBadge: t.stateUpcoming,

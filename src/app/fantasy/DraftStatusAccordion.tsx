@@ -202,16 +202,18 @@ function SegmentCard({
 
 export default function DraftStatusAccordion({
   columns,
-  expandAllLabel,
-  collapseAllLabel,
   labels,
 }: {
   columns: DraftStatusColumn[];
-  expandAllLabel: string;
-  collapseAllLabel: string;
   labels: DraftStatusLabels;
 }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set(columns.map((c) => c.key)));
+  // Disciplina activa: pestañas deslizables en horizontal (como el selector
+  // de la referencia) en vez de un acordeón con TODAS las disciplinas
+  // apiladas — con muchas disciplinas/categorías, tenerlas todas listadas
+  // (aunque plegadas) seguía ocupando una fila por cada una. Ahora solo se
+  // ve el contenido de UNA disciplina a la vez, debajo de la tira de
+  // pestañas.
+  const [activeKey, setActiveKey] = useState<string>(columns[0]?.key ?? "");
   // Pruebas (categorías) desplegadas — empiezan todas plegadas, una debajo
   // de otra.
   const [openEvents, setOpenEvents] = useState<Set<string>>(new Set());
@@ -220,14 +222,7 @@ export default function DraftStatusAccordion({
   // lado), así que aquí solo se guardan las excepciones manuales.
   const [closedSegments, setClosedSegments] = useState<Set<string>>(new Set());
 
-  function toggle(key: string) {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key);
-      else next.add(key);
-      return next;
-    });
-  }
+  const activeColumn = columns.find((c) => c.key === activeKey) ?? columns[0];
 
   function toggleEvent(eventId: string) {
     setOpenEvents((prev) => {
@@ -249,96 +244,69 @@ export default function DraftStatusAccordion({
 
   return (
     <div>
-      <div className="flex items-center justify-end gap-2 p-3 border-b border-slate-800 text-[11px]">
-        <button
-          type="button"
-          onClick={() => setCollapsed(new Set())}
-          className="rounded-lg border border-slate-700 px-2.5 py-1 text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
-        >
-          {expandAllLabel}
-        </button>
-        <button
-          type="button"
-          onClick={() => setCollapsed(new Set(columns.map((c) => c.key)))}
-          className="rounded-lg border border-slate-700 px-2.5 py-1 text-slate-400 transition hover:border-slate-600 hover:text-slate-200"
-        >
-          {collapseAllLabel}
-        </button>
+      {/* Pestañas de disciplina, deslizables en horizontal si no caben —
+          solo la activa muestra su contenido debajo. */}
+      <div className="flex gap-1.5 overflow-x-auto p-3 border-b border-slate-800">
+        {columns.map((col) => (
+          <button
+            key={col.key}
+            type="button"
+            onClick={() => setActiveKey(col.key)}
+            className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition ${
+              col.key === activeColumn?.key
+                ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
+                : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+            }`}
+          >
+            {col.label} <span className="font-normal normal-case opacity-60">({col.events.length})</span>
+          </button>
+        ))}
       </div>
 
-      <div className="divide-y divide-slate-800">
-        {columns.map((col) => {
-          const isCollapsed = collapsed.has(col.key);
-          return (
-            <div key={col.key}>
-              <button
-                type="button"
-                onClick={() => toggle(col.key)}
-                aria-expanded={!isCollapsed}
-                className="flex w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-slate-800/30"
-              >
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                  {col.label}{" "}
-                  <span className="ml-1 font-normal normal-case text-slate-500">
-                    ({col.events.length})
-                  </span>
-                </span>
-                <span
-                  className={`text-sm text-slate-500 transition-transform ${isCollapsed ? "-rotate-90" : ""}`}
-                  aria-hidden="true"
+      {activeColumn && (
+        <div className="space-y-2 p-4">
+          {activeColumn.events.map((ev) => {
+            const isEventOpen = openEvents.has(ev.id);
+            return (
+              <div key={ev.id} className="rounded-xl border border-slate-800/80 overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => toggleEvent(ev.id)}
+                  aria-expanded={isEventOpen}
+                  className="flex w-full items-center justify-between gap-2 bg-slate-900/40 px-3 py-2 text-left transition hover:bg-slate-800/40"
                 >
-                  ▾
-                </span>
-              </button>
+                  <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400">
+                    {ev.categoryLabel}
+                    {ev.isTest && <span className="text-amber-400">🧪</span>}
+                  </span>
+                  <span
+                    className={`text-[10px] text-slate-500 transition-transform ${
+                      isEventOpen ? "" : "-rotate-90"
+                    }`}
+                    aria-hidden="true"
+                  >
+                    ▾
+                  </span>
+                </button>
 
-              {!isCollapsed && (
-                <div className="space-y-2 px-4 pb-4">
-                  {col.events.map((ev) => {
-                    const isEventOpen = openEvents.has(ev.id);
-                    return (
-                      <div key={ev.id} className="rounded-xl border border-slate-800/80 overflow-hidden">
-                        <button
-                          type="button"
-                          onClick={() => toggleEvent(ev.id)}
-                          aria-expanded={isEventOpen}
-                          className="flex w-full items-center justify-between gap-2 bg-slate-900/40 px-3 py-2 text-left transition hover:bg-slate-800/40"
-                        >
-                          <span className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-slate-400">
-                            {ev.categoryLabel}
-                            {ev.isTest && <span className="text-amber-400">🧪</span>}
-                          </span>
-                          <span
-                            className={`text-[10px] text-slate-500 transition-transform ${
-                              isEventOpen ? "" : "-rotate-90"
-                            }`}
-                            aria-hidden="true"
-                          >
-                            ▾
-                          </span>
-                        </button>
-
-                        {isEventOpen && (
-                          <div className="flex flex-wrap gap-2 p-2">
-                            {ev.segments.map((seg) => (
-                              <SegmentCard
-                                key={seg.id}
-                                seg={seg}
-                                isOpen={!closedSegments.has(seg.id)}
-                                onToggle={() => toggleSegment(seg.id)}
-                                labels={labels}
-                              />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+                {isEventOpen && (
+                  <div className="flex flex-wrap gap-2 p-2">
+                    {ev.segments.map((seg) => (
+                      <SegmentCard
+                        key={seg.id}
+                        seg={seg}
+                        isOpen={!closedSegments.has(seg.id)}
+                        onToggle={() => toggleSegment(seg.id)}
+                        labels={labels}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
