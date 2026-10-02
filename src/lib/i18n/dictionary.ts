@@ -353,6 +353,11 @@ export const dictionaries = {
       prevPage: "← Anterior",
       nextPage: "Siguiente →",
       pageOf: (current: number, total: number) => `Página ${current} de ${total}`,
+      overallStandingsTitle: "Puntuación y Puesto Global",
+      elementsLabel: "Elementos",
+      componentsLabel: "Componentes",
+      tapToDraft: "Toca para draftear",
+      totalLabel: "Total",
     },
     fantasyLeaderboard: {
       backToHub: "← Volver al Fantasy Hub",
@@ -1048,6 +1053,11 @@ export const dictionaries = {
       prevPage: "← Previous",
       nextPage: "Next →",
       pageOf: (current: number, total: number) => `Page ${current} of ${total}`,
+      overallStandingsTitle: "Overall Total / Global Standings",
+      elementsLabel: "Elements",
+      componentsLabel: "Components",
+      tapToDraft: "Tap to draft",
+      totalLabel: "Total",
     },
     fantasyLeaderboard: {
       backToHub: "← Back to Fantasy Hub",

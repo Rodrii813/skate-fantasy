@@ -195,3 +195,39 @@ export const SHOW_GROUP_SLOTS: SlotTemplate[] = [
   { name: "Performance", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_SHOW", rule: "SINGLE_PCS" },
   { name: "Idea and Choreography", slotType: "COMPONENT", categoryCode: "PCS_IDEA_CHOREOGRAPHY", rule: "SINGLE_PCS" },
 ];
+
+// Lookup inverso name → slotType, construido una sola vez a partir de TODAS
+// las plantillas de arriba. Se usa para separar, en pantalla, los picks ya
+// guardados de un usuario (FantasySlot.label — ver generate-slots/route.ts,
+// que crea cada slot con `label: t.name`, el mismo `name` que aquí) en
+// "Elements" (técnica) y "Components", sin tener que guardar el tipo en la
+// base de datos (el slot ya no "sabe" de qué plantilla vino una vez creado).
+const ALL_SLOT_TEMPLATES: SlotTemplate[] = [
+  ...FREE_SKATING_SHORT_SLOTS,
+  ...FREE_SKATING_LONG_SLOTS,
+  ...SOLO_DANCE_STYLE_SLOTS,
+  ...SOLO_DANCE_FREE_SLOTS,
+  ...PAIRS_SHORT_SLOTS,
+  ...PAIRS_FREE_SLOTS,
+  ...COUPLE_DANCE_STYLE_SLOTS,
+  ...COUPLE_DANCE_FREE_SLOTS,
+  ...SHOW_QUARTET_SLOTS,
+  ...PRECISION_SLOTS,
+  ...SHOW_GROUP_SLOTS,
+];
+
+const SLOT_TYPE_BY_LABEL: Record<string, "TECHNICAL" | "COMPONENT"> = {};
+for (const t of ALL_SLOT_TEMPLATES) {
+  if (!(t.name in SLOT_TYPE_BY_LABEL)) SLOT_TYPE_BY_LABEL[t.name] = t.slotType;
+}
+
+/**
+ * "TECHNICAL" (Elements) o "COMPONENT" según la etiqueta del slot
+ * (FantasySlot.label / ElementCategory.name). Si la etiqueta no se
+ * reconoce (plantilla editada a mano desde el admin, por ejemplo), cae en
+ * "TECHNICAL" por ser el grupo más numeroso — así ese pick sigue apareciendo
+ * en algún sitio en vez de desaparecer silenciosamente.
+ */
+export function getSlotTypeByLabel(label: string): "TECHNICAL" | "COMPONENT" {
+  return SLOT_TYPE_BY_LABEL[label] ?? "TECHNICAL";
+}

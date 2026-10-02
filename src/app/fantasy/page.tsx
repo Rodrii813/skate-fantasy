@@ -3,11 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getSegmentDraftStatus } from "@/lib/segments";
-import { computeCompetitionFantasyLeaderboard, computeMyPicksForCompetition } from "@/lib/scoring";
+import {
+  computeCompetitionFantasyLeaderboard,
+  computeCompetitionLeaderboardsBySegment,
+  computeMyPicksForCompetition,
+} from "@/lib/scoring";
+import { getSlotTypeByLabel } from "@/lib/fantasyTemplates";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import DraftStatusAccordion, { type DraftStatusColumn } from "./DraftStatusAccordion";
+import RankMatrix, { type RankMatrixGroup } from "./RankMatrix";
 import ArchivedCompetitionSelect from "./ArchivedCompetitionSelect";
 import RankSummaryCards from "./RankSummaryCards";
 import { getMyLeagueRanks } from "./rankSummary";
@@ -80,7 +86,7 @@ export default async function FantasyHubPage({
   // del usuario actual (qué tiene drafteado, su equipo por prueba, sus
   // ligas) son consultas independientes entre sí — se lanzan en paralelo con
   // Promise.all en vez de una detrás de otra, para no sumar sus tiempos.
-  const [competitionRanking, myData] = await Promise.all([
+  const [competitionRanking, myData, boardsByEvent] = await Promise.all([
     computeCompetitionFantasyLeaderboard(activeCompetition.id),
     (async () => {
       if (!session?.user?.email) return null;
@@ -101,6 +107,11 @@ export default async function FantasyHubPage({
         myLeagueRanks,
       };
     })(),
+    // Puntuación total + puesto de CADA segmento, para la matriz "Overall
+    // Total / Global Standings" de arriba — igual que calcula el Leaderboard
+    // para sus "Puntuaciones por prueba" (una única consulta en bloque para
+    // toda la competición, ver scoring.ts).
+    computeCompetitionLeaderboardsBySegment(activeCompetition.id),
   ]);
 
   const draftedSlotIds = myData?.draftedSlotIds ?? new Set<string>();
@@ -127,23 +138,7 @@ export default async function FantasyHubPage({
     }
   }
 
-  type CellEvent = {
-    eventId: string;
-    eventName: string;
-    categoryName: string;
-    state: "proximamente" | "abierto" | "cerrado";
-    drafted: boolean;
-    isTest: boolean;
-  };
-
-  const stateBadge: Record<CellEvent["state"], { label: string; className: string }> = {
-    proximamente: { label: t.stateUpcoming, className: "bg-slate-800 text-slate-400 border-slate-700" },
-    abierto: {
-      label: t.stateOpen,
-      className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    },
-    cerrado: { label: t.stateClosed, className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  };
+  type SegmentState = "proximamente" | "abierto" | "cerrado";
 
   // Activas (pestañas) vs archivadas (desplegable aparte) — una competición
   // ya terminada (fecha de fin pasada) no necesita su propia pestaña
@@ -159,7 +154,9 @@ export default async function FantasyHubPage({
 
   // Datos para el acordeón de Draft Status (ver DraftStatusAccordion.tsx):
   // todo ya traducido/calculado aquí en el servidor, el componente cliente
-  // solo decide qué disciplina está plegada.
+  // solo decide qué disciplina está plegada. Cada pick ya guardado se separa
+  // en Elements (técnica) y Components con getSlotTypeByLabel, porque la
+  // referencia muestra cada grupo por separado dentro de la tarjeta.
   const draftStatusColumns: DraftStatusColumn[] = columns.map((col) => {
     const eventsInColumn = activeCompetition.events.filter(
       (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
@@ -185,25 +182,22 @@ export default async function FantasyHubPage({
               ev.rosterLocksAt,
               slotsForSegment.length > 0
             );
-            const state: CellEvent["state"] =
+            const state: SegmentState =
               draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
-            const badge = stateBadge[state];
             const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
 
             const myEventPicks = myPicksByEvent.get(ev.id);
-            const mySegmentSlots = myEventPicks?.slotsBySegment.get(segment.id) ?? null;
+            const mySegmentSlots = myEventPicks?.slotsBySegment.get(segment.id) ?? [];
             const hasScores = myEventPicks?.hasScoresBySegment.has(segment.id) ?? false;
-            const myPicks =
-              mySegmentSlots && mySegmentSlots.length > 0
-                ? mySegmentSlots.map((slot) => ({
-                    slotId: slot.slotId,
-                    slotLabel: slot.slotLabel,
-                    skaterName: slot.skaterName,
-                    points: hasScores ? slot.points : null,
-                  }))
-                : null;
-            const myTotal =
-              myPicks && hasScores ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
+            const myPicks = mySegmentSlots.map((slot) => ({
+              slotId: slot.slotId,
+              slotLabel: slot.slotLabel,
+              skaterName: slot.skaterName,
+              points: hasScores ? slot.points : null,
+            }));
+            const elementPicks = myPicks.filter((p) => getSlotTypeByLabel(p.slotLabel) === "TECHNICAL");
+            const componentPicks = myPicks.filter((p) => getSlotTypeByLabel(p.slotLabel) === "COMPONENT");
+            const total = myPicks.length > 0 ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
 
             // Pulsar una celda del Hub lleva al Draft Room con esta misma
             // prueba+segmento ya cargada debajo (editable si está abierta,
@@ -218,13 +212,59 @@ export default async function FantasyHubPage({
               id: segment.id,
               label: ROW_LABELS[segIndex] ?? segment.name,
               showLabel: orderedSegments.length > 1,
-              badgeLabel: badge.label,
-              badgeClassName: badge.className,
+              state,
               drafted,
-              draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
+              hasScores,
+              total,
+              elementPicks,
+              componentPicks,
               href,
-              myPicks,
-              myTotal,
+            };
+          }),
+        };
+      }),
+    };
+  });
+
+  // Datos para la matriz "Overall Total / Global Standings" (ver
+  // RankMatrix.tsx): tu puntuación total y tu puesto en CADA segmento,
+  // calculados a partir de boardsByEvent (una única consulta en bloque para
+  // toda la competición, igual que usa el Leaderboard).
+  const rankMatrixGroups: RankMatrixGroup[] = columns.map((col) => {
+    const eventsInColumn = activeCompetition.events.filter(
+      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
+    );
+    return {
+      key: col.key,
+      label: col.label,
+      events: eventsInColumn.map((ev) => {
+        const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
+        const categoryLabel = `${translateCategoryName(ev.category.name, locale)}${
+          ev.showFormat
+            ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
+            : ""
+        }`;
+        const board = boardsByEvent.get(ev.id);
+        return {
+          id: ev.id,
+          categoryLabel,
+          isTest: Boolean(ev.isTest),
+          cells: orderedSegments.map((segment, segIndex) => {
+            const segmentBoard = board?.get(segment.id);
+            let total: number | null = null;
+            let rank: number | null = null;
+            if (myData && segmentBoard?.hasScores) {
+              const idx = segmentBoard.rosters.findIndex((r) => r.userId === myData!.userId);
+              if (idx !== -1) {
+                total = segmentBoard.rosters[idx].total;
+                rank = idx + 1;
+              }
+            }
+            return {
+              segmentId: segment.id,
+              segmentLabel: ROW_LABELS[segIndex] ?? segment.name,
+              total,
+              rank,
             };
           }),
         };
@@ -321,6 +361,21 @@ export default async function FantasyHubPage({
           noRankLabel={tl.noRankYet}
         />
 
+        {/* Overall Total / Global Standings: tu puntuación y puesto en cada
+            segmento, calcada de la referencia — ver RankMatrix.tsx. */}
+        <div className="bg-slate-900/80 border border-slate-800 rounded-2xl overflow-hidden shadow-lg shadow-black/40">
+          <div className="p-4 border-b border-slate-800">
+            <h2 className="text-sm font-bold uppercase tracking-wider text-slate-300">
+              {t.overallStandingsTitle}
+            </h2>
+          </div>
+          {columns.length === 0 ? (
+            <p className="p-8 text-center text-xs text-slate-400">{t.noEvents}</p>
+          ) : (
+            <RankMatrix groups={rankMatrixGroups} rankPrefix="#" />
+          )}
+        </div>
+
         {/* Draft Status: antes era una tabla matriz (filas = Corto/Largo,
             columnas = disciplina+género), donde cada celda apilaba verticalmente
             TODOS los eventos de esa combinación que cayeran en esa fila — y
@@ -351,7 +406,17 @@ export default async function FantasyHubPage({
               columns={draftStatusColumns}
               expandAllLabel={t.expandAll}
               collapseAllLabel={t.collapseAll}
-              goToEventLabel={t.goToEvent}
+              labels={{
+                openBadge: t.stateOpen,
+                upcomingBadge: t.stateUpcoming,
+                draftedBadge: t.alreadyDrafted,
+                notDraftedBadge: t.notDrafted,
+                totalLabel: t.totalLabel,
+                elementsLabel: t.elementsLabel,
+                componentsLabel: t.componentsLabel,
+                tapToDraft: t.tapToDraft,
+                goToEventLabel: t.goToEvent,
+              }}
             />
           )}
         </div>

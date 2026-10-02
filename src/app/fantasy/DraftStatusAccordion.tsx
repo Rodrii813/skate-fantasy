@@ -3,22 +3,24 @@
 import Link from "next/link";
 import { useState } from "react";
 
-// Lista de disciplinas plegable, en vez de la fila de columnas de antes: con
-// una competición grande (varias categorías de edad × varias disciplinas,
-// no solo las 4 de referencias como RockerLive) mostrar todo desplegado de
-// golpe se hacía interminable. Cada disciplina+género empieza plegada y se
-// despliega al pulsarla — mismo criterio que los días de /calendario y los
-// grupos de disciplina de /competitions.
+// Lista de disciplinas plegable: con una competición grande (varias
+// categorías de edad × varias disciplinas, no solo las 4 de la referencia
+// que trajo el usuario) mostrar todo desplegado de golpe se hacía
+// interminable. Cada disciplina+género empieza plegada y se despliega al
+// pulsarla — mismo criterio que los días de /calendario y los grupos de
+// disciplina de /competitions.
 //
 // Dentro de cada disciplina, cada prueba+segmento es a su vez su propia
-// tarjeta plegable (empieza cerrada): la cabecera siempre visible enseña el
-// estado y tu puntuación total, y al pulsarla se despliega tu equipo
-// completo — igual que la referencia, pero con un nivel más de plegado
-// porque aquí hay muchas más pruebas que en la referencia.
+// tarjeta plegable (calcada de la referencia: cabecera con el estado
+// "OPEN"/nada y "Drafted"/"Not drafted", y al desplegarla tu equipo completo
+// separado en ELEMENTS y COMPONENTS con la puntuación de cada patinador
+// elegido, o un enlace "Tap to draft" si la prueba está abierta y todavía no
+// has elegido nada).
 //
 // Todo el contenido (traducciones, estado de cada segmento, si el usuario
-// actual ya tiene draft hecho) se calcula en el servidor (fantasy/page.tsx)
-// y llega aquí ya resuelto; este componente solo decide qué está plegado.
+// actual ya tiene draft hecho, sus picks ya separados en Elements/Components)
+// se calcula en el servidor (fantasy/page.tsx) y llega aquí ya resuelto; este
+// componente solo decide qué está plegado.
 
 export interface DraftStatusPick {
   slotId: string;
@@ -31,16 +33,16 @@ export interface DraftStatusSegment {
   id: string;
   label: string;
   showLabel: boolean;
-  badgeLabel: string;
-  badgeClassName: string;
+  state: "proximamente" | "abierto" | "cerrado";
   drafted: boolean;
-  draftedText: string | null;
+  hasScores: boolean;
+  total: number | null;
+  // Tu equipo en este segmento, ya separado en Elements (técnica) y
+  // Components — ver getSlotTypeByLabel en fantasyTemplates.ts. Vacíos si no
+  // has hecho draft aquí todavía.
+  elementPicks: DraftStatusPick[];
+  componentPicks: DraftStatusPick[];
   href: string | null;
-  // Tu equipo en este segmento, ya resuelto en el servidor — null si no has
-  // hecho draft aquí todavía. Se muestra directamente al desplegar la
-  // disciplina (sin un toggle aparte), igual que en la referencia.
-  myPicks: DraftStatusPick[] | null;
-  myTotal: number | null;
 }
 
 export interface DraftStatusEvent {
@@ -56,18 +58,42 @@ export interface DraftStatusColumn {
   events: DraftStatusEvent[];
 }
 
+export interface DraftStatusLabels {
+  openBadge: string;
+  upcomingBadge: string;
+  draftedBadge: string;
+  notDraftedBadge: string;
+  totalLabel: string;
+  elementsLabel: string;
+  componentsLabel: string;
+  tapToDraft: string;
+  goToEventLabel: string;
+}
+
+function PickRow({ pick }: { pick: DraftStatusPick }) {
+  return (
+    <div className="flex items-center justify-between gap-2 px-2 py-1 text-[10px]">
+      <div className="min-w-0">
+        <p className="text-slate-500 truncate">{pick.slotLabel}</p>
+        <p className="text-slate-300 font-semibold truncate">{pick.skaterName}</p>
+      </div>
+      <span className="shrink-0 font-mono font-bold text-slate-400">
+        {pick.points === null ? "—" : pick.points.toFixed(2)}
+      </span>
+    </div>
+  );
+}
+
 export default function DraftStatusAccordion({
   columns,
   expandAllLabel,
   collapseAllLabel,
-  goToEventLabel,
+  labels,
 }: {
   columns: DraftStatusColumn[];
   expandAllLabel: string;
   collapseAllLabel: string;
-  // Texto del enlace que, dentro de una tarjeta de prueba ya desplegada,
-  // lleva al Draft Room de esa prueba+segmento concretos.
-  goToEventLabel: string;
+  labels: DraftStatusLabels;
 }) {
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set(columns.map((c) => c.key)));
   // Plegado independiente para cada tarjeta de prueba+segmento (segundo
@@ -145,7 +171,7 @@ export default function DraftStatusAccordion({
                         {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
                       </p>
                       {ev.segments.map((seg) => {
-                        const hasPicks = seg.myPicks && seg.myPicks.length > 0;
+                        const hasBody = seg.elementPicks.length > 0 || seg.componentPicks.length > 0;
                         const isSegOpen = openSegments.has(seg.id);
                         return (
                           <div
@@ -156,13 +182,13 @@ export default function DraftStatusAccordion({
                               type="button"
                               onClick={() => toggleSegment(seg.id)}
                               aria-expanded={isSegOpen}
-                              disabled={!hasPicks}
+                              disabled={!hasBody}
                               className={`flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left transition ${
-                                hasPicks ? "hover:bg-slate-800/40" : "cursor-default"
+                                hasBody ? "hover:bg-slate-800/40" : "cursor-default"
                               }`}
                             >
                               <span className="flex items-center gap-1.5 min-w-0">
-                                {hasPicks && (
+                                {hasBody && (
                                   <span
                                     className={`shrink-0 text-[9px] text-slate-500 transition-transform ${
                                       isSegOpen ? "" : "-rotate-90"
@@ -176,71 +202,83 @@ export default function DraftStatusAccordion({
                                   <span className="shrink-0 text-[10px] text-slate-500">{seg.label}</span>
                                 )}
                               </span>
-                              <span className="flex items-center gap-2 shrink-0">
-                                <span
-                                  className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${seg.badgeClassName}`}
-                                >
-                                  {seg.badgeLabel}
-                                </span>
-                                {seg.myTotal !== null ? (
-                                  <span className="text-[11px] font-bold text-indigo-400">
-                                    {seg.myTotal.toFixed(2)}
+                              <span className="flex items-center gap-1 shrink-0">
+                                {seg.state === "abierto" && (
+                                  <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                    {labels.openBadge}
+                                  </span>
+                                )}
+                                {seg.state === "proximamente" ? (
+                                  <span className="rounded-full border border-slate-800 bg-slate-900/60 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
+                                    {labels.upcomingBadge}
                                   </span>
                                 ) : (
-                                  seg.draftedText && (
-                                    <span
-                                      className={`text-[11px] font-semibold ${
-                                        seg.drafted ? "text-indigo-400" : "text-slate-500"
-                                      }`}
-                                    >
-                                      {seg.draftedText}
-                                    </span>
-                                  )
+                                  <span
+                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                                      seg.drafted
+                                        ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-300"
+                                        : "border-slate-700 bg-slate-800/60 text-slate-400"
+                                    }`}
+                                  >
+                                    {seg.drafted ? labels.draftedBadge : labels.notDraftedBadge}
+                                  </span>
                                 )}
                               </span>
                             </button>
 
-                            {/* Tu equipo ya elegido en este segmento: ahora
-                                oculto hasta que se pulsa la propia tarjeta
-                                (antes se enseñaba siempre al desplegar la
-                                disciplina entera). */}
-                            {isSegOpen && hasPicks && (
+                            {/* Tu equipo ya elegido en este segmento, separado
+                                en Elements y Components — oculto hasta que se
+                                pulsa la propia tarjeta. */}
+                            {isSegOpen && hasBody && (
                               <div className="border-t border-slate-800 divide-y divide-slate-800/80">
-                                {seg.myPicks!.map((pick) => (
-                                  <div
-                                    key={pick.slotId}
-                                    className="flex items-center justify-between gap-2 px-2 py-1 text-[10px]"
-                                  >
-                                    <div className="min-w-0">
-                                      <p className="text-slate-500 truncate">{pick.slotLabel}</p>
-                                      <p className="text-slate-300 font-semibold truncate">{pick.skaterName}</p>
-                                    </div>
-                                    <span className="shrink-0 font-mono font-bold text-slate-400">
-                                      {pick.points === null ? "—" : pick.points.toFixed(2)}
-                                    </span>
+                                <div className="flex items-center justify-between px-2 py-1 text-[10px]">
+                                  <span className="text-slate-500">{labels.totalLabel}</span>
+                                  <span className="font-mono font-bold text-indigo-400">
+                                    {seg.hasScores && seg.total !== null ? seg.total.toFixed(2) : "—"}
+                                  </span>
+                                </div>
+                                {seg.elementPicks.length > 0 && (
+                                  <div className="px-0 py-1">
+                                    <p className="px-2 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-600">
+                                      {labels.elementsLabel}
+                                    </p>
+                                    {seg.elementPicks.map((pick) => (
+                                      <PickRow key={pick.slotId} pick={pick} />
+                                    ))}
                                   </div>
-                                ))}
+                                )}
+                                {seg.componentPicks.length > 0 && (
+                                  <div className="px-0 py-1">
+                                    <p className="px-2 pb-0.5 text-[9px] font-bold uppercase tracking-wide text-slate-600">
+                                      {labels.componentsLabel}
+                                    </p>
+                                    {seg.componentPicks.map((pick) => (
+                                      <PickRow key={pick.slotId} pick={pick} />
+                                    ))}
+                                  </div>
+                                )}
                                 {seg.href && (
                                   <Link
                                     href={seg.href}
                                     className="block px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-400 transition hover:bg-slate-800/40 hover:text-indigo-300"
                                   >
-                                    {goToEventLabel} →
+                                    {labels.goToEventLabel} →
                                   </Link>
                                 )}
                               </div>
                             )}
 
-                            {/* Sin picks todavía: la cabecera no se puede
-                                desplegar (no hay nada que enseñar), pero si
-                                la prueba está abierta se enlaza directo al
-                                Draft Room para empezar a draftear. */}
-                            {!hasPicks && seg.href && (
+                            {/* Sin picks todavía pero abierta: enlace directo
+                                para empezar a draftear, igual que la
+                                referencia ("✏️ Tap to draft"). Si está
+                                cerrada o próximamente y no hay picks, no hay
+                                nada más que mostrar. */}
+                            {!hasBody && seg.state === "abierto" && seg.href && (
                               <Link
                                 href={seg.href}
                                 className="block border-t border-slate-800 px-2 py-1.5 text-center text-[10px] font-semibold text-indigo-400 transition hover:bg-slate-800/40 hover:text-indigo-300"
                               >
-                                {goToEventLabel} →
+                                ✏️ {labels.tapToDraft}
                               </Link>
                             )}
                           </div>
