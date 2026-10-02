@@ -367,6 +367,11 @@ export const dictionaries = {
       noEventsWithScores: "Esta competición todavía no tiene pruebas creadas.",
       emptySegment: (label: string) => `Nadie ha guardado una alineación de fantasy para ${label} todavía.`,
     },
+    fantasyDraft: {
+      backToHub: "← Volver al Fantasy Hub",
+      title: "Draft Room",
+      subtitle: "Elige una prueba abierta para draftear, o repasa lo que ya has elegido.",
+    },
     fantasyRoster: {
       deadline: "Cierre",
       closed: "🔒 Cerrado",
@@ -1051,6 +1056,11 @@ export const dictionaries = {
       programScoresTitle: "Program Scores",
       noEventsWithScores: "This competition doesn't have any events created yet.",
       emptySegment: (label: string) => `No one has saved a fantasy lineup for ${label} yet.`,
+    },
+    fantasyDraft: {
+      backToHub: "← Back to Fantasy Hub",
+      title: "Draft Room",
+      subtitle: "Pick an open event to draft, or review what you've already picked.",
     },
     fantasyRoster: {
       deadline: "Deadline",
