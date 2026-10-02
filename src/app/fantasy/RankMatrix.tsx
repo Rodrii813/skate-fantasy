@@ -1,12 +1,14 @@
-// "Overall Total / Global Standings" del Fantasy Hub: tu puntuación total y
-// tu puesto en CADA segmento. Una única tira horizontal deslizable (como en
-// la referencia, que tenía las 4 disciplinas en una sola fila) en vez de un
-// bloque por disciplina apilado verticalmente — con muchas más categorías
-// que la referencia, apilar un bloque por disciplina ocupaba muchísima
-// altura de página. Cada tarjeta lleva su disciplina+categoría+segmento
-// encima para no perder el contexto al no haber ya una tabla por disciplina.
-// Sin interactividad (no hace falta cliente): solo informa, no navega a
-// ningún sitio.
+"use client";
+
+import { useState } from "react";
+
+// "Overall Total / Global Standings" del Fantasy Hub: selector de modalidad
+// (disciplina+género) en pestañas deslizables — igual que DraftStatusAccordion
+// — y, para la modalidad activa, una tabla de 2 filas (Corto arriba, Largo
+// abajo) con una columna por cada categoría de esa modalidad, todo en el
+// mismo cuadro. Antes era una tira horizontal con TODAS las modalidades
+// mezcladas a la vez, que perdía la noción de fila Corto/Largo; ahora cada
+// modalidad se mira por separado, como pidió el usuario.
 
 export interface RankMatrixCell {
   segmentId: string;
@@ -36,35 +38,77 @@ export default function RankMatrix({
   // Prefijo delante del puesto, p.ej. "#" → "#108".
   rankPrefix: string;
 }) {
+  const [activeKey, setActiveKey] = useState<string>(groups[0]?.key ?? "");
+  const activeGroup = groups.find((g) => g.key === activeKey) ?? groups[0];
+  const maxRows = Math.max(1, ...(activeGroup?.events.map((ev) => ev.cells.length) ?? [1]));
+
   return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-2 p-4 w-max">
-        {groups.map((group) =>
-          group.events.map((ev) =>
-            ev.cells.map((cell) => (
-              <div
-                key={cell.segmentId}
-                className="w-28 shrink-0 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-2 text-center"
-              >
-                <p className="truncate text-[9px] uppercase tracking-wide text-slate-500">{group.label}</p>
-                <p className="truncate text-[9px] text-slate-600">
-                  {ev.categoryLabel}
-                  {ev.isTest && <span className="ml-0.5 text-amber-400">🧪</span>} · {cell.segmentLabel}
-                </p>
-                <p className="mt-1 text-sm font-bold text-slate-100">
-                  {cell.total !== null ? cell.total.toFixed(2) : "—"}
-                </p>
-                {cell.rank !== null && (
-                  <p className="text-[10px] font-semibold text-indigo-400">
-                    {rankPrefix}
-                    {cell.rank}
-                  </p>
-                )}
-              </div>
-            ))
-          )
-        )}
+    <div>
+      <div className="flex gap-1.5 overflow-x-auto p-3 border-b border-slate-800">
+        {groups.map((g) => (
+          <button
+            key={g.key}
+            type="button"
+            onClick={() => setActiveKey(g.key)}
+            className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition ${
+              g.key === activeGroup?.key
+                ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
+                : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+            }`}
+          >
+            {g.label}
+          </button>
+        ))}
       </div>
+
+      {activeGroup && (
+        <div className="overflow-x-auto p-4">
+          <table className="w-full text-left text-xs">
+            <thead>
+              <tr>
+                <th className="w-16" />
+                {activeGroup.events.map((ev) => (
+                  <th
+                    key={ev.id}
+                    className="px-1 pb-1.5 text-[10px] font-medium uppercase tracking-wide text-slate-500 truncate max-w-[9rem]"
+                  >
+                    {ev.categoryLabel}
+                    {ev.isTest && <span className="ml-1 text-amber-400">🧪</span>}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {Array.from({ length: maxRows }).map((_, rowIndex) => (
+                <tr key={rowIndex}>
+                  <td className="pr-2 py-1 text-[10px] text-slate-500 whitespace-nowrap">
+                    {activeGroup.events[0]?.cells[rowIndex]?.segmentLabel ?? ""}
+                  </td>
+                  {activeGroup.events.map((ev) => {
+                    const cell = ev.cells[rowIndex];
+                    if (!cell) return <td key={ev.id} className="px-1 py-1" />;
+                    return (
+                      <td key={ev.id} className="px-1 py-1 min-w-[6.5rem]">
+                        <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-center">
+                          <p className="text-xs font-bold text-slate-100">
+                            {cell.total !== null ? cell.total.toFixed(2) : "—"}
+                          </p>
+                          {cell.rank !== null && (
+                            <p className="text-[10px] font-semibold text-indigo-400">
+                              {rankPrefix}
+                              {cell.rank}
+                            </p>
+                          )}
+                        </div>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
