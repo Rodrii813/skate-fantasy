@@ -119,14 +119,31 @@ export default function DraftStatusMatrix({
 
             {!isCollapsed && (
               <div className="overflow-x-auto px-4 pb-3">
-                <table className="text-left text-xs">
+                {/* table-fixed + colgroup: todas las columnas de prueba
+                    reparten el ancho A PARTES IGUALES. Con w-full, si la
+                    tarjeta tiene sitio de sobra las columnas se estiran para
+                    ocupar todo el ancho (ya no se quedan apretadas a la
+                    izquierda); minWidth en la tabla pone un suelo por
+                    columna para que, si no caben, se deslice en horizontal
+                    en vez de aplastarse, y la cabecera queda siempre
+                    alineada con su casilla de abajo. */}
+                <table
+                  className="w-full table-fixed text-left text-xs"
+                  style={{ minWidth: `${3 + group.events.length * 6.5}rem` }}
+                >
+                  <colgroup>
+                    <col style={{ width: "3rem" }} />
+                    {group.events.map((ev) => (
+                      <col key={ev.id} />
+                    ))}
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th className="w-12" />
+                      <th />
                       {group.events.map((ev) => (
                         <th
                           key={ev.id}
-                          className="px-1 pb-1 align-bottom text-[10px] font-medium uppercase leading-tight tracking-wide text-slate-500 whitespace-normal break-words min-w-[6.5rem] max-w-[8.5rem]"
+                          className="px-1 pb-1 align-bottom text-[10px] font-medium uppercase leading-tight tracking-wide text-slate-500 break-words"
                         >
                           {ev.categoryLabel}
                           {ev.isTest && <span className="ml-0.5 text-amber-400">🧪</span>}
@@ -147,7 +164,7 @@ export default function DraftStatusMatrix({
                           const isSelected = cell.segmentId === selectedSegmentId;
                           const pill = (
                             <span
-                              className={`block rounded-md border px-2 py-1.5 text-center text-[10px] font-semibold leading-tight transition ${style.className} ${
+                              className={`block w-full rounded-md border px-2 py-1.5 text-center text-[10px] font-semibold leading-tight transition ${style.className} ${
                                 isSelected ? "ring-2 ring-indigo-400" : ""
                               } ${cell.href ? "cursor-pointer hover:brightness-110" : ""}`}
                             >
@@ -155,7 +172,7 @@ export default function DraftStatusMatrix({
                             </span>
                           );
                           return (
-                            <td key={ev.id} className="px-1 py-1 min-w-[6.5rem] max-w-[8.5rem]">
+                            <td key={ev.id} className="px-1 py-1">
                               {cell.href ? <Link href={cell.href}>{pill}</Link> : pill}
                             </td>
                           );
