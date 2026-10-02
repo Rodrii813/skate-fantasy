@@ -126,7 +126,7 @@ export default function DraftStatusMatrix({
                       {group.events.map((ev) => (
                         <th
                           key={ev.id}
-                          className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500 truncate max-w-[7rem]"
+                          className="px-1 pb-1 align-bottom text-[10px] font-medium uppercase leading-tight tracking-wide text-slate-500 whitespace-normal break-words min-w-[6.5rem] max-w-[8.5rem]"
                         >
                           {ev.categoryLabel}
                           {ev.isTest && <span className="ml-0.5 text-amber-400">🧪</span>}
@@ -155,7 +155,7 @@ export default function DraftStatusMatrix({
                             </span>
                           );
                           return (
-                            <td key={ev.id} className="px-1 py-1 min-w-[6rem] max-w-[7rem]">
+                            <td key={ev.id} className="px-1 py-1 min-w-[6.5rem] max-w-[8.5rem]">
                               {cell.href ? <Link href={cell.href}>{pill}</Link> : pill}
                             </td>
                           );
