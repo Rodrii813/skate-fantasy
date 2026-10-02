@@ -151,6 +151,17 @@ export default async function HomePage() {
           </p>
         </div>
 
+        {/* Anuncio de la home: aviso de texto libre, activable/desactivable
+            desde /admin/settings sin tocar código ni esperar un despliegue
+            (ver SiteSettings.announcementEnabled/announcementText) — para
+            cosas puntuales como "todavía no hay órdenes de salida". */}
+        {siteSettings?.announcementEnabled && siteSettings.announcementText && (
+          <div className="flex items-start gap-2.5 bg-sky-500/10 border border-sky-500/25 text-sky-100 text-xs rounded-xl px-4 py-2.5 whitespace-pre-line">
+            <span className="text-sm shrink-0">📢</span>
+            <p>{siteSettings.announcementText}</p>
+          </div>
+        )}
+
         {countdownVisible && (
           <WorldSkateGamesCountdown
             targetDate={siteSettings!.countdownTargetDate!.toISOString()}

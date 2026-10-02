@@ -24,6 +24,9 @@ export default function AdminSettingsPage() {
   const [countdownLocation, setCountdownLocation] = useState("");
   const [countdownTargetDate, setCountdownTargetDate] = useState("");
 
+  const [announcementEnabled, setAnnouncementEnabled] = useState(false);
+  const [announcementText, setAnnouncementText] = useState("");
+
   const load = async () => {
     setLoading(true);
     const res = await fetch("/api/admin/settings");
@@ -33,6 +36,8 @@ export default function AdminSettingsPage() {
       setCountdownTitle(data.countdownTitle || "");
       setCountdownLocation(data.countdownLocation || "");
       setCountdownTargetDate(toLocalDatetimeInput(data.countdownTargetDate));
+      setAnnouncementEnabled(!!data.announcementEnabled);
+      setAnnouncementText(data.announcementText || "");
     }
     setLoading(false);
   };
@@ -59,6 +64,8 @@ export default function AdminSettingsPage() {
           // conocida (igual que otros formularios de fecha del admin), no
           // algo nuevo de esta pantalla.
           countdownTargetDate: countdownEnabled && countdownTargetDate ? countdownTargetDate : null,
+          announcementEnabled,
+          announcementText,
         }),
       });
       const data = await res.json().catch(() => ({}));
@@ -136,6 +143,40 @@ export default function AdminSettingsPage() {
                   disabled={!countdownEnabled}
                   required={countdownEnabled}
                   className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-100 disabled:opacity-40"
+                />
+              </div>
+            </div>
+
+            <div className="border-t border-slate-800 pt-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-amber-400">📢 Anuncio de la home</h2>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Un aviso de texto libre arriba del todo en la portada, para cosas puntuales (p.ej. "todavía no hay
+                    órdenes de salida"). Actívalo o desactívalo cuando quieras, sin esperar a un despliegue.
+                  </p>
+                </div>
+                <label className="flex items-center gap-2 text-xs shrink-0 ml-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={announcementEnabled}
+                    onChange={(e) => setAnnouncementEnabled(e.target.checked)}
+                    className="accent-amber-500 w-4 h-4"
+                  />
+                  {announcementEnabled ? "Activado" : "Desactivado"}
+                </label>
+              </div>
+
+              <div className="space-y-1 text-xs">
+                <label className="text-slate-400">Texto del anuncio</label>
+                <textarea
+                  value={announcementText}
+                  onChange={(e) => setAnnouncementText(e.target.value)}
+                  disabled={!announcementEnabled}
+                  required={announcementEnabled}
+                  rows={3}
+                  className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-slate-100 disabled:opacity-40"
+                  placeholder="Todavía no han salido los órdenes de salida oficiales, así que varias funciones están bloqueadas. Mientras tanto, hemos añadido un evento de prueba para que puedas probar el Fantasy y las Predicciones."
                 />
               </div>
             </div>

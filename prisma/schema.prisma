@@ -21,7 +21,15 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // DATABASE_URL debe ser la conexión CON POOLER de Neon (host con
+  // "-pooler", vía PgBouncer) — la que usa la app en cada petición, incluidas
+  // las funciones serverless de Vercel, que pueden abrir muchas conexiones a
+  // la vez. `prisma migrate`/`db push` no funcionan bien contra el pooler
+  // (PgBouncer en modo transacción no soporta los prepared statements que
+  // usan), así que necesitan la conexión DIRECTA aparte — de ahí DIRECT_URL.
+  // Ver .env.example para el porqué de cada una.
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum Role {
@@ -405,17 +413,22 @@ model LeagueMembership {
 }
 
 // Fila única (singleton, id fijo "singleton") con ajustes globales del sitio
-// editables desde el panel de admin sin tocar código. De momento solo la
-// cuenta atrás de la home: antes se detectaba sola buscando una Competition
-// llamada "World Skate Games" y se mostraba siempre que existiera una — no
-// había forma de quitarla, ni de usarla para otra cosa que no fuera
-// literalmente esa competición. Ahora el admin decide el texto, la fecha y
-// si se muestra o no.
+// editables desde el panel de admin sin tocar código. De momento la cuenta
+// atrás de la home (antes se detectaba sola buscando una Competition llamada
+// "World Skate Games" y se mostraba siempre que existiera una — no había
+// forma de quitarla, ni de usarla para otra cosa que no fuera literalmente
+// esa competición; ahora el admin decide el texto, la fecha y si se muestra
+// o no) y el anuncio de la home (un aviso de texto libre, activable/
+// desactivable, para cosas puntuales — p.ej. "todavía no hay órdenes de
+// salida" — sin tener que tocar código ni esperar un despliegue para
+// quitarlo cuando deje de aplicar).
 model SiteSettings {
   id                  String    @id @default("singleton")
   countdownEnabled    Boolean   @default(false)
   countdownTitle      String?
   countdownLocation   String?
   countdownTargetDate DateTime?
+  announcementEnabled Boolean   @default(false)
+  announcementText    String?
   updatedAt           DateTime  @updatedAt
 }

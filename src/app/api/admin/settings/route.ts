@@ -28,7 +28,14 @@ export async function PUT(req: Request) {
 
   try {
     const body = await req.json();
-    const { countdownEnabled, countdownTitle, countdownLocation, countdownTargetDate } = body;
+    const {
+      countdownEnabled,
+      countdownTitle,
+      countdownLocation,
+      countdownTargetDate,
+      announcementEnabled,
+      announcementText,
+    } = body;
 
     if (countdownEnabled && !countdownTargetDate) {
       return NextResponse.json(
@@ -36,22 +43,26 @@ export async function PUT(req: Request) {
         { status: 400 }
       );
     }
+    if (announcementEnabled && !announcementText?.trim()) {
+      return NextResponse.json(
+        { error: "Falta el texto del anuncio para activarlo." },
+        { status: 400 }
+      );
+    }
+
+    const data = {
+      countdownEnabled: !!countdownEnabled,
+      countdownTitle: countdownTitle?.trim() || null,
+      countdownLocation: countdownLocation?.trim() || null,
+      countdownTargetDate: countdownTargetDate ? new Date(countdownTargetDate) : null,
+      announcementEnabled: !!announcementEnabled,
+      announcementText: announcementText?.trim() || null,
+    };
 
     const settings = await prisma.siteSettings.upsert({
       where: { id: "singleton" },
-      update: {
-        countdownEnabled: !!countdownEnabled,
-        countdownTitle: countdownTitle?.trim() || null,
-        countdownLocation: countdownLocation?.trim() || null,
-        countdownTargetDate: countdownTargetDate ? new Date(countdownTargetDate) : null,
-      },
-      create: {
-        id: "singleton",
-        countdownEnabled: !!countdownEnabled,
-        countdownTitle: countdownTitle?.trim() || null,
-        countdownLocation: countdownLocation?.trim() || null,
-        countdownTargetDate: countdownTargetDate ? new Date(countdownTargetDate) : null,
-      },
+      update: data,
+      create: { id: "singleton", ...data },
     });
     return NextResponse.json({ ok: true, settings });
   } catch (error: any) {
