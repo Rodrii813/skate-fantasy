@@ -1,12 +1,15 @@
 import Link from "next/link";
 import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getSegmentDraftStatus } from "@/lib/segments";
+import { getSegmentDraftStatus, effectiveLocksAt, isSegmentLocked, isSegmentOpenByTime } from "@/lib/segments";
 import { computeMyPicksForCompetition } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
+import FantasyRosterForm from "@/app/fantasy/[eventId]/FantasyRosterForm";
+import TestEventBanner from "@/app/_components/TestEventBanner";
 import DraftStatusAccordion, { type DraftStatusColumn } from "../DraftStatusAccordion";
 import ArchivedCompetitionSelect from "../ArchivedCompetitionSelect";
 
@@ -17,22 +20,81 @@ export async function generateMetadata() {
   return { title: t.title, description: t.subtitle };
 }
 
-// /fantasy/draft es el Draft Room: el selector de Draft Status (acordeón por
-// disciplina, cada prueba+segmento es su propia tarjeta plegable — ver
-// DraftStatusAccordion.tsx) ahora vive aquí, en su propia página, en vez de
-// en el Fantasy Hub. Al abrir una tarjeta ves tu equipo si ya lo tienes; si
-// la prueba sigue abierta hay un enlace para ir a draftear (/events/[id],
-// que sigue siendo la página donde realmente se eligen patinadores); si está
-// cerrada, solo puedes consultar lo que ya elegiste.
+// /fantasy/draft es el Draft Room, TODO en una sola página (como la
+// referencia): arriba el selector de Draft Status (acordeón por disciplina,
+// cada prueba+segmento es su propia tarjeta plegable — ver
+// DraftStatusAccordion.tsx) y, al elegir una prueba+segmento (abierto o
+// cerrado, ver `href` más abajo), el propio formulario de draftear
+// (FantasyRosterForm, el mismo que usa /events/[id]) aparece DEBAJO, en esta
+// misma página — ya no se navega a otra URL para draftear. El formulario ya
+// sabe mostrarse en modo solo-lectura cuando el segmento está cerrado (ver
+// FantasyRosterForm.tsx), así que sirve igual para draftear como para
+// consultar lo ya elegido.
 //
-// El Fantasy Hub (/fantasy) mantiene su propia copia de estas mismas
-// tarjetas (tu equipo, puntuado si ya hay resultados) porque el usuario
-// quiere verlas también ahí a modo de resumen — este Draft Room es la
-// página dedicada a la que lleva el botón de acceso directo "Draft Room".
+// El Fantasy Hub (/fantasy) mantiene su propia copia de las tarjetas de
+// Draft Status (con tu equipo, puntuado si ya hay resultados) a modo de
+// resumen; este Draft Room es la página dedicada a la que lleva el botón de
+// acceso directo "Draft Room", y la única que de verdad permite draftear.
+// Misma lógica que /events/[id]/page.tsx (que se mantiene tal cual por si
+// alguien llega por un enlace antiguo): trae el evento con todo lo que
+// necesita FantasyRosterForm, más los picks ya guardados del usuario, y
+// calcula el bloqueo de cada segmento con la hora del servidor.
+async function loadDraftFormEvent(eventId: string, userEmail: string, initialSegmentId?: string) {
+  const [user, event] = await Promise.all([
+    prisma.user.findUnique({ where: { email: userEmail } }),
+    prisma.event.findUnique({
+      where: { id: eventId },
+      include: {
+        segments: { orderBy: { order: "asc" } },
+        slots: { orderBy: { order: "asc" } },
+        registrations: { include: { skater: true }, orderBy: [{ startOrder: "asc" }] },
+      },
+    }),
+  ]);
+  if (!event) return null;
+
+  let initialPicks: Record<string, string> = {};
+  if (user) {
+    const existingRoster = await prisma.fantasyRoster.findUnique({
+      where: { userId_eventId: { userId: user.id, eventId: event.id } },
+      include: { picks: true },
+    });
+    if (existingRoster) {
+      for (const p of existingRoster.picks) initialPicks[p.slotId] = p.skaterId;
+    }
+  }
+
+  const segmentsWithLock = event.segments.map((seg) => {
+    const closed = isSegmentLocked(seg, event.rosterLocksAt);
+    const notYetOpen = !closed && !isSegmentOpenByTime(seg);
+    return {
+      id: seg.id,
+      name: seg.name,
+      order: seg.order,
+      locksAt: effectiveLocksAt(seg, event.rosterLocksAt).toISOString(),
+      locked: closed || notYetOpen,
+      upcoming: notYetOpen,
+    };
+  });
+
+  return {
+    id: event.id,
+    name: event.name,
+    isTest: event.isTest,
+    rosterLocksAt: event.rosterLocksAt.toISOString(),
+    eventLocked: new Date() > event.rosterLocksAt,
+    segments: segmentsWithLock,
+    slots: event.slots,
+    registrations: event.registrations,
+    initialPicks,
+    initialSegmentId,
+  };
+}
+
 export default async function FantasyDraftPage({
   searchParams,
 }: {
-  searchParams: { competition?: string };
+  searchParams: { competition?: string; event?: string; segment?: string };
 }) {
   const session = await getServerSession(authOptions);
   const locale = getLocale();
@@ -177,11 +239,14 @@ export default async function FantasyDraftPage({
               badgeClassName: badge.className,
               drafted,
               draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
-              // Solo las pruebas ABIERTAS enlazan al Draft Room real
-              // (/events/[id]) para elegir patinadores — si está cerrada,
-              // la tarjeta sigue sirviendo para consultar tu equipo, pero no
-              // hay enlace para "ir a draftear" porque ya no se puede.
-              href: state === "abierto" ? `/events/${ev.id}?segment=${segment.id}` : null,
+              // Abierta o cerrada (pero no "próximamente"), el enlace apunta
+              // a esta MISMA página con ?event=&segment= — el formulario de
+              // draftear aparece debajo, en este mismo sitio (ver más abajo):
+              // editable si está abierta, solo lectura si está cerrada.
+              href:
+                state === "proximamente"
+                  ? null
+                  : `/fantasy/draft?competition=${activeCompetition.id}&event=${ev.id}&segment=${segment.id}#draft-form`,
               myPicks,
               myTotal,
             };
@@ -190,6 +255,22 @@ export default async function FantasyDraftPage({
       }),
     };
   });
+
+  // Si se ha elegido una prueba concreta (?event=&segment=), se trae aquí
+  // todo lo que necesita FantasyRosterForm (igual que hacía /events/[id],
+  // que sigue existiendo para quien llegue por un enlace antiguo) y se
+  // renderiza debajo del selector, en esta misma página. Requiere sesión:
+  // si no has iniciado sesión, se manda a login y se vuelve aquí mismo.
+  let draftFormEvent: Awaited<ReturnType<typeof loadDraftFormEvent>> = null;
+  if (searchParams.event) {
+    if (!session?.user?.email) {
+      const callbackUrl = `/fantasy/draft?competition=${activeCompetition.id}&event=${searchParams.event}${
+        searchParams.segment ? `&segment=${searchParams.segment}` : ""
+      }`;
+      redirect(`/login?callbackUrl=${encodeURIComponent(callbackUrl)}`);
+    }
+    draftFormEvent = await loadDraftFormEvent(searchParams.event, session.user.email, searchParams.segment);
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
@@ -242,10 +323,42 @@ export default async function FantasyDraftPage({
               columns={draftStatusColumns}
               expandAllLabel={t.expandAll}
               collapseAllLabel={t.collapseAll}
-              goToEventLabel={t.goToEvent}
+              goToEventLabel={td.viewBelowLabel}
             />
           )}
         </div>
+
+        {/* El formulario de draftear, embebido aquí mismo cuando se ha
+            elegido una prueba+segmento arriba (editable si está abierta,
+            solo lectura si está cerrada — lo decide FantasyRosterForm). */}
+        {searchParams.event && (
+          <div id="draft-form" className="scroll-mt-6">
+            {draftFormEvent ? (
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 md:p-8 shadow-lg shadow-black/40">
+                {draftFormEvent.isTest && (
+                  <div className="max-w-2xl mx-auto mb-6">
+                    <TestEventBanner locale={locale} />
+                  </div>
+                )}
+                <FantasyRosterForm
+                  eventId={draftFormEvent.id}
+                  eventName={draftFormEvent.name}
+                  rosterLocksAt={draftFormEvent.rosterLocksAt}
+                  eventLocked={draftFormEvent.eventLocked}
+                  segments={draftFormEvent.segments}
+                  slots={draftFormEvent.slots}
+                  registrations={draftFormEvent.registrations}
+                  initialPicks={draftFormEvent.initialPicks}
+                  initialSegmentId={draftFormEvent.initialSegmentId}
+                />
+              </div>
+            ) : (
+              <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-8 text-center text-xs text-slate-400">
+                {t.noEvents}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

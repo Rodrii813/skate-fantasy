@@ -371,6 +371,7 @@ export const dictionaries = {
       backToHub: "← Volver al Fantasy Hub",
       title: "Draft Room",
       subtitle: "Elige una prueba abierta para draftear, o repasa lo que ya has elegido.",
+      viewBelowLabel: "Abrir aquí abajo",
     },
     fantasyRoster: {
       deadline: "Cierre",
@@ -1061,6 +1062,7 @@ export const dictionaries = {
       backToHub: "← Back to Fantasy Hub",
       title: "Draft Room",
       subtitle: "Pick an open event to draft, or review what you've already picked.",
+      viewBelowLabel: "Open below",
     },
     fantasyRoster: {
       deadline: "Deadline",
