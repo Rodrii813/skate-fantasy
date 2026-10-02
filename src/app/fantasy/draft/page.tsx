@@ -157,17 +157,16 @@ export default async function FantasyDraftPage({
     }
   }
 
-  type Column = { key: string; disciplineName: string; gender: string | null; label: string };
+  type Column = { key: string; disciplineName: string; label: string };
   const columns: Column[] = [];
   for (const ev of activeCompetition.events) {
-    const key = `${ev.disciplineId}__${ev.gender ?? "none"}`;
+    const key = ev.disciplineId;
     if (!columns.find((c) => c.key === key)) {
       const translatedDisciplineName = translateDisciplineName(ev.discipline.name, locale);
       columns.push({
         key,
         disciplineName: translatedDisciplineName,
-        gender: ev.gender,
-        label: `${translatedDisciplineName}${ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""}`,
+        label: translatedDisciplineName,
       });
     }
   }
@@ -181,15 +180,15 @@ export default async function FantasyDraftPage({
   const archivedForSelect = activeCompetitions.length > 0 ? archivedCompetitions : [];
 
   const draftMatrixGroups: DraftMatrixGroup[] = columns.map((col) => {
-    const eventsInColumn = activeCompetition.events.filter(
-      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
-    );
+    const eventsInColumn = activeCompetition.events.filter((ev) => ev.disciplineId === col.key);
     return {
       key: col.key,
       label: col.label,
       events: eventsInColumn.map((ev) => {
         const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
         const categoryLabel = `${translateCategoryName(ev.category.name, locale)}${
+          ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""
+        }${
           ev.showFormat
             ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
             : ""

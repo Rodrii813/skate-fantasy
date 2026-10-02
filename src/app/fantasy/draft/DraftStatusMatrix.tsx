@@ -126,7 +126,7 @@ export default function DraftStatusMatrix({
                       {group.events.map((ev) => (
                         <th
                           key={ev.id}
-                          className="px-0.5 pb-1 text-[9px] font-medium uppercase tracking-wide text-slate-500 truncate max-w-[5rem]"
+                          className="px-1 pb-1 text-[10px] font-medium uppercase tracking-wide text-slate-500 truncate max-w-[7rem]"
                         >
                           {ev.categoryLabel}
                           {ev.isTest && <span className="ml-0.5 text-amber-400">🧪</span>}
@@ -137,17 +137,17 @@ export default function DraftStatusMatrix({
                   <tbody>
                     {Array.from({ length: maxRows }).map((_, rowIndex) => (
                       <tr key={rowIndex}>
-                        <td className="pr-1.5 py-0.5 text-[9px] text-slate-500 whitespace-nowrap">
+                        <td className="pr-2 py-1 text-[10px] text-slate-500 whitespace-nowrap">
                           {group.events[0]?.cells[rowIndex]?.segmentLabel ?? ""}
                         </td>
                         {group.events.map((ev) => {
                           const cell = ev.cells[rowIndex];
-                          if (!cell) return <td key={ev.id} className="px-0.5 py-0.5" />;
+                          if (!cell) return <td key={ev.id} className="px-1 py-1" />;
                           const style = cellStyle(cell, labels);
                           const isSelected = cell.segmentId === selectedSegmentId;
                           const pill = (
                             <span
-                              className={`block rounded-md border px-1.5 py-1 text-center text-[9px] font-semibold leading-tight transition ${style.className} ${
+                              className={`block rounded-md border px-2 py-1.5 text-center text-[10px] font-semibold leading-tight transition ${style.className} ${
                                 isSelected ? "ring-2 ring-indigo-400" : ""
                               } ${cell.href ? "cursor-pointer hover:brightness-110" : ""}`}
                             >
@@ -155,7 +155,7 @@ export default function DraftStatusMatrix({
                             </span>
                           );
                           return (
-                            <td key={ev.id} className="px-0.5 py-0.5 min-w-[4.25rem] max-w-[4.25rem]">
+                            <td key={ev.id} className="px-1 py-1 min-w-[6rem] max-w-[7rem]">
                               {cell.href ? <Link href={cell.href}>{pill}</Link> : pill}
                             </td>
                           );
