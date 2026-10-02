@@ -10,8 +10,8 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import FantasyRosterForm from "@/app/fantasy/[eventId]/FantasyRosterForm";
 import TestEventBanner from "@/app/_components/TestEventBanner";
-import DraftStatusAccordion, { type DraftStatusColumn } from "../DraftStatusAccordion";
 import ArchivedCompetitionSelect from "../ArchivedCompetitionSelect";
+import DraftStatusMatrix, { type DraftMatrixGroup } from "./DraftStatusMatrix";
 
 export const dynamic = "force-dynamic";
 
@@ -21,10 +21,12 @@ export async function generateMetadata() {
 }
 
 // /fantasy/draft es el Draft Room, TODO en una sola página (como la
-// referencia): arriba el selector de Draft Status (acordeón por disciplina,
-// cada prueba+segmento es su propia tarjeta plegable — ver
-// DraftStatusAccordion.tsx) y, al elegir una prueba+segmento (abierto o
-// cerrado, ver `href` más abajo), el propio formulario de draftear
+// referencia): arriba el selector de Draft Status, una matriz compacta de
+// celdas de color por disciplina (filas = Corto/Largo, columnas = cada
+// prueba de esa disciplina+género — ver DraftStatusMatrix.tsx, calcada de la
+// referencia pero agrupada por disciplina porque aquí hay muchas más
+// categorías), y al elegir una celda (abierta o cerrada, ver `href` más
+// abajo), el propio formulario de draftear
 // (FantasyRosterForm, el mismo que usa /events/[id]) aparece DEBAJO, en esta
 // misma página — ya no se navega a otra URL para draftear. El formulario ya
 // sabe mostrarse en modo solo-lectura cuando el segmento está cerrado (ver
@@ -171,14 +173,6 @@ export default async function FantasyDraftPage({
   }
 
   type SegmentState = "proximamente" | "abierto" | "cerrado";
-  const stateBadge: Record<SegmentState, { label: string; className: string }> = {
-    proximamente: { label: t.stateUpcoming, className: "bg-slate-800 text-slate-400 border-slate-700" },
-    abierto: {
-      label: t.stateOpen,
-      className: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    },
-    cerrado: { label: t.stateClosed, className: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
-  };
 
   const now = new Date();
   const activeCompetitions = competitions.filter((c) => c.endDate >= now);
@@ -186,7 +180,7 @@ export default async function FantasyDraftPage({
   const competitionTabs = activeCompetitions.length > 0 ? activeCompetitions : competitions;
   const archivedForSelect = activeCompetitions.length > 0 ? archivedCompetitions : [];
 
-  const draftStatusColumns: DraftStatusColumn[] = columns.map((col) => {
+  const draftMatrixGroups: DraftMatrixGroup[] = columns.map((col) => {
     const eventsInColumn = activeCompetition.events.filter(
       (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
     );
@@ -204,7 +198,7 @@ export default async function FantasyDraftPage({
           id: ev.id,
           categoryLabel,
           isTest: Boolean(ev.isTest),
-          segments: orderedSegments.map((segment, segIndex) => {
+          cells: orderedSegments.map((segment, segIndex) => {
             const slotsForSegment = ev.slots.filter((s) => s.segmentId === segment.id);
             const draftStatus = getSegmentDraftStatus(
               segment,
@@ -213,32 +207,13 @@ export default async function FantasyDraftPage({
             );
             const state: SegmentState =
               draftStatus === "UPCOMING" ? "proximamente" : draftStatus === "CLOSED" ? "cerrado" : "abierto";
-            const badge = stateBadge[state];
             const drafted = slotsForSegment.some((s) => draftedSlotIds.has(s.id));
 
-            const myEventPicks = myPicksByEvent.get(ev.id);
-            const mySegmentSlots = myEventPicks?.slotsBySegment.get(segment.id) ?? null;
-            const hasScores = myEventPicks?.hasScoresBySegment.has(segment.id) ?? false;
-            const myPicks =
-              mySegmentSlots && mySegmentSlots.length > 0
-                ? mySegmentSlots.map((slot) => ({
-                    slotId: slot.slotId,
-                    slotLabel: slot.slotLabel,
-                    skaterName: slot.skaterName,
-                    points: hasScores ? slot.points : null,
-                  }))
-                : null;
-            const myTotal =
-              myPicks && hasScores ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
-
             return {
-              id: segment.id,
-              label: ROW_LABELS[segIndex] ?? segment.name,
-              showLabel: orderedSegments.length > 1,
-              badgeLabel: badge.label,
-              badgeClassName: badge.className,
+              segmentId: segment.id,
+              segmentLabel: ROW_LABELS[segIndex] ?? segment.name,
+              state,
               drafted,
-              draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
               // Abierta o cerrada (pero no "próximamente"), el enlace apunta
               // a esta MISMA página con ?event=&segment= — el formulario de
               // draftear aparece debajo, en este mismo sitio (ver más abajo):
@@ -247,8 +222,6 @@ export default async function FantasyDraftPage({
                 state === "proximamente"
                   ? null
                   : `/fantasy/draft?competition=${activeCompetition.id}&event=${ev.id}&segment=${segment.id}#draft-form`,
-              myPicks,
-              myTotal,
             };
           }),
         };
@@ -319,11 +292,16 @@ export default async function FantasyDraftPage({
           {columns.length === 0 ? (
             <p className="p-8 text-center text-xs text-slate-400">{t.noEvents}</p>
           ) : (
-            <DraftStatusAccordion
-              columns={draftStatusColumns}
-              expandAllLabel={t.expandAll}
-              collapseAllLabel={t.collapseAll}
-              goToEventLabel={td.viewBelowLabel}
+            <DraftStatusMatrix
+              groups={draftMatrixGroups}
+              selectedSegmentId={searchParams.segment}
+              labels={{
+                upcoming: t.stateUpcoming,
+                openUndrafted: td.cellOpenUndrafted,
+                openDrafted: td.cellOpenDrafted,
+                closedDrafted: td.cellClosedDrafted,
+                closedUndrafted: td.cellClosedUndrafted,
+              }}
             />
           )}
         </div>

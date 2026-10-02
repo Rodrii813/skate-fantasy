@@ -205,7 +205,14 @@ export default async function FantasyHubPage({
             const myTotal =
               myPicks && hasScores ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
 
-            const href = state === "proximamente" ? null : `/events/${ev.id}?segment=${segment.id}`;
+            // Pulsar una celda del Hub lleva al Draft Room con esta misma
+            // prueba+segmento ya cargada debajo (editable si está abierta,
+            // solo lectura si está cerrada) — mismo patrón de enlace que usa
+            // el propio Draft Room entre sus celdas (ver draft/page.tsx).
+            const href =
+              state === "proximamente"
+                ? null
+                : `/fantasy/draft?competition=${activeCompetition.id}&event=${ev.id}&segment=${segment.id}#draft-form`;
 
             return {
               id: segment.id,
