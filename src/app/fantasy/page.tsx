@@ -157,6 +157,15 @@ export default async function FantasyHubPage({
   const competitionTabs = activeCompetitions.length > 0 ? activeCompetitions : competitions;
   const archivedForSelect = activeCompetitions.length > 0 ? archivedCompetitions : [];
 
+  // Para el botón de acceso directo "Draft Room" de arriba: te lleva a la
+  // primera prueba+segmento que esté abierta para draftear ahora mismo (y
+  // que todavía no hayas drafteado, si hay alguna así) en vez de solo hacer
+  // scroll a esta misma página — antes no había ninguna prueba "destino"
+  // fija así que se dejó como ancla, lo cual confundía (parecía una página
+  // aparte que en realidad no llevaba a ningún sitio nuevo).
+  let firstOpenUndraftedHref: string | null = null;
+  let firstOpenHref: string | null = null;
+
   // Datos para el acordeón de Draft Status (ver DraftStatusAccordion.tsx):
   // todo ya traducido/calculado aquí en el servidor, el componente cliente
   // solo decide qué disciplina está plegada.
@@ -205,6 +214,12 @@ export default async function FantasyHubPage({
             const myTotal =
               myPicks && hasScores ? myPicks.reduce((sum, p) => sum + (p.points ?? 0), 0) : null;
 
+            const href = state === "proximamente" ? null : `/events/${ev.id}?segment=${segment.id}`;
+            if (state === "abierto" && href) {
+              if (!drafted && !firstOpenUndraftedHref) firstOpenUndraftedHref = href;
+              if (!firstOpenHref) firstOpenHref = href;
+            }
+
             return {
               id: segment.id,
               label: ROW_LABELS[segIndex] ?? segment.name,
@@ -213,7 +228,7 @@ export default async function FantasyHubPage({
               badgeClassName: badge.className,
               drafted,
               draftedText: session && state !== "proximamente" ? (drafted ? t.alreadyDrafted : t.notDrafted) : null,
-              href: state === "proximamente" ? null : `/events/${ev.id}?segment=${segment.id}`,
+              href,
               myPicks,
               myTotal,
             };
@@ -257,7 +272,8 @@ export default async function FantasyHubPage({
             página (sin navegar a otra URL, solo un salto de ancla). */}
         <div className="flex flex-wrap gap-2">
           <a
-            href="#draft-room"
+            href={firstOpenUndraftedHref ?? firstOpenHref ?? "#draft-room"}
+            title={!firstOpenUndraftedHref && !firstOpenHref ? t.noOpenEvents : undefined}
             className="flex-1 min-w-[160px] text-center rounded-xl border border-indigo-500/40 bg-indigo-600/15 px-4 py-2.5 text-sm font-bold text-indigo-300 transition hover:border-indigo-500/70 hover:bg-indigo-600/25"
           >
             {t.draftRoomCta}
@@ -342,6 +358,7 @@ export default async function FantasyHubPage({
               columns={draftStatusColumns}
               expandAllLabel={t.expandAll}
               collapseAllLabel={t.collapseAll}
+              goToEventLabel={t.goToEvent}
             />
           )}
         </div>
