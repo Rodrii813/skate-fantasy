@@ -416,6 +416,10 @@ export const dictionaries = {
       completeRoster: "Completa la alineación",
       saveSuccess: "✅ ¡Alineación guardada con éxito!",
       saveError: "Error al guardar el equipo",
+      autodraft: "🎲 Autodraft",
+      autodraftHint: "Rellena este segmento al azar respetando las normas — puedes volver a pulsar para probar otra combinación, o editar los picks a mano después.",
+      autodraftSuccess: "✅ Alineación autogenerada — revísala antes de guardar.",
+      autodraftFailed: "No se ha podido generar una alineación válida al azar. Prueba otra vez o completa los picks a mano.",
     },
     normas: {
       pageTitle: "Normas del Fantasy — Rollart Fantasy",
@@ -1115,6 +1119,10 @@ export const dictionaries = {
       completeRoster: "Complete the lineup",
       saveSuccess: "✅ Lineup saved successfully!",
       saveError: "Error saving the team",
+      autodraft: "🎲 Autodraft",
+      autodraftHint: "Randomly fills this segment while respecting the rules — click again to try another combination, or edit any pick by hand afterwards.",
+      autodraftSuccess: "✅ Lineup auto-generated — review it before saving.",
+      autodraftFailed: "Couldn't generate a valid random lineup. Try again or fill the picks by hand.",
     },
     normas: {
       pageTitle: "Fantasy Rules — Rollart Fantasy",

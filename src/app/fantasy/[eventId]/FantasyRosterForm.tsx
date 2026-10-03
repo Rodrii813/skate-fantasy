@@ -204,6 +204,109 @@ export default function FantasyRosterForm({
     }));
   };
 
+  // Autodraft: SOLO se dispara al pulsar el botón (nunca automático al
+  // cerrar el plazo ni en segundo plano) — rellena de golpe el segmento
+  // ACTIVO con una combinación al azar que ya cumple las normas de
+  // src/lib/fantasyValidation.ts, para quien no quiera elegir a mano. En vez
+  // de reimplementar las reglas de grupo aquí (duplicando lo que ya vive en
+  // esa validación, con el riesgo de que se desincronicen), se generan
+  // candidatos al azar con un reparto "inteligente" (evita repetir
+  // patinadora en técnicos, evita pasarse de 2 por grupo top/segundo top,
+  // evita repetir grupo en Componentes cuando la norma aplica) y se valida
+  // cada uno con la MISMA función que usa el botón de Guardar; el primero
+  // que sale válido es el que se aplica. Sobrescribe los picks del segmento
+  // activo — los de otros segmentos (p.ej. el Largo si estás en el Corto) no
+  // se tocan.
+  const handleAutodraft = () => {
+    if (!activeTab || activeTab.locked) return;
+    if (activeSlots.length === 0) return;
+
+    const groupField = activeTab.groupField;
+    const pool = registrations.map((r) => ({ skaterId: r.skaterId, group: r[groupField] || 1 }));
+    const groupNums = Array.from(new Set(pool.map((r) => r.group))).sort((a, b) => b - a);
+    const maxGroupNum = groupNums[0] ?? 1;
+    const secondMaxGroupNum = groupNums[1] ?? 0;
+    // Mismo umbral que fantasyValidation.ts: con 2 grupos o menos, las
+    // normas de grupo no aplican (si no, categorías pequeñas nunca podrían
+    // completarse).
+    const hasEnoughGroupsForRule = groupNums.length > 2;
+
+    const buildCandidate = (): Record<string, string> => {
+      const candidate: Record<string, string> = { ...picks };
+
+      const techPool = [...pool].sort(() => Math.random() - 0.5);
+      const usedTechSkaters = new Set<string>();
+      const techGroupCount: Record<number, number> = {};
+      for (const slot of technicalSlots) {
+        const idx = techPool.findIndex((r) => {
+          if (usedTechSkaters.has(r.skaterId)) return false;
+          if (!hasEnoughGroupsForRule) return true;
+          if (r.group === maxGroupNum && (techGroupCount[maxGroupNum] || 0) >= 2) return false;
+          if (secondMaxGroupNum && r.group === secondMaxGroupNum && (techGroupCount[secondMaxGroupNum] || 0) >= 2) {
+            return false;
+          }
+          return true;
+        });
+        if (idx === -1) continue;
+        const [chosen] = techPool.splice(idx, 1);
+        candidate[slot.id] = chosen.skaterId;
+        usedTechSkaters.add(chosen.skaterId);
+        techGroupCount[chosen.group] = (techGroupCount[chosen.group] || 0) + 1;
+      }
+
+      const compPool = [...pool].sort(() => Math.random() - 0.5);
+      const usedCompGroups = new Set<number>();
+      for (const slot of componentSlots) {
+        const idx = compPool.findIndex((r) => (hasEnoughGroupsForRule ? !usedCompGroups.has(r.group) : true));
+        if (idx === -1) continue;
+        const [chosen] = compPool.splice(idx, 1);
+        candidate[slot.id] = chosen.skaterId;
+        if (hasEnoughGroupsForRule) usedCompGroups.add(chosen.group);
+      }
+
+      return candidate;
+    };
+
+    const segmentsForValidation =
+      orderedSegments.length > 0 ? orderedSegments : [{ id: DEFAULT_TAB_ID, order: 0 }];
+    const registrationsForValidation = registrations.map((r) => ({
+      skaterId: r.skaterId,
+      warmupGroupShort: r.warmupGroupShort,
+      warmupGroupLong: r.warmupGroupLong,
+    }));
+
+    let bestCandidate: Record<string, string> | null = null;
+    let bestErrorMessage = "";
+
+    // Pocos slots y grupos (categorías de patinaje, no miles de opciones), así
+    // que 200 intentos al azar son prácticamente instantáneos y encuentran
+    // una combinación válida casi siempre que exista una; si la categoría es
+    // tan pequeña que ninguna combinación cumple las normas, se avisa en vez
+    // de dejar algo a medias.
+    for (let attempt = 0; attempt < 200; attempt++) {
+      const candidate = buildCandidate();
+      const result = validateFantasyRoster({
+        slots,
+        registrations: registrationsForValidation,
+        segments: segmentsForValidation,
+        picks: candidate,
+      });
+      const segResult = result.segments.find((s) => s.segmentId === activeTab.id);
+      if (segResult?.valid) {
+        bestCandidate = candidate;
+        break;
+      }
+      if (!bestErrorMessage && segResult?.errorMessage) bestErrorMessage = segResult.errorMessage;
+    }
+
+    if (bestCandidate) {
+      setPicks(bestCandidate);
+      setMsg({ type: "success", text: t.autodraftSuccess });
+    } else {
+      setMsg({ type: "error", text: bestErrorMessage || t.autodraftFailed });
+    }
+  };
+
   const handleSave = async () => {
     // OJO: antes se comprobaba `validationResult.valid` (TODOS los
     // segmentos a la vez), pero el botón solo se habilita mirando el
@@ -492,6 +595,20 @@ export default function FantasyRosterForm({
           la API solo escribe los slots de segmentos abiertos e ignora el
           resto, así que basta con un único botón aunque haya varios
           segmentos y alguno ya esté cerrado. */}
+      {!activeTab?.locked && activeSlots.length > 0 && (
+        <div className="space-y-1.5">
+          <button
+            type="button"
+            onClick={handleAutodraft}
+            disabled={saving}
+            className="w-full py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {t.autodraft}
+          </button>
+          <p className="text-center text-[11px] text-slate-500">{t.autodraftHint}</p>
+        </div>
+      )}
+
       {!activeTab?.locked && (
         <div className="space-y-2 pt-2">
           <button
