@@ -9,6 +9,7 @@ import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import TestEventBanner from "@/app/_components/TestEventBanner";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
+import PredictionEventSelector, { type PredictionEventGroup } from "./PredictionEventSelector";
 
 export const dynamic = "force-dynamic";
 
@@ -98,6 +99,22 @@ export default async function PredictionsPage({
     }
     group.events.push(e);
   }
+
+  // Misma agrupación pero ya resuelta a lo que pide PredictionEventSelector
+  // (componente cliente con pestañas por disciplina) — labels y hrefs ya
+  // traducidos/armados aquí en el servidor.
+  const predictionEventGroups: PredictionEventGroup[] = eventsByDiscipline.map(({ disciplineName, events }) => ({
+    disciplineName: translateDisciplineName(disciplineName, locale),
+    events: events.map((e) => ({
+      id: e.id,
+      href: `/predictions?competition=${activeCompetition?.id ?? ""}&event=${e.id}`,
+      label: `${translateCategoryName(e.category.name, locale)}${
+        e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""
+      }${e.showFormat ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}` : ""}`,
+      isActive: e.id === activeEvent?.id,
+      isTest: Boolean(e.isTest),
+    })),
+  }));
 
   let userPrediction = null;
   if (session?.user?.email && activeEvent) {
@@ -241,39 +258,11 @@ export default async function PredictionsPage({
                 se ve en varios grupos pequeños en vez de una única pared
                 de botones. */}
             {activeCompetition && (
-              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4">
+              <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-3">
                 <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
                   {t.selectEvent}
                 </label>
-                <div className="space-y-3">
-                  {eventsByDiscipline.map(({ disciplineName, events }) => (
-                    <div key={disciplineName} className="space-y-1.5">
-                      <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wide">
-                        {translateDisciplineName(disciplineName, locale)}
-                      </p>
-                      <div className="flex flex-wrap gap-2">
-                        {events.map((e) => (
-                          <Link
-                            key={e.id}
-                            href={`/predictions?competition=${activeCompetition.id}&event=${e.id}`}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition ${
-                              e.id === activeEvent?.id
-                                ? "bg-blue-600 border-blue-500 text-white shadow-md shadow-blue-900/20"
-                                : "bg-slate-950 border-slate-800 text-slate-300 hover:border-slate-700"
-                            }`}
-                          >
-                            {translateCategoryName(e.category.name, locale)}
-                            {e.gender ? ` · ${genderLabel[e.gender] ?? e.gender}` : ""}
-                            {e.showFormat
-                              ? ` · ${dict.common.showFormat[e.showFormat as keyof typeof dict.common.showFormat]}`
-                              : ""}
-                            {e.isTest && <span className="ml-1 text-amber-400">🧪</span>}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <PredictionEventSelector groups={predictionEventGroups} />
               </div>
             )}
 
