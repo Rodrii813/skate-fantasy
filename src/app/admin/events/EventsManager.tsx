@@ -16,6 +16,7 @@ const LAST_VALUE_KEYS = {
   scheduledAt: "rollart-admin-last-scheduledAt",
   segmentLocksAt: "rollart-admin-last-segment-locksAt",
   segmentOpensAt: "rollart-admin-last-segment-opensAt",
+  predictionsOpensAt: "rollart-admin-last-predictions-opensAt",
   segmentSchedule: "rollart-admin-last-segment-schedule",
 } as const;
 
@@ -192,6 +193,12 @@ export default function EventsManager({
   const [segmentOpensInputs, setSegmentOpensInputs] = useState<Record<string, string>>({});
   const [segmentOpenSavingId, setSegmentOpenSavingId] = useState<string | null>(null);
 
+  // Apertura de PREDICCIONES por evento: hora programada + override manual
+  // (mismo esquema que la apertura del draft por segmento de arriba). Estado
+  // local por eventId, precargado con lo que ya tenga guardado.
+  const [predictionsOpensInputs, setPredictionsOpensInputs] = useState<Record<string, string>>({});
+  const [predictionsSavingId, setPredictionsSavingId] = useState<string | null>(null);
+
   // Hora de pista propia de cada segmento (para el calendario) y su split
   // opcional Top N / Resto — ver src/lib/calendarGrouping.ts. Estado local
   // por segmentId, con la clave "<segmentId>:schedule", ":splitLabel" y
@@ -311,6 +318,64 @@ export default function EventsManager({
       setStatusMessage(`❌ ${err.message}`);
     } finally {
       setLoadingDelete(false);
+    }
+  };
+
+  // Guarda la hora de apertura de las Predicciones de un evento. Vacío =
+  // sin hora propia (se abren en cuanto haya patinadores inscritos).
+  const handleSavePredictionsOpensAt = async (eventId: string, overrideValue?: string) => {
+    setPredictionsSavingId(eventId);
+    setStatusMessage(null);
+
+    const value = overrideValue ?? predictionsOpensInputs[eventId] ?? "";
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ predictionsOpensAt: value || null }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error guardando la apertura de predicciones");
+
+      rememberValue(LAST_VALUE_KEYS.predictionsOpensAt, value);
+      setStatusMessage(
+        value
+          ? "✅ Apertura de predicciones actualizada"
+          : "✅ Predicciones sin hora de apertura propia (se abren al haber patinadores)"
+      );
+      router.refresh();
+    } catch (err: any) {
+      setStatusMessage(`❌ ${err.message}`);
+    } finally {
+      setPredictionsSavingId(null);
+    }
+  };
+
+  // Abre (o revierte) las Predicciones a mano, saltándose la hora de apertura.
+  const handleTogglePredictionsManualOpen = async (eventId: string, manuallyOpened: boolean) => {
+    setPredictionsSavingId(eventId);
+    setStatusMessage(null);
+
+    try {
+      const res = await fetch(`/api/admin/events/${eventId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ predictionsManuallyOpened: manuallyOpened }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error abriendo las predicciones");
+
+      setStatusMessage(
+        manuallyOpened ? "✅ Predicciones abiertas manualmente" : "✅ Apertura manual de predicciones desactivada"
+      );
+      router.refresh();
+    } catch (err: any) {
+      setStatusMessage(`❌ ${err.message}`);
+    } finally {
+      setPredictionsSavingId(null);
     }
   };
 
@@ -771,6 +836,85 @@ export default function EventsManager({
                 {isExpanded && (
                   <div className="space-y-4 px-5 pb-5 border-t border-slate-800/80 pt-4">
                     <div>
+                  {/* Apertura de PREDICCIONES del evento: hora programada y
+                      botón "Abrir ahora", igual que el draft por segmento.
+                      Sin hora puesta, se abren en cuanto hay patinadores
+                      inscritos (comportamiento de siempre); con una hora
+                      futura, el evento sale como "Aún no abierto" en
+                      /predictions, la home y el calendario hasta esa hora.
+                      El cierre sigue siendo el plazo de fichaje. */}
+                  {(() => {
+                    const hasPredictionsOpensAt = Boolean(ev.predictionsOpensAt);
+                    const predictionsOpensValue =
+                      predictionsOpensInputs[ev.id] ??
+                      (hasPredictionsOpensAt
+                        ? toDatetimeLocalValue(ev.predictionsOpensAt)
+                        : getRememberedValue(LAST_VALUE_KEYS.predictionsOpensAt));
+                    return (
+                      <div className="mt-3 space-y-1.5 bg-slate-950/50 border border-slate-800/80 rounded-xl p-3">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Apertura de predicciones{" "}
+                          <span className="font-normal normal-case text-slate-600">
+                            — vacío = se abren en cuanto haya patinadores inscritos
+                          </span>
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <input
+                            type="datetime-local"
+                            value={predictionsOpensValue}
+                            onChange={(e) =>
+                              setPredictionsOpensInputs((prev) => ({ ...prev, [ev.id]: e.target.value }))
+                            }
+                            onPaste={(e) => {
+                              const parsed = parsePastedDateTime(e.clipboardData.getData("text"));
+                              if (parsed) {
+                                e.preventDefault();
+                                setPredictionsOpensInputs((prev) => ({ ...prev, [ev.id]: parsed }));
+                              }
+                            }}
+                            className="bg-slate-950 border border-slate-700 rounded-lg p-1.5 text-xs text-slate-100"
+                          />
+                          <span className="text-[10px] text-slate-500">— hora de Paraguay</span>
+                          <button
+                            type="button"
+                            onClick={() => handleSavePredictionsOpensAt(ev.id)}
+                            disabled={predictionsSavingId === ev.id}
+                            className="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-indigo-300 text-[11px] font-semibold px-2.5 py-1 rounded-lg border border-slate-700 transition"
+                          >
+                            {predictionsSavingId === ev.id ? "Guardando…" : "Guardar"}
+                          </button>
+                          {hasPredictionsOpensAt && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setPredictionsOpensInputs((prev) => ({ ...prev, [ev.id]: "" }));
+                                handleSavePredictionsOpensAt(ev.id, "");
+                              }}
+                              disabled={predictionsSavingId === ev.id}
+                              className="text-[11px] text-slate-500 hover:text-slate-300 underline"
+                            >
+                              Quitar hora
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleTogglePredictionsManualOpen(ev.id, !ev.predictionsManuallyOpened)
+                            }
+                            disabled={predictionsSavingId === ev.id}
+                            className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg border transition disabled:opacity-50 ${
+                              ev.predictionsManuallyOpened
+                                ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                : "bg-slate-800 text-slate-300 border-slate-700 hover:border-slate-600"
+                            }`}
+                          >
+                            {ev.predictionsManuallyOpened ? "🔓 Abiertas a mano" : "Abrir ahora"}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {/* Plazo de fichaje propio por segmento (Corto/Largo). Si
                       se deja vacío, el segmento hereda el "Cierre de
                       Plantillas" general del evento de arriba. */}

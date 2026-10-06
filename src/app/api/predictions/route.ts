@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
+import { getPredictionsStatus } from "@/lib/segments";
 
 export async function POST(req: Request) {
   try {
@@ -55,18 +55,33 @@ export async function POST(req: Request) {
     // usuario.
     const event = await prisma.event.findUnique({
       where: { id: eventId },
-      include: { segments: { select: { id: true, order: true, locksAt: true } } },
+      include: {
+        segments: { select: { id: true, order: true, locksAt: true } },
+        _count: { select: { registrations: true } },
+      },
     });
 
     if (!event) {
       return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
     }
 
-    const predictionsLockAt = firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt);
+    const predictionsStatus = getPredictionsStatus(
+      event,
+      event.segments,
+      event._count.registrations,
+      new Date()
+    );
 
-    if (new Date() > predictionsLockAt || event.status !== "UPCOMING") {
+    if (predictionsStatus === "CLOSED") {
       return NextResponse.json(
         { error: "El plazo para enviar o modificar predicciones ya ha finalizado" },
+        { status: 400 }
+      );
+    }
+
+    if (predictionsStatus === "UPCOMING") {
+      return NextResponse.json(
+        { error: "Las predicciones de esta prueba todavía no están abiertas" },
         { status: 400 }
       );
     }

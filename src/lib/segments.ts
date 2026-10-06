@@ -101,3 +101,37 @@ export function firstSegmentEffectiveLocksAt(
   const [first] = [...segments].sort((a, b) => a.order - b.order);
   return effectiveLocksAt(first, eventRosterLocksAt);
 }
+
+export interface PredictionsOpenInput {
+  predictionsOpensAt: Date | string | null;
+  predictionsManuallyOpened: boolean;
+}
+
+export type PredictionsStatus = "UPCOMING" | "OPEN" | "CLOSED";
+
+/**
+ * Estado real de las Predicciones de un evento — fuente única de verdad
+ * para la home, el calendario, /predictions y la API que guarda envíos.
+ * Antes solo se miraba el cierre, así que estaban "abiertas" desde que se
+ * creaba el evento (incluso sin patinadores inscritos, con el formulario
+ * vacío). Ahora:
+ * - CLOSED: el plazo (primer segmento / rosterLocksAt) ya pasó, o el evento
+ *   ya no está UPCOMING. El cierre manda sobre todo lo demás.
+ * - UPCOMING: todavía no hay patinadores inscritos (nada que predecir), o
+ *   hay una hora de apertura futura y no se abrió a mano.
+ * - OPEN: el resto — con patinadores, y sin hora de apertura, o ya llegada,
+ *   o abiertas a mano. Mismo esquema que getSegmentDraftStatus del draft.
+ */
+export function getPredictionsStatus(
+  event: PredictionsOpenInput & { status: string; rosterLocksAt: Date | string },
+  segments: SegmentLockInput[],
+  registrationsCount: number,
+  now: Date = new Date()
+): PredictionsStatus {
+  const closesAt = firstSegmentEffectiveLocksAt(segments, event.rosterLocksAt);
+  if (now > closesAt || event.status !== "UPCOMING") return "CLOSED";
+  if (registrationsCount === 0) return "UPCOMING";
+  if (event.predictionsManuallyOpened) return "OPEN";
+  if (event.predictionsOpensAt && now < toDate(event.predictionsOpensAt)) return "UPCOMING";
+  return "OPEN";
+}

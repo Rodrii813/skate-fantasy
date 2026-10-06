@@ -4,7 +4,7 @@ import LocalDateTime from "@/app/_components/LocalDateTime";
 import TimezoneSelector from "@/app/_components/TimezoneSelector";
 import CalendarDayGroups, { type CalendarDayRow } from "@/app/_components/CalendarDayGroups";
 import { buildCalendarRows } from "@/lib/calendarGrouping";
-import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus } from "@/lib/segments";
+import { getPredictionsStatus, getSegmentDraftStatus } from "@/lib/segments";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
@@ -36,6 +36,7 @@ export default async function CalendarioPage() {
       category: true,
       segments: { orderBy: { order: "asc" } },
       slots: { select: { segmentId: true } },
+      _count: { select: { registrations: true } },
     },
   });
 
@@ -48,10 +49,7 @@ export default async function CalendarioPage() {
   // no si los picks siguen abiertos, así que antes este botón salía siempre
   // en azul "activo" aunque el plazo ya hubiera pasado.
   function isPredictionsOpen(event: (typeof events)[number]): boolean {
-    return (
-      event.status === "UPCOMING" &&
-      now <= firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt)
-    );
+    return getPredictionsStatus(event, event.segments, event._count.registrations, now) === "OPEN";
   }
 
   // Draft (Fantasy) abierto = al menos un segmento realmente OPEN ahora

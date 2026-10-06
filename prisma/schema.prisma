@@ -156,6 +156,14 @@ model Event {
   name          String          // "Solo Danza Senior Femenino"
   gender        Gender?         // Género estructurado del evento (opcional; el nombre libre sigue siendo la fuente visible hasta que se rellene)
   rosterLocksAt DateTime        // deadline para fantasy y predicciones
+  // Apertura de PREDICCIONES (antes siempre estaban abiertas desde que se
+  // creaba el evento, aunque no hubiera patinadores inscritos ni draft):
+  // hora a partir de la cual se pueden enviar, y override manual para
+  // abrirlas ya mismo — mismo esquema que Segment.opensAt/manuallyOpened del
+  // draft. Null = sin hora propia (se abren en cuanto hay patinadores
+  // inscritos, comportamiento de siempre en eventos ya existentes).
+  predictionsOpensAt        DateTime?
+  predictionsManuallyOpened Boolean @default(false)
   scheduledAt   DateTime?       // Fecha y hora real en que la prueba se disputa en pista (calendario público); no confundir con rosterLocksAt
   status        EventStatus     @default(UPCOMING)
   // Solo relevante si discipline.slug === "show": qué formato es este

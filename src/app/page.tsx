@@ -44,6 +44,7 @@ export default async function HomePage() {
       competition: true,
       segments: true,
       slots: { select: { segmentId: true } },
+      _count: { select: { registrations: true } },
     },
     orderBy: { rosterLocksAt: "asc" },
     take: 20,

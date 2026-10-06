@@ -1,4 +1,11 @@
-import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus, type SegmentLockInput, type SegmentOpenInput } from "./segments";
+import {
+  firstSegmentEffectiveLocksAt,
+  getPredictionsStatus,
+  getSegmentDraftStatus,
+  type PredictionsOpenInput,
+  type SegmentLockInput,
+  type SegmentOpenInput,
+} from "./segments";
 
 // Calcula si Predicciones y/o Draft están REALMENTE abiertos para un evento,
 // con sus fechas de cierre correctas — antes esta lógica vivía duplicada (y
@@ -10,10 +17,14 @@ import { firstSegmentEffectiveLocksAt, getSegmentDraftStatus, type SegmentLockIn
 // destacado de la home como en la lista de "en directo ahora".
 export type SegmentForStatus = SegmentLockInput & SegmentOpenInput;
 
-export interface EventForStatus {
+export interface EventForStatus extends PredictionsOpenInput {
+  status: string;
   rosterLocksAt: Date | string;
   segments: SegmentForStatus[];
   slots: { segmentId: string | null }[];
+  // Patinadores inscritos: sin ninguno, las Predicciones no están abiertas
+  // (formulario vacío) — ver getPredictionsStatus.
+  _count: { registrations: number };
 }
 
 export interface EventOpenStatus {
@@ -25,7 +36,8 @@ export interface EventOpenStatus {
 
 export function computeEventOpenStatus(event: EventForStatus, now: Date = new Date()): EventOpenStatus {
   const predictionsCloseAt = firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt);
-  const predictionsOpen = now <= predictionsCloseAt;
+  const predictionsOpen =
+    getPredictionsStatus(event, event.segments, event._count.registrations, now) === "OPEN";
 
   const slotsBySegment = new Map<string, number>();
   for (const slot of event.slots) {

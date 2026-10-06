@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { effectiveLocksAt, isSegmentLocked, firstSegmentEffectiveLocksAt } from "./segments";
+import { effectiveLocksAt, isSegmentLocked, firstSegmentEffectiveLocksAt, getPredictionsStatus } from "./segments";
 
 const eventLocksAt = new Date("2026-06-01T00:00:00Z");
 
@@ -52,5 +52,57 @@ describe("firstSegmentEffectiveLocksAt", () => {
     const corto = { id: "corto", order: 1, locksAt: null };
     const largo = { id: "largo", order: 2, locksAt: new Date("2026-07-01T00:00:00Z") };
     expect(firstSegmentEffectiveLocksAt([corto, largo], eventLocksAt)).toEqual(eventLocksAt);
+  });
+});
+
+describe("getPredictionsStatus", () => {
+  const now = new Date("2026-10-10T12:00:00Z");
+  const base = {
+    status: "UPCOMING",
+    rosterLocksAt: "2026-10-20T12:00:00Z",
+    predictionsOpensAt: null as string | null,
+    predictionsManuallyOpened: false,
+  };
+  const noSegments: { id: string; order: number; locksAt: string | null }[] = [];
+
+  it("está CERRADA si el plazo ya pasó, aunque haya apertura manual", () => {
+    const closed = { ...base, rosterLocksAt: "2026-10-01T12:00:00Z", predictionsManuallyOpened: true };
+    expect(getPredictionsStatus(closed, noSegments, 10, now)).toBe("CLOSED");
+  });
+
+  it("está CERRADA si el evento ya no es UPCOMING", () => {
+    expect(getPredictionsStatus({ ...base, status: "FINISHED" }, noSegments, 10, now)).toBe("CLOSED");
+  });
+
+  it("usa el plazo del primer segmento si tiene uno propio", () => {
+    const segs = [{ id: "s1", order: 0, locksAt: "2026-10-05T12:00:00Z" }];
+    expect(getPredictionsStatus(base, segs, 10, now)).toBe("CLOSED");
+  });
+
+  it("es PRÓXIMAMENTE si no hay patinadores inscritos", () => {
+    expect(getPredictionsStatus(base, noSegments, 0, now)).toBe("UPCOMING");
+  });
+
+  it("está ABIERTA con patinadores y sin hora de apertura (comportamiento de siempre)", () => {
+    expect(getPredictionsStatus(base, noSegments, 10, now)).toBe("OPEN");
+  });
+
+  it("es PRÓXIMAMENTE si la hora de apertura todavía no ha llegado", () => {
+    const future = { ...base, predictionsOpensAt: "2026-10-12T12:00:00Z" };
+    expect(getPredictionsStatus(future, noSegments, 10, now)).toBe("UPCOMING");
+  });
+
+  it("está ABIERTA cuando ya llegó la hora de apertura", () => {
+    const past = { ...base, predictionsOpensAt: "2026-10-09T12:00:00Z" };
+    expect(getPredictionsStatus(past, noSegments, 10, now)).toBe("OPEN");
+  });
+
+  it("la apertura manual salta la hora de apertura futura", () => {
+    const manual = { ...base, predictionsOpensAt: "2026-10-12T12:00:00Z", predictionsManuallyOpened: true };
+    expect(getPredictionsStatus(manual, noSegments, 10, now)).toBe("OPEN");
+  });
+
+  it("la apertura manual no abre unas predicciones sin patinadores", () => {
+    expect(getPredictionsStatus({ ...base, predictionsManuallyOpened: true }, noSegments, 0, now)).toBe("UPCOMING");
   });
 });

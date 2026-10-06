@@ -3,7 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import PredictionForm from "./PredictionForm";
-import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
+import { firstSegmentEffectiveLocksAt, getPredictionsStatus } from "@/lib/segments";
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
@@ -133,10 +133,20 @@ export default async function PredictionsPage({
     }
   }
 
-  const isLocked = activeEvent
-    ? new Date() > firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt) ||
-      activeEvent.status !== "UPCOMING"
-    : true;
+  // Estado real de las Predicciones (ver getPredictionsStatus): CLOSED si ya
+  // pasó el plazo, UPCOMING si todavía no hay patinadores inscritos o no ha
+  // llegado su hora de apertura, OPEN si se pueden enviar. Antes solo se
+  // miraba el cierre, así que cada evento las tenía "abiertas" (y vacías)
+  // desde que se creaba.
+  const predictionsStatus = activeEvent
+    ? getPredictionsStatus(
+        activeEvent,
+        activeEvent.segments,
+        activeEvent.registrations.length,
+        new Date()
+      )
+    : "CLOSED";
+  const isLocked = predictionsStatus === "CLOSED";
 
   // Favoritos del Público: porcentaje de la comunidad que predijo a cada
   // patinadora en cada puesto del podio, para el evento activo — movido
@@ -278,7 +288,11 @@ export default async function PredictionsPage({
                     </p>
                   </div>
                   <div>
-                    {isLocked ? (
+                    {predictionsStatus === "UPCOMING" ? (
+                      <span className="px-3 py-1 text-xs font-semibold bg-slate-500/15 text-slate-300 border border-slate-500/30 rounded-full">
+                        {t.notYetOpen}
+                      </span>
+                    ) : isLocked ? (
                       <span className="px-3 py-1 text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/30 rounded-full">
                         {t.locked}
                       </span>
@@ -309,6 +323,10 @@ export default async function PredictionsPage({
                     >
                       {t.loginCta}
                     </Link>
+                  </div>
+                ) : predictionsStatus === "UPCOMING" ? (
+                  <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-8 text-center text-sm text-slate-300">
+                    {t.notYetOpenBody}
                   </div>
                 ) : activeEvent.registrations.length === 0 ? (
                   <div className="text-center py-8 text-sm text-slate-400">

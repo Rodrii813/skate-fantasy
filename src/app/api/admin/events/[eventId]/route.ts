@@ -37,8 +37,19 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { name, competitionId, disciplineId, categoryId, rosterLocksAt, gender, scheduledAt, showFormat, isTest } =
-      body;
+    const {
+      name,
+      competitionId,
+      disciplineId,
+      categoryId,
+      rosterLocksAt,
+      gender,
+      scheduledAt,
+      showFormat,
+      isTest,
+      predictionsOpensAt,
+      predictionsManuallyOpened,
+    } = body;
 
     if (gender !== undefined && gender !== null && gender !== "MALE" && gender !== "FEMALE") {
       return NextResponse.json({ error: "Género inválido" }, { status: 400 });
@@ -67,6 +78,13 @@ export async function PATCH(
       data.scheduledAt = scheduledAt ? zonedTimeToUtc(scheduledAt, VENUE_TIMEZONE) : null;
     if (showFormat !== undefined) data.showFormat = showFormat || null;
     if (isTest !== undefined) data.isTest = Boolean(isTest);
+    // Apertura de Predicciones: hora programada (hora de la sede, vacío =
+    // sin hora propia) y override manual para abrirlas ya — ver
+    // getPredictionsStatus en src/lib/segments.ts.
+    if (predictionsOpensAt !== undefined)
+      data.predictionsOpensAt = predictionsOpensAt ? zonedTimeToUtc(predictionsOpensAt, VENUE_TIMEZONE) : null;
+    if (predictionsManuallyOpened !== undefined)
+      data.predictionsManuallyOpened = Boolean(predictionsManuallyOpened);
 
     const updatedEvent = await prisma.event.update({
       where: { id: eventId },
