@@ -40,7 +40,9 @@ function List({ items }: { items: string[] }) {
 
 export default function NormasPage() {
   const locale = getLocale();
-  const t = getDictionary(locale).normas;
+  const dict = getDictionary(locale);
+  const t = dict.normas;
+  const faq = dict.playFaq;
 
   return (
     <div className="space-y-8 pb-12">
@@ -58,6 +60,17 @@ export default function NormasPage() {
           ))}
         </ul>
       </div>
+
+      <Section title={faq.title}>
+        <div className="space-y-2">
+          {faq.items.map((item) => (
+            <Card key={item.q}>
+              <p className="font-semibold text-white">{item.q}</p>
+              <p className="mt-1 text-ice-100/75">{item.a}</p>
+            </Card>
+          ))}
+        </div>
+      </Section>
 
       <Section title={t.s1.title}>
         <p>{t.s1.p1}</p>

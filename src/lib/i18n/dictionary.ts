@@ -423,6 +423,28 @@ export const dictionaries = {
       autodraftSuccess: "✅ Alineación autogenerada — revísala antes de guardar.",
       autodraftFailed: "No se ha podido generar una alineación válida al azar. Prueba otra vez o completa los picks a mano.",
     },
+    playFaq: {
+      title: "❓ Dudas frecuentes: cómo se juega",
+      moreLink: "Ver normas completas →",
+      items: [
+        {
+          q: "¿Cómo funciona la clasificación (leaderboard)?",
+          a: "Hay una clasificación por segmento (Corto y Largo por separado, no una por prueba) y una Clasificación Global de toda la competición, que suma tus puntos de todos los segmentos en los que has jugado. También puedes crear Ligas Privadas con tus amigos para competir solo entre vosotros en las pruebas que elijáis. Se ordena de más a menos puntos. Para que nadie copie estrategia, los equipos de los demás jugadores no se ven hasta que cierra el plazo de ese segmento, y las puntuaciones aparecen cuando se publican las notas oficiales.",
+        },
+        {
+          q: "¿Cómo funciona el sistema de puntos?",
+          a: "Cada patinador que eliges para un elemento te da exactamente la nota oficial que los jueces le pusieron a ese elemento (TES) o, en un slot de Componentes, la nota de ese bloque (PCS). Tu puntuación en un segmento es la suma de todos tus picks: no hay multiplicadores ni puntos por posición. Hasta que se publican las notas oficiales, cada pick cuenta 0 (pendiente).",
+        },
+        {
+          q: "¿Qué patinadores puedo elegir para mi equipo?",
+          a: "Solo los inscritos en esa prueba concreta (su orden de salida, por categoría y género): no puedes fichar a alguien de otra categoría. Cuando se publica el orden de salida, sus patinadores aparecen en el selector agrupados por grupo de calentamiento, y Corto y Largo tienen cada uno su propia lista. Dentro de esa lista eliges libremente, salvo las restricciones de grupos de calentamiento: no repetir patinador entre elementos técnicos, máximo 2 de cada uno de los 2 grupos más altos, y en Componentes un patinador por grupo. El mismo patinador puede estar en el equipo de muchos jugadores a la vez.",
+        },
+        {
+          q: "¿Tengo que pujar o pagar por los patinadores?",
+          a: "No. No hay subastas, presupuesto ni monedas: eliges libremente entre los patinadores disponibles y, si otros jugadores eligen al mismo, no pasa nada (no se agotan). Puedes cambiar tus picks tantas veces como quieras hasta que cierre el plazo del segmento, y el botón Autodraft rellena un equipo válido al azar si prefieres no elegir a mano.",
+        },
+      ],
+    },
     normas: {
       pageTitle: "Normas del Fantasy — Rollart Fantasy",
       tag: "Fantasy",
@@ -1127,6 +1149,28 @@ export const dictionaries = {
       autodraftHint: "Randomly fills this segment while respecting the rules — click again to try another combination, or edit any pick by hand afterwards.",
       autodraftSuccess: "✅ Lineup auto-generated — review it before saving.",
       autodraftFailed: "Couldn't generate a valid random lineup. Try again or fill the picks by hand.",
+    },
+    playFaq: {
+      title: "❓ FAQ: how to play",
+      moreLink: "View full rules →",
+      items: [
+        {
+          q: "How does the leaderboard work?",
+          a: "There is a ranking per segment (Short and Long separately, not one per event) and a Global Leaderboard for the whole competition, which adds up your points across every segment you played. You can also create Private Leagues with friends to compete only among yourselves on the events you pick. It's sorted from most to fewest points. So nobody can copy a strategy, other players' teams stay hidden until that segment's deadline passes, and scores show up once the official results are published.",
+        },
+        {
+          q: "How does the point system work?",
+          a: "Each skater you pick for an element earns you exactly the official score the judges gave that element (TES) or, in a Components slot, the score for that block (PCS). Your score in a segment is the sum of all your picks: there are no multipliers or points for placement. Until the official scores are published, every pick counts as 0 (pending).",
+        },
+        {
+          q: "Which skaters can I choose for my team?",
+          a: "Only the ones entered in that specific event (its start list, by category and gender): you can't pick someone from another category. Once the start order is published, its skaters appear in the selector grouped by warm-up group, and Short and Long each have their own list. Within that list you choose freely, except for the warm-up group limits: no repeating a skater across technical elements, at most 2 from each of the 2 highest groups, and in Components one skater per group. The same skater can be on many players' teams at once.",
+        },
+        {
+          q: "Do I have to bid or pay for skaters?",
+          a: "No. There are no auctions, budgets or coins: you choose freely among the available skaters and, if other players pick the same one, nothing happens (they never run out). You can change your picks as many times as you like until the segment's deadline, and the Autodraft button fills a valid random team if you'd rather not pick by hand.",
+        },
+      ],
     },
     normas: {
       pageTitle: "Fantasy Rules — Rollart Fantasy",

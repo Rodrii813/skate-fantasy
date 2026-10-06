@@ -103,6 +103,7 @@ export default async function FantasyDraftPage({
   const dict = getDictionary(locale);
   const t = dict.fantasyHub;
   const td = dict.fantasyDraft;
+  const faq = dict.playFaq;
   const genderLabel = dict.common.gender;
   const ROW_LABELS = [t.shortLabel, t.longLabel] as const;
 
@@ -257,6 +258,30 @@ export default async function FantasyDraftPage({
           </div>
           <p className="text-slate-400 text-sm mt-1">{td.subtitle}</p>
         </div>
+
+        {/* Dudas frecuentes de cómo se juega (clasificación, puntos, qué
+            patinadores se pueden elegir y si hay que pujar) — plegado por
+            defecto para no ocupar sitio a quien ya sabe jugar. Mismo texto
+            que en /fantasy/normas (dict.playFaq). */}
+        <details className="group rounded-2xl border border-indigo-500/30 bg-indigo-600/10">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-indigo-200 [&::-webkit-details-marker]:hidden">
+            {faq.title}
+            <span className="text-slate-400 transition-transform group-open:rotate-180" aria-hidden="true">
+              ▾
+            </span>
+          </summary>
+          <div className="space-y-3 border-t border-indigo-500/20 px-4 py-4">
+            {faq.items.map((item) => (
+              <div key={item.q}>
+                <p className="text-xs font-bold text-slate-100">{item.q}</p>
+                <p className="mt-0.5 text-xs leading-relaxed text-slate-300">{item.a}</p>
+              </div>
+            ))}
+            <Link href="/fantasy/normas" className="inline-block text-xs font-semibold text-indigo-300 underline hover:text-indigo-200">
+              {faq.moreLink}
+            </Link>
+          </div>
+        </details>
 
         <div className="flex flex-wrap items-center gap-2">
           {competitionTabs.map((c) => (
