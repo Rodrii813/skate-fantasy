@@ -7,6 +7,11 @@ import { getDictionary } from "@/lib/i18n/dictionary";
 import { computeEventOpenStatus } from "@/lib/eventOpenStatus";
 import WorldSkateGamesCountdown from "@/app/_components/WorldSkateGamesCountdown";
 import ShareSiteCard from "@/app/_components/ShareSiteCard";
+import HomeEventCarousel, {
+  type HomeEventCarouselLabels,
+  type HomeEventSlide,
+} from "@/app/_components/HomeEventCarousel";
+import { formatInTimeZone, VENUE_TIMEZONE } from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -69,25 +74,6 @@ export default async function HomePage() {
   // siempre).
   const activeCandidate = candidates.find((c) => c.status.predictionsOpen || c.status.draftOpen) || candidates[0];
   const nextActiveEvent = activeCandidate?.event;
-  const activeStatus = activeCandidate?.status;
-
-  const predictionsOpen = activeStatus?.predictionsOpen || false;
-  const draftOpen = activeStatus?.draftOpen || false;
-  const somethingLiveNow = predictionsOpen || draftOpen;
-
-  // Segundo bug reportado en el mismo banner: "Cierre de picks" mostraba
-  // SIEMPRE rosterLocksAt, aunque lo que estuviera abierto (o lo próximo a
-  // cerrar) fueran las Predicciones, cuyo plazo real es
-  // predictionsCloseAt (firstSegmentEffectiveLocksAt) — casi siempre
-  // IGUAL o ANTES que rosterLocksAt, nunca después. Ahora se muestra el
-  // plazo que corresponde a lo que está (o va a estar) abierto, y si
-  // Predicciones y Draft cierran en momentos distintos y los dos están
-  // abiertos a la vez, se muestran ambos por separado en vez de uno solo.
-  const showBothCloseDates =
-    predictionsOpen &&
-    draftOpen &&
-    activeStatus!.predictionsCloseAt.getTime() !== activeStatus!.draftCloseAt.getTime();
-
   const fmtDate = (d: Date) =>
     `${d.toLocaleDateString(dateLocale)} ${d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}`;
 
@@ -120,6 +106,60 @@ export default async function HomePage() {
     }
   }
   const liveNowCompetitions = Array.from(liveNowByCompetition.values()).slice(0, 5);
+
+  // Carrusel del banner: pruebas del mismo día de sede que la destacada,
+  // ordenadas por hora de pista. Sin scheduledAt (o sin ninguna otra ese día)
+  // se queda solo la destacada.
+  const venueDayKey = (d: Date | null | undefined) =>
+    d ? formatInTimeZone(d, VENUE_TIMEZONE, { year: "numeric", month: "2-digit", day: "2-digit" }) : null;
+  const featuredDay = venueDayKey(nextActiveEvent?.scheduledAt);
+  const carouselCandidates: typeof candidates = !nextActiveEvent
+    ? []
+    : featuredDay
+    ? candidates
+        .filter((c) => venueDayKey(c.event.scheduledAt) === featuredDay)
+        .sort(
+          (x, y) =>
+            new Date(x.event.scheduledAt as Date).getTime() - new Date(y.event.scheduledAt as Date).getTime()
+        )
+    : [activeCandidate!];
+  const closeLinesFor = (st: ReturnType<typeof computeEventOpenStatus>) => {
+    if (st.predictionsOpen && st.draftOpen && st.predictionsCloseAt.getTime() !== st.draftCloseAt.getTime()) {
+      return [
+        { label: t.picksClosePredictions, value: fmtDate(st.predictionsCloseAt) },
+        { label: t.picksCloseDraft, value: fmtDate(st.draftCloseAt) },
+      ];
+    }
+    const at = st.predictionsOpen
+      ? st.predictionsCloseAt
+      : st.draftOpen
+      ? st.draftCloseAt
+      : st.predictionsCloseAt.getTime() < st.draftCloseAt.getTime()
+      ? st.predictionsCloseAt
+      : st.draftCloseAt;
+    return [{ label: t.picksClose, value: fmtDate(at) }];
+  };
+  const bannerSlides: HomeEventSlide[] = carouselCandidates.map((c) => ({
+    id: c.event.id,
+    competitionName: c.event.competition.name,
+    name: c.event.name,
+    predictionsOpen: c.status.predictionsOpen,
+    draftOpen: c.status.draftOpen,
+    closeLines: closeLinesFor(c.status),
+  }));
+  const carouselLabels: HomeEventCarouselLabels = {
+    liveBoth: t.liveBanner,
+    livePredictionsOnly: t.liveBannerPredictionsOnly,
+    liveDraftOnly: t.liveBannerDraftOnly,
+    upcoming: t.upcomingBanner,
+    predictOpen: t.predictPodium,
+    predictClosed: t.predictPodiumClosed,
+    draftOpen: t.createRoster,
+    draftClosed: t.createRosterClosed,
+    prev: t.carouselPrev,
+    next: t.carouselNext,
+    goTo: t.carouselGoTo,
+  };
 
   // Cuenta atrás de la home: ajustable desde /admin/settings (activar o
   // desactivar, título, sede y fecha objetivo) en vez de detectarse sola
@@ -178,76 +218,11 @@ export default async function HomePage() {
           />
         )}
 
-        {/* Banner de evento destacado */}
+        {/* Banner de evento destacado: carrusel con TODAS las pruebas del
+            mismo día (en la sede) que la prueba destacada — p.ej. Junior
+            femenino + Senior masculino + Senior femenino —, de una en una. */}
         {nextActiveEvent ? (
-          <div className="bg-gradient-to-r from-gold/10 via-white/5 to-white/5 border border-gold/30 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl shadow-black/40">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                {somethingLiveNow ? (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-rose-500/20 text-rose-400 border border-rose-500/30 px-2 py-0.5 rounded-full animate-pulse">
-                    ●{" "}
-                    {predictionsOpen && draftOpen
-                      ? t.liveBanner
-                      : predictionsOpen
-                      ? t.liveBannerPredictionsOnly
-                      : t.liveBannerDraftOnly}
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider bg-white/10 text-ice-100/60 border border-white/15 px-2 py-0.5 rounded-full">
-                    {t.upcomingBanner}
-                  </span>
-                )}
-                <span className="text-xs text-ice-100/50 font-mono">
-                  {nextActiveEvent.competition.name}
-                </span>
-              </div>
-              <h2 className="text-xl sm:text-2xl font-display font-black text-white">
-                {nextActiveEvent.name}
-              </h2>
-              {showBothCloseDates ? (
-                <p className="text-xs text-ice-100/50 space-x-3">
-                  <span>{t.picksClosePredictions}: {fmtDate(activeStatus!.predictionsCloseAt)}</span>
-                  <span>{t.picksCloseDraft}: {fmtDate(activeStatus!.draftCloseAt)}</span>
-                </p>
-              ) : (
-                <p className="text-xs text-ice-100/50">
-                  {t.picksClose}:{" "}
-                  {fmtDate(
-                    predictionsOpen
-                      ? activeStatus!.predictionsCloseAt
-                      : draftOpen
-                      ? activeStatus!.draftCloseAt
-                      : activeStatus!.predictionsCloseAt.getTime() < activeStatus!.draftCloseAt.getTime()
-                      ? activeStatus!.predictionsCloseAt
-                      : activeStatus!.draftCloseAt
-                  )}
-                </p>
-              )}
-            </div>
-
-            <div className="flex gap-2 w-full sm:w-auto">
-              <Link
-                href={`/predictions?event=${nextActiveEvent.id}`}
-                className={`flex-1 sm:flex-none text-center text-xs font-semibold px-4 py-2.5 rounded-xl transition ${
-                  predictionsOpen
-                    ? "bg-accent hover:bg-accent/90 text-rink"
-                    : "bg-white/10 hover:bg-white/15 text-ice-100/50 border border-white/10"
-                }`}
-              >
-                {predictionsOpen ? t.predictPodium : t.predictPodiumClosed}
-              </Link>
-              <Link
-                href={`/events/${nextActiveEvent.id}`}
-                className={`flex-1 sm:flex-none text-center text-xs font-semibold px-4 py-2.5 rounded-xl transition ${
-                  draftOpen
-                    ? "bg-gold hover:bg-gold/90 text-rink"
-                    : "bg-white/10 hover:bg-white/15 text-ice-100/50 border border-white/10"
-                }`}
-              >
-                {draftOpen ? t.createRoster : t.createRosterClosed}
-              </Link>
-            </div>
-          </div>
+          <HomeEventCarousel slides={bannerSlides} labels={carouselLabels} />
         ) : (
           <div className="text-center py-4 space-y-2">
             <h1 className="text-3xl sm:text-4xl font-display font-black tracking-tight text-white">
