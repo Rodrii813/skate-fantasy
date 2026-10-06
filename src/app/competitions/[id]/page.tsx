@@ -76,6 +76,22 @@ export default async function CompetitionDetailPage({
   const skaterWord = (ev: { gender: string | null } | undefined, plural: boolean) =>
     dict.common.skater(plural, ev?.gender === "FEMALE");
 
+  // Pruebas agrupadas por modalidad (disciplina), en el orden en que aparece
+  // cada una por primera vez — tipado explícito para no arrastrar el `any` del
+  // cliente de Prisma simulado en este entorno de pruebas.
+  type CompetitionEvent = (typeof events)[number];
+  const disciplineGroups: { id: string; name: string; events: CompetitionEvent[] }[] = [];
+  for (const ev of events) {
+    let group = disciplineGroups.find((g) => g.id === ev.disciplineId);
+    if (!group) {
+      group = { id: ev.disciplineId, name: translateDisciplineName(ev.discipline.name, locale), events: [] };
+      disciplineGroups.push(group);
+    }
+    group.events.push(ev);
+  }
+  const activeGroup =
+    disciplineGroups.find((g) => g.events.some((e) => e.id === activeEvent?.id)) ?? disciplineGroups[0];
+
   const tabHref = (eventId: string, forView?: "entries" | "results") =>
     `/competitions/${competition.id}?event=${eventId}${forView ? `&view=${forView}` : ""}`;
 
@@ -293,32 +309,56 @@ export default async function CompetitionDetailPage({
               </div>
             ) : (
               <>
-            {/* Pestañas por disciplina · categoría, con nº de patinadoras */}
-            <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-px">
-              {events.map((ev) => {
-                const isActive = ev.id === activeEvent?.id;
-                return (
-                  <Link
-                    key={ev.id}
-                    href={tabHref(ev.id)}
-                    className={`px-4 py-2.5 text-xs font-bold rounded-t-lg transition border-b-2 -mb-px whitespace-nowrap ${
-                      isActive
-                        ? "border-indigo-500 text-indigo-300 bg-slate-900/80"
-                        : "border-transparent text-slate-500 hover:text-slate-300"
-                    }`}
-                  >
-                    {translateDisciplineName(ev.discipline.name, locale)} ·{" "}
-                    {translateCategoryName(ev.category.name, locale)}
-                    {ev.gender ? ` · ${genderLabel[ev.gender]}` : ""}
-                    {ev.showFormat
-                      ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
-                      : ""}
-                    <span className="ml-1.5 text-[10px] font-mono text-slate-500">
-                      ({ev._count.registrations})
-                    </span>
-                  </Link>
-                );
-              })}
+            {/* Selector en dos niveles, en vez de una única fila con UNA
+                pestaña por cada disciplina · categoría · género (con muchas
+                pruebas ocupaba varias filas): primero la MODALIDAD
+                (disciplina) en una tira deslizable en horizontal y, debajo,
+                solo las pruebas (categoría · género) de la modalidad activa.
+                La modalidad activa sale siempre de la prueba activa, así que
+                llegar con ?event=... (p.ej. desde el calendario) abre
+                directamente la modalidad correcta. */}
+            <div className="space-y-3">
+              <div className="flex gap-1.5 overflow-x-auto border-b border-slate-800 pb-2">
+                {disciplineGroups.map((g) => {
+                  const isActiveGroup = g.id === activeGroup?.id;
+                  return (
+                    <Link
+                      key={g.id}
+                      href={tabHref(g.events[0].id)}
+                      className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition ${
+                        isActiveGroup
+                          ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
+                          : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                      }`}
+                    >
+                      {g.name} <span className="font-normal normal-case opacity-60">({g.events.length})</span>
+                    </Link>
+                  );
+                })}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {activeGroup?.events.map((ev) => {
+                  const isActive = ev.id === activeEvent?.id;
+                  return (
+                    <Link
+                      key={ev.id}
+                      href={tabHref(ev.id)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition whitespace-nowrap ${
+                        isActive
+                          ? "bg-indigo-600 border-indigo-500 text-white shadow-md shadow-indigo-900/20"
+                          : "bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700"
+                      }`}
+                    >
+                      {translateCategoryName(ev.category.name, locale)}
+                      {ev.gender ? ` · ${genderLabel[ev.gender]}` : ""}
+                      {ev.showFormat
+                        ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
+                        : ""}
+                      <span className="ml-1.5 text-[10px] font-mono opacity-60">({ev._count.registrations})</span>
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
 
             {activeEvent && (

@@ -17,7 +17,11 @@ const statusClassName: Record<string, string> = {
 
 const medal = ["🥇", "🥈", "🥉"];
 
-export default async function ResultadosPage() {
+export default async function ResultadosPage({
+  searchParams,
+}: {
+  searchParams: { discipline?: string; event?: string };
+}) {
   const locale = getLocale();
   const dict = getDictionary(locale);
   const t = dict.resultados;
@@ -59,6 +63,17 @@ export default async function ResultadosPage() {
     byDiscipline.get(key)!.push(event);
   }
 
+  // Modalidad (disciplina) activa: la de la prueba pedida con ?event=... (así
+  // llegar desde otra pantalla abre directamente la modalidad correcta), o la
+  // pedida con ?discipline=..., o la primera. Solo se muestran las pruebas de
+  // esa modalidad — antes salían TODAS las modalidades apiladas una tras otra.
+  const requestedEvent = searchParams.event ? events.find((e) => e.id === searchParams.event) : undefined;
+  const activeDiscipline =
+    requestedEvent?.discipline.name ??
+    (searchParams.discipline && disciplineOrder.includes(searchParams.discipline)
+      ? searchParams.discipline
+      : disciplineOrder[0]);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
       <div className="max-w-6xl mx-auto space-y-8">
@@ -79,11 +94,31 @@ export default async function ResultadosPage() {
             </p>
           </div>
         ) : (
-          disciplineOrder.map((disciplineName) => (
+          <>
+            {/* Pestañas por modalidad, deslizables en horizontal */}
+            <div className="flex gap-1.5 overflow-x-auto border-b border-slate-800 pb-3">
+              {disciplineOrder.map((disciplineName) => (
+                <Link
+                  key={disciplineName}
+                  href={`/resultados?discipline=${encodeURIComponent(disciplineName)}`}
+                  className={`shrink-0 whitespace-nowrap rounded-lg border px-3 py-1.5 text-[11px] font-bold uppercase tracking-wide transition ${
+                    disciplineName === activeDiscipline
+                      ? "border-indigo-500 bg-indigo-600/20 text-indigo-300"
+                      : "border-slate-800 bg-slate-900/40 text-slate-400 hover:border-slate-700 hover:text-slate-200"
+                  }`}
+                >
+                  {translateDisciplineName(disciplineName, locale)}{" "}
+                  <span className="font-normal normal-case opacity-60">
+                    ({byDiscipline.get(disciplineName)!.length})
+                  </span>
+                </Link>
+              ))}
+            </div>
+
+          {disciplineOrder
+            .filter((disciplineName) => disciplineName === activeDiscipline)
+            .map((disciplineName) => (
             <section key={disciplineName} className="space-y-4">
-              <h2 className="text-lg font-bold uppercase tracking-wider text-indigo-400 border-b border-slate-800 pb-2">
-                {translateDisciplineName(disciplineName, locale)}
-              </h2>
 
               <div className="grid gap-4">
                 {byDiscipline.get(disciplineName)!.map((event) => {
@@ -100,7 +135,10 @@ export default async function ResultadosPage() {
                   return (
                     <div
                       key={event.id}
-                      className="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 space-y-4 shadow-lg shadow-black/30"
+                      id={event.id}
+                      className={`bg-slate-900/80 border rounded-2xl p-5 space-y-4 shadow-lg shadow-black/30 ${
+                        event.id === searchParams.event ? "border-indigo-500/60" : "border-slate-800"
+                      }`}
                     >
                       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
                         <div>
@@ -168,7 +206,8 @@ export default async function ResultadosPage() {
                 })}
               </div>
             </section>
-          ))
+          ))}
+          </>
         )}
       </div>
     </div>
