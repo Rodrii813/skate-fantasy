@@ -77,12 +77,13 @@ export default function HomeEventCarousel({
     return () => clearTimeout(timer);
   }, [index, paused, reduceMotion, count, goTo]);
 
+  const multi = count > 1;
   const arrowClass =
-    "hidden sm:flex shrink-0 h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-white/5 text-ice-100/80 hover:bg-white/15 hover:text-white transition";
+    "absolute top-1/2 z-10 hidden h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full border border-white/15 bg-white/5 text-lg text-ice-100/80 transition hover:bg-white/15 hover:text-white sm:flex";
 
   return (
     <div
-      className="space-y-3"
+      className="relative overflow-hidden rounded-2xl border border-gold/30 bg-gradient-to-br from-rink via-rink to-gold/10 shadow-xl shadow-black/40"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={() => setPaused(true)}
@@ -90,28 +91,44 @@ export default function HomeEventCarousel({
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <div className="flex items-center gap-2">
-        {count > 1 && (
-          <button
-            type="button"
-            aria-label={labels.prev}
-            className={arrowClass}
-            onClick={() => goTo((index - 1 + count) % count)}
-          >
-            ‹
-          </button>
-        )}
+      <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-gold/15 blur-3xl" />
+      <div className="pointer-events-none absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-accent/10 blur-3xl" />
+
+      {multi && (
+        <button
+          type="button"
+          aria-label={labels.prev}
+          className={`${arrowClass} left-3`}
+          onClick={() => goTo((index - 1 + count) % count)}
+        >
+          ‹
+        </button>
+      )}
+      {multi && (
+        <button
+          type="button"
+          aria-label={labels.next}
+          className={`${arrowClass} right-3`}
+          onClick={() => goTo((index + 1) % count)}
+        >
+          ›
+        </button>
+      )}
 
         <div
           ref={scrollerRef}
           onScroll={onScroll}
-          className="flex flex-1 min-w-0 overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="relative flex overflow-x-auto snap-x snap-mandatory scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {slides.map((s) => {
             const live = s.predictionsOpen || s.draftOpen;
             return (
-              <div key={s.id} className="w-full shrink-0 snap-center px-px">
-                <div className="h-full bg-gradient-to-r from-gold/10 via-white/5 to-white/5 border border-gold/30 rounded-2xl p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl shadow-black/40">
+              <div key={s.id} className="w-full shrink-0 snap-center">
+                <div
+                  className={`flex h-full flex-col justify-between gap-4 p-5 sm:flex-row sm:items-center sm:p-6 ${
+                    multi ? "pb-9 sm:px-16 sm:pb-6" : ""
+                  }`}
+                >
                   <div className="space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {live ? (
@@ -168,20 +185,8 @@ export default function HomeEventCarousel({
           })}
         </div>
 
-        {count > 1 && (
-          <button
-            type="button"
-            aria-label={labels.next}
-            className={arrowClass}
-            onClick={() => goTo((index + 1) % count)}
-          >
-            ›
-          </button>
-        )}
-      </div>
-
-      {count > 1 && (
-        <div className="flex justify-center gap-2">
+      {multi && (
+        <div className="absolute bottom-3 left-0 right-0 z-10 flex justify-center gap-2 sm:bottom-2">
           {slides.map((s, i) => (
             <button
               key={s.id}
@@ -189,8 +194,8 @@ export default function HomeEventCarousel({
               aria-label={`${labels.goTo} ${i + 1}/${count}`}
               aria-current={i === index}
               onClick={() => goTo(i)}
-              className={`h-2 rounded-full transition-all ${
-                i === index ? "w-5 bg-gold" : "w-2 bg-white/25 hover:bg-white/40"
+              className={`h-1.5 rounded-full transition-all ${
+                i === index ? "w-5 bg-gold" : "w-1.5 bg-white/25 hover:bg-white/40"
               }`}
             />
           ))}
