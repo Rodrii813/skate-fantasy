@@ -8,6 +8,7 @@ import { firstSegmentEffectiveLocksAt, getPredictionsStatus } from "@/lib/segmen
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import LocalDateTime from "@/app/_components/LocalDateTime";
 import TestEventBanner from "@/app/_components/TestEventBanner";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import PredictionEventSelector, { type PredictionEventGroup } from "./PredictionEventSelector";
@@ -299,14 +300,11 @@ export default async function PredictionsPage({
                       </span>
                     ) : (
                       <span className="px-3 py-1 text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 rounded-full">
-                        {t.closes(
-                          new Date(
-                            firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                          ).toLocaleDateString(dateLocale),
-                          new Date(
-                            firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)
-                          ).toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })
-                        )}
+                        {t.closesAt}{" "}
+                        <LocalDateTime
+                          value={firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)}
+                          options={{ day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }}
+                        />
                       </span>
                     )}
                   </div>
