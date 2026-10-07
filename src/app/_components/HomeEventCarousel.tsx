@@ -15,6 +15,9 @@ export interface HomeEventSlide {
   name: string;
   predictionsOpen: boolean;
   draftOpen: boolean;
+  // Ya cerrados (distinto de "aún no abiertos").
+  predictionsClosed: boolean;
+  draftClosed: boolean;
   // Fecha de cierre como ISO: se formatea en el cliente, en la zona horaria
   // del usuario (el servidor solo conoce UTC).
   closeLines: { label: string; at: string }[];
@@ -27,6 +30,8 @@ export interface HomeEventCarouselLabels {
   upcoming: string;
   predictOpen: string;
   predictClosed: string;
+  predictDone: string;
+  draftDone: string;
   draftOpen: string;
   draftClosed: string;
   prev: string;
@@ -172,7 +177,7 @@ export default function HomeEventCarousel({
                           : "bg-white/10 hover:bg-white/15 text-ice-100/50 border border-white/10"
                       }`}
                     >
-                      {s.predictionsOpen ? labels.predictOpen : labels.predictClosed}
+                      {s.predictionsOpen ? labels.predictOpen : s.predictionsClosed ? labels.predictDone : labels.predictClosed}
                     </Link>
                     <Link
                       href={`/events/${s.id}`}
@@ -182,7 +187,7 @@ export default function HomeEventCarousel({
                           : "bg-white/10 hover:bg-white/15 text-ice-100/50 border border-white/10"
                       }`}
                     >
-                      {s.draftOpen ? labels.draftOpen : labels.draftClosed}
+                      {s.draftOpen ? labels.draftOpen : s.draftClosed ? labels.draftDone : labels.draftClosed}
                     </Link>
                   </div>
                 </div>

@@ -31,14 +31,18 @@ export interface EventForStatus extends PredictionsOpenInput {
 export interface EventOpenStatus {
   predictionsOpen: boolean;
   draftOpen: boolean;
+  // Estado completo (no solo abierto/no): permite distinguir "cerrado" de
+  // "aún no abierto" al rotular los botones.
+  predictionsStatus: "UPCOMING" | "OPEN" | "CLOSED";
+  draftStatus: "UPCOMING" | "OPEN" | "CLOSED";
   predictionsCloseAt: Date;
   draftCloseAt: Date;
 }
 
 export function computeEventOpenStatus(event: EventForStatus, now: Date = new Date()): EventOpenStatus {
   const predictionsCloseAt = firstSegmentEffectiveLocksAt(event.segments, event.rosterLocksAt);
-  const predictionsOpen =
-    getPredictionsStatus(event, event.segments, event._count.registrations, now) === "OPEN";
+  const predictionsStatus = getPredictionsStatus(event, event.segments, event._count.registrations, now);
+  const predictionsOpen = predictionsStatus === "OPEN";
 
   const slotsBySegment = new Map<string, number>();
   for (const slot of event.slots) {
@@ -49,6 +53,11 @@ export function computeEventOpenStatus(event: EventForStatus, now: Date = new Da
     status: getSegmentDraftStatus(seg, event.rosterLocksAt, (slotsBySegment.get(seg.id) || 0) > 0, now),
   }));
   const draftOpen = segStatus.some((x) => x.status === "OPEN");
+  const draftStatus: "UPCOMING" | "OPEN" | "CLOSED" = draftOpen
+    ? "OPEN"
+    : segStatus.length > 0 && segStatus.every((x) => x.status === "CLOSED")
+    ? "CLOSED"
+    : "UPCOMING";
 
   // Cierre del draft = plazo EFECTIVO del segmento que importa (el override
   // del segmento si lo tiene, y si no el del evento). Antes se usaba siempre
@@ -66,5 +75,5 @@ export function computeEventOpenStatus(event: EventForStatus, now: Date = new Da
     ? new Date(event.rosterLocksAt)
     : event.rosterLocksAt;
 
-  return { predictionsOpen, draftOpen, predictionsCloseAt, draftCloseAt };
+  return { predictionsOpen, draftOpen, predictionsStatus, draftStatus, predictionsCloseAt, draftCloseAt };
 }

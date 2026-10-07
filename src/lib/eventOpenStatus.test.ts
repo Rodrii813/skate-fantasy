@@ -12,3 +12,25 @@ describe("cierre draft", () => {
     expect(r.draftCloseAt.toISOString()).toBe("2026-10-07T20:00:00.000Z");
   });
 });
+
+describe("estados cerrado / aún no abierto", () => {
+  it("predicciones cerradas y draft del Largo aún sin abrir", () => {
+    const ev: any = {
+      ...base,
+      slots: [{ segmentId: "a" }, { segmentId: "b" }],
+      segments: [
+        { id: "a", order: 1, locksAt: "2026-10-07T18:00:00Z", opensAt: null, manuallyOpened: false },
+        { id: "b", order: 2, locksAt: "2026-10-09T18:00:00Z", opensAt: "2026-10-09T00:00:00Z", manuallyOpened: false },
+      ],
+    };
+    const r = computeEventOpenStatus(ev, new Date("2026-10-08T00:00:00Z"));
+    expect(r.predictionsStatus).toBe("CLOSED");
+    expect(r.draftStatus).toBe("UPCOMING");
+  });
+  it("todo cerrado", () => {
+    const ev: any = { ...base, segments: [{ id: "a", order: 1, locksAt: "2026-10-07T18:00:00Z", opensAt: null, manuallyOpened: false }] };
+    const r = computeEventOpenStatus(ev, new Date("2026-10-08T00:00:00Z"));
+    expect(r.predictionsStatus).toBe("CLOSED");
+    expect(r.draftStatus).toBe("CLOSED");
+  });
+});

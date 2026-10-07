@@ -185,6 +185,8 @@ export default async function HomePage() {
     name: c.event.name,
     predictionsOpen: c.status.predictionsOpen,
     draftOpen: c.status.draftOpen,
+    predictionsClosed: c.status.predictionsStatus === "CLOSED",
+    draftClosed: c.status.draftStatus === "CLOSED",
     closeLines: closeLinesFor(c.status),
   }));
   const carouselLabels: HomeEventCarouselLabels = {
@@ -194,6 +196,8 @@ export default async function HomePage() {
     upcoming: t.upcomingBanner,
     predictOpen: t.predictPodium,
     predictClosed: t.predictPodiumClosed,
+    predictDone: t.predictPodiumDone,
+    draftDone: t.createRosterDone,
     draftOpen: t.createRoster,
     draftClosed: t.createRosterClosed,
     prev: t.carouselPrev,
