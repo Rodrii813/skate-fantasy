@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import LineupShareButtons from "./LineupShareButtons";
 import { formatSkaterName } from "@/lib/skaterName";
 import { adaptSkaterText, type SkaterAudience } from "@/lib/skaterWording";
 import {
@@ -149,6 +150,28 @@ export default function FantasyRosterForm({
   );
   const activeTab = tabs.find((t) => t.id === activeTabId) ?? tabs[0];
   const activeSlots = slotsByTab.get(activeTab?.id ?? DEFAULT_TAB_ID) ?? [];
+
+  // Alineación GUARDADA del segmento activo (initialPicks viene del servidor,
+  // no el borrador sin guardar de `picks`) para compartirla como imagen.
+  const savedLineupRows = useMemo(() => {
+    const regBySkater = new Map(registrations.map((r) => [r.skaterId, r]));
+    const ordered = [...activeSlots].sort(
+      (a, b) => Number(isComponentSlotLabel(a.label)) - Number(isComponentSlotLabel(b.label)) || a.order - b.order
+    );
+    return ordered.flatMap((slot) => {
+      const skaterId = initialPicks?.[slot.id];
+      const reg = skaterId ? regBySkater.get(skaterId) : undefined;
+      if (!reg) return [];
+      return [
+        {
+          label: slot.label,
+          skaterName: formatSkaterName(reg.skater, audience === "pairs"),
+          country: reg.skater.country || "",
+          isComponent: isComponentSlotLabel(slot.label),
+        },
+      ];
+    });
+  }, [activeSlots, initialPicks, registrations, audience]);
 
   const technicalSlots = useMemo(
     () => activeSlots.filter((s) => !isComponentSlotLabel(s.label)),
@@ -651,6 +674,29 @@ export default function FantasyRosterForm({
           la API solo escribe los slots de segmentos abiertos e ignora el
           resto, así que basta con un único botón aunque haya varios
           segmentos y alguno ya esté cerrado. */}
+      {savedLineupRows.length > 0 && (
+        <LineupShareButtons
+          eventId={eventId}
+          segmentId={activeTab && activeTab.id !== DEFAULT_TAB_ID ? activeTab.id : null}
+          eventName={eventName}
+          segmentName={activeTab?.name ?? ""}
+          rows={savedLineupRows}
+          labels={{
+            title: t.lineupImageTitle,
+            technical: t.lineupImageTechnical,
+            components: t.lineupImageComponents,
+            share: t.shareLineupButton,
+            working: t.shareLineupWorking,
+            whatsapp: t.shareLineupWhatsapp,
+            copyLink: t.shareLineupCopy,
+            copied: t.shareLineupCopied,
+            downloaded: t.shareLineupDownloaded,
+            error: t.shareLineupError,
+            shareText: t.shareLineupText,
+          }}
+        />
+      )}
+
       {!activeTab?.locked && activeSlots.length > 0 && (
         <div className="space-y-1.5">
           <button
