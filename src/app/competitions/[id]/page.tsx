@@ -9,6 +9,7 @@ import CalendarDayGroups, { type CalendarDayRow } from "@/app/_components/Calend
 import { buildCalendarRows } from "@/lib/calendarGrouping";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 
 export const dynamic = "force-dynamic";
@@ -387,7 +388,7 @@ export default async function CompetitionDetailPage({
                         <span>
                           📅 Cierre de rosters:{" "}
                           <LocalDateTime
-                            value={activeEvent.rosterLocksAt}
+                            value={firstSegmentEffectiveLocksAt(activeEvent.segments, activeEvent.rosterLocksAt)}
                             options={{ dateStyle: "short", timeStyle: "short" }}
                           />
                         </span>

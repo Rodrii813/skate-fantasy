@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import CompetitionsSearch from "./CompetitionsSearch";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
+import { firstSegmentEffectiveLocksAt } from "@/lib/segments";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ export default async function CompetitionsPage() {
         include: {
           discipline: true,
           category: true,
+          segments: { select: { id: true, order: true, locksAt: true } },
           _count: { select: { registrations: true, predictions: true } },
         },
         orderBy: { rosterLocksAt: "asc" },
@@ -67,7 +69,17 @@ export default async function CompetitionsPage() {
             <p className="text-ice-100/40 text-xs mt-2">{t.emptyHint}</p>
           </div>
         ) : (
-          <CompetitionsSearch competitions={competitions} />
+          <CompetitionsSearch
+            competitions={competitions.map((c) => ({
+              ...c,
+              events: c.events.map((e) => ({
+                ...e,
+                // Cierre de picks real: el plazo del primer segmento (o el del
+                // evento si no tiene propio), igual que el banner de la home.
+                rosterLocksAt: firstSegmentEffectiveLocksAt(e.segments, e.rosterLocksAt),
+              })),
+            }))}
+          />
         )}
       </div>
     </div>
