@@ -121,19 +121,19 @@ export default async function FantasyHubPage({
   const myGlobalIndex = myData ? competitionRanking.findIndex((r) => r.userId === myData!.userId) : -1;
   const myGlobalRank = myGlobalIndex === -1 ? null : myGlobalIndex + 1;
 
-  // Columnas dinámicas: combinaciones Disciplina + Género realmente
-  // presentes en los eventos de esta competición.
-  type Column = { key: string; disciplineName: string; gender: string | null; label: string };
+  // Columnas dinámicas: una por DISCIPLINA (Masculino y Femenino de la misma
+  // disciplina van juntos en la misma agrupación — el género se indica en la
+  // categoría de cada evento, no separa la agrupación).
+  type Column = { key: string; disciplineName: string; label: string };
   const columns: Column[] = [];
   for (const ev of activeCompetition.events) {
-    const key = `${ev.disciplineId}__${ev.gender ?? "none"}`;
+    const key = ev.disciplineId;
     if (!columns.find((c) => c.key === key)) {
       const translatedDisciplineName = translateDisciplineName(ev.discipline.name, locale);
       columns.push({
         key,
         disciplineName: translatedDisciplineName,
-        gender: ev.gender,
-        label: `${translatedDisciplineName}${ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""}`,
+        label: translatedDisciplineName,
       });
     }
   }
@@ -158,15 +158,17 @@ export default async function FantasyHubPage({
   // en Elements (técnica) y Components con getSlotTypeByLabel, porque la
   // referencia muestra cada grupo por separado dentro de la tarjeta.
   const draftStatusColumns: DraftStatusColumn[] = columns.map((col) => {
-    const eventsInColumn = activeCompetition.events.filter(
-      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
-    );
+    const eventsInColumn = activeCompetition.events.filter((ev) => ev.disciplineId === col.key);
     return {
       key: col.key,
       label: col.label,
       events: eventsInColumn.map((ev) => {
         const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
+        // El género va pegado a la categoría (no a la agrupación): Masculino
+        // y Femenino de la misma disciplina conviven en el mismo cuadro.
         const categoryLabel = `${translateCategoryName(ev.category.name, locale)}${
+          ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""
+        }${
           ev.showFormat
             ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
             : ""
@@ -231,15 +233,15 @@ export default async function FantasyHubPage({
   // calculados a partir de boardsByEvent (una única consulta en bloque para
   // toda la competición, igual que usa el Leaderboard).
   const rankMatrixGroups: RankMatrixGroup[] = columns.map((col) => {
-    const eventsInColumn = activeCompetition.events.filter(
-      (ev) => `${ev.disciplineId}__${ev.gender ?? "none"}` === col.key
-    );
+    const eventsInColumn = activeCompetition.events.filter((ev) => ev.disciplineId === col.key);
     return {
       key: col.key,
       label: col.label,
       events: eventsInColumn.map((ev) => {
         const orderedSegments = [...ev.segments].sort((a, b) => a.order - b.order);
         const categoryLabel = `${translateCategoryName(ev.category.name, locale)}${
+          ev.gender ? ` · ${genderLabel[ev.gender] ?? ev.gender}` : ""
+        }${
           ev.showFormat
             ? ` · ${dict.common.showFormat[ev.showFormat as keyof typeof dict.common.showFormat]}`
             : ""
