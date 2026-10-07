@@ -1,5 +1,6 @@
 "use client";
 
+import { formatSkaterName } from "@/lib/skaterName";
 import { isSmallField } from "@/lib/fantasyValidation";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -18,6 +19,8 @@ interface PredictionFormProps {
   eventId: string;
   isLocked: boolean;
   skaters: Skater[];
+  // Parejas: se muestra "A / B" en vez de "A B".
+  isPair?: boolean;
   initialPrediction?: {
     rank1SkaterId: string;
     rank2SkaterId: string;
@@ -31,6 +34,7 @@ export default function PredictionForm({
   eventId,
   isLocked,
   skaters,
+  isPair = false,
   initialPrediction,
 }: PredictionFormProps) {
   const router = useRouter();
@@ -119,6 +123,7 @@ export default function PredictionForm({
                     firstName: s.firstName,
                     lastName: s.lastName,
                     country: s.country,
+                    displayName: formatSkaterName(s, isPair),
                     disabled: selectedList.includes(s.id) && s.id !== value,
                     disabledLabel: t.alreadyChosen,
                   })

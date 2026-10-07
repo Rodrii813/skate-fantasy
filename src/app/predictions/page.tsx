@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import PredictionForm from "./PredictionForm";
+import { formatSkaterName, isPairDiscipline } from "@/lib/skaterName";
 import { firstSegmentEffectiveLocksAt, getPredictionsStatus } from "@/lib/segments";
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
@@ -162,7 +163,7 @@ export default async function PredictionsPage({
     const skaterMap = new Map<string, { name: string; country: string }>();
     activeEvent.registrations.forEach((r) => {
       skaterMap.set(r.skater.id, {
-        name: `${r.skater.firstName} ${r.skater.lastName}`,
+        name: formatSkaterName(r.skater, isPairDiscipline(activeEvent.discipline?.name)),
         country: r.skater.country,
       });
     });
@@ -337,6 +338,7 @@ export default async function PredictionsPage({
                     eventId={activeEvent.id}
                     isLocked={isLocked}
                     skaters={activeEvent.registrations.map((r) => r.skater)}
+                    isPair={isPairDiscipline(activeEvent.discipline?.name)}
                     initialPrediction={userPrediction}
                   />
                 )}

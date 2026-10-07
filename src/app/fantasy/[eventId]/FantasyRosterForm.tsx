@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { formatSkaterName } from "@/lib/skaterName";
 import { adaptSkaterText, type SkaterAudience } from "@/lib/skaterWording";
 import {
   validateFantasyRoster,
@@ -371,6 +372,7 @@ export default function FantasyRosterForm({
         firstName: reg.skater.firstName,
         lastName: reg.skater.lastName,
         country: reg.skater.country,
+        displayName: formatSkaterName(reg.skater, audience === "pairs"),
       })),
     }));
     return (
@@ -496,7 +498,7 @@ export default function FantasyRosterForm({
                   <span className="text-xs font-bold text-slate-300">{slot.label}</span>
                   <span className="text-xs text-slate-400">
                     {reg
-                      ? `${reg.skater.firstName} ${reg.skater.lastName}${
+                      ? `${formatSkaterName(reg.skater, audience === "pairs")}${
                           reg.skater.country ? ` (${reg.skater.country})` : ""
                         }`
                       : t.unassigned}

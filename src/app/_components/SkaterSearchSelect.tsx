@@ -8,6 +8,9 @@ export interface SkaterSearchOption {
   firstName: string;
   lastName: string;
   country: string;
+  // Nombre ya formateado para mostrar (p.ej. "A / B" en Parejas). Si falta,
+  // se usa "Nombre Apellido".
+  displayName?: string;
   // Para Predicciones: una patinadora ya elegida en otro puesto se muestra
   // pero no se puede volver a seleccionar — igual que antes con <option disabled>.
   disabled?: boolean;
@@ -92,7 +95,7 @@ export default function SkaterSearchSelect({
         .map((g) => ({
           ...g,
           options: g.options.filter((o) =>
-            `${o.firstName} ${o.lastName} ${o.country}`.toLowerCase().includes(normalizedQuery)
+            `${o.displayName ?? `${o.firstName} ${o.lastName}`} ${o.country}`.toLowerCase().includes(normalizedQuery)
           ),
         }))
         .filter((g) => g.options.length > 0)
@@ -112,7 +115,7 @@ export default function SkaterSearchSelect({
           {selected ? (
             <>
               {selectedFlag && <span className="mr-1.5">{selectedFlag}</span>}
-              {selected.firstName} {selected.lastName}
+              {selected.displayName ?? `${selected.firstName} ${selected.lastName}`}
               {selected.country && <span className="text-slate-500"> ({selected.country})</span>}
             </>
           ) : (
@@ -171,7 +174,7 @@ export default function SkaterSearchSelect({
                         <span className="flex items-center gap-2 truncate">
                           {flag && <span className="shrink-0">{flag}</span>}
                           <span className="truncate">
-                            {opt.firstName} {opt.lastName}
+                            {opt.displayName ?? `${opt.firstName} ${opt.lastName}`}
                           </span>
                         </span>
                         <span

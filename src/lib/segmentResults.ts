@@ -1,3 +1,4 @@
+import { formatSkaterName } from "@/lib/skaterName";
 // Desglosa los resultados oficiales de un evento en 3 bloques — Corto,
 // Largo y Total — calculados al vuelo a partir de lo que ya hay en la
 // base de datos. No hace falta guardar rankings por segmento: se recalculan
@@ -53,6 +54,8 @@ interface RegistrationLike {
   segment2Ded: number | null;
   finalRank: number | null;
   skater: { firstName: string; lastName: string; country: string };
+  // Parejas: el nombre se muestra "A / B". Lo rellena computeSegmentResultBlocks.
+  pair?: boolean;
 }
 
 interface SegmentLike {
@@ -79,7 +82,7 @@ function buildRows(
     return {
       registrationId: r.id,
       rank,
-      skaterName: `${r.skater.firstName} ${r.skater.lastName}`,
+      skaterName: formatSkaterName(r.skater, r.pair),
       country: r.skater.country,
       total,
       tes: tes ?? 0,
@@ -118,7 +121,7 @@ function buildTotalRows(
     return {
       registrationId: r.id,
       rank: r.finalRank ?? computedRank,
-      skaterName: `${r.skater.firstName} ${r.skater.lastName}`,
+      skaterName: formatSkaterName(r.skater, r.pair),
       country: r.skater.country,
       total: r.totalScore,
       tes: 0,
@@ -146,8 +149,12 @@ function buildTotalRows(
  */
 export function computeSegmentResultBlocks(
   segments: SegmentLike[],
-  registrations: RegistrationLike[]
+  inputRegistrations: RegistrationLike[],
+  isPair = false
 ): SegmentResultBlock[] {
+  const registrations: RegistrationLike[] = isPair
+    ? inputRegistrations.map((r) => ({ ...r, pair: true }))
+    : inputRegistrations;
   const orderedSegments = [...segments].sort((a, b) => a.order - b.order);
   const shortSegment = orderedSegments[0];
   const longSegment = orderedSegments[1];

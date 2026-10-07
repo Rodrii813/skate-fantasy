@@ -1,4 +1,5 @@
 import { prisma } from "./prisma";
+import { formatSkaterName } from "@/lib/skaterName";
 
 // Las bases de datos serverless (Neon, la que usa este proyecto) tienen un
 // límite bajo de conexiones concurrentes. computeGlobalLeaderboard,
@@ -59,7 +60,7 @@ export async function computeEventLeaderboard(eventId: string): Promise<RosterSc
       picks: {
         include: {
           slot: true,
-          skater: true,
+          skater: { include: { discipline: { select: { name: true } } } },
         },
       },
     },
@@ -90,7 +91,7 @@ export async function computeEventLeaderboard(eventId: string): Promise<RosterSc
         slotId: pick.slotId,
         slotLabel: pick.slot.label,
         skaterId: pick.skaterId,
-        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        skaterName: formatSkaterName(pick.skater),
         points,
       };
     });
@@ -142,7 +143,7 @@ export async function computeEventLeaderboardBySegment(
     include: {
       user: true,
       picks: {
-        include: { slot: true, skater: true },
+        include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } },
       },
     },
   });
@@ -174,7 +175,7 @@ export async function computeEventLeaderboardBySegment(
         slotId: pick.slotId,
         slotLabel: pick.slot.label,
         skaterId: pick.skaterId,
-        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
@@ -223,7 +224,7 @@ export async function computeCompetitionLeaderboardsBySegment(
     where: { event: { competitionId } },
     include: {
       user: true,
-      picks: { include: { slot: true, skater: true } },
+      picks: { include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } },
     },
   });
   if (rosters.length === 0) return result;
@@ -256,7 +257,7 @@ export async function computeCompetitionLeaderboardsBySegment(
         slotId: pick.slotId,
         slotLabel: pick.slot.label,
         skaterId: pick.skaterId,
-        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
@@ -457,7 +458,7 @@ export async function computeMyPicksForCompetition(
 ): Promise<Map<string, MyEventPicks>> {
   const rosters = await prisma.fantasyRoster.findMany({
     where: { userId, event: { competitionId } },
-    include: { picks: { include: { slot: true, skater: true } } },
+    include: { picks: { include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } } },
   });
 
   const result = new Map<string, MyEventPicks>();
@@ -490,7 +491,7 @@ export async function computeMyPicksForCompetition(
         slotId: pick.slotId,
         slotLabel: pick.slot.label,
         skaterId: pick.skaterId,
-        skaterName: `${pick.skater.firstName} ${pick.skater.lastName}`,
+        skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);

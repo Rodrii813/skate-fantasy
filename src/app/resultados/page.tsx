@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
+import { formatSkaterName, isPairDiscipline } from "@/lib/skaterName";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
@@ -129,7 +130,7 @@ export default async function ResultadosPage({
                     .slice(0, 3);
                   const hasResults = podium.length > 0;
                   const resultBlocks = hasResults
-                    ? computeSegmentResultBlocks(event.segments, event.registrations)
+                    ? computeSegmentResultBlocks(event.segments, event.registrations, isPairDiscipline(event.discipline.name))
                     : [];
 
                   return (
@@ -179,7 +180,7 @@ export default async function ResultadosPage({
                               <span className="text-xl">{medal[i]}</span>
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-slate-200 truncate">
-                                  {reg.skater.firstName} {reg.skater.lastName}
+                                  {formatSkaterName(reg.skater, isPairDiscipline(event.discipline.name))}
                                 </p>
                                 <p className="text-xs text-slate-400">
                                   {reg.skater.country}

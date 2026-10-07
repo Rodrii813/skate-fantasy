@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { computeSegmentResultBlocks } from "@/lib/segmentResults";
+import { formatSkaterName, isPairDiscipline } from "@/lib/skaterName";
 import SegmentResultsTables from "@/app/_components/SegmentResultsTables";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import CalendarDayGroups, { type CalendarDayRow } from "@/app/_components/CalendarDayGroups";
@@ -68,7 +69,7 @@ export default async function CompetitionDetailPage({
     : "entries";
 
   const resultBlocks =
-    activeEvent && isLocked ? computeSegmentResultBlocks(activeEvent.segments, activeEvent.registrations) : [];
+    activeEvent && isLocked ? computeSegmentResultBlocks(activeEvent.segments, activeEvent.registrations, isPairDiscipline(activeEvent.discipline.name)) : [];
 
   // Género de las patinadoras/patinadores de ESTE evento concreto, para
   // rotular la tabla de orden de salida — "Patinadoras" si el evento es
@@ -514,7 +515,7 @@ export default async function CompetitionDetailPage({
                                       {reg.startOrder ?? index + 1}
                                     </td>
                                     <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
-                                      {reg.skater.firstName} {reg.skater.lastName}
+                                      {formatSkaterName(reg.skater, isPairDiscipline(activeEvent?.discipline.name))}
                                     </td>
                                     <td className="py-3.5 px-4 font-sans text-xs text-slate-400">
                                       <span className="bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700 text-slate-300">
