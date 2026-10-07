@@ -74,8 +74,6 @@ export default async function HomePage() {
   // siempre).
   const activeCandidate = candidates.find((c) => c.status.predictionsOpen || c.status.draftOpen) || candidates[0];
   const nextActiveEvent = activeCandidate?.event;
-  const fmtDate = (d: Date) =>
-    `${d.toLocaleDateString(dateLocale)} ${d.toLocaleTimeString(dateLocale, { hour: "2-digit", minute: "2-digit" })}`;
 
   // Lista "en directo ahora": por COMPETICIÓN, no por evento — antes salía
   // una fila por cada prueba (Corto Senior, Largo Senior, Danza...), y una
@@ -126,8 +124,8 @@ export default async function HomePage() {
   const closeLinesFor = (st: ReturnType<typeof computeEventOpenStatus>) => {
     if (st.predictionsOpen && st.draftOpen && st.predictionsCloseAt.getTime() !== st.draftCloseAt.getTime()) {
       return [
-        { label: t.picksClosePredictions, value: fmtDate(st.predictionsCloseAt) },
-        { label: t.picksCloseDraft, value: fmtDate(st.draftCloseAt) },
+        { label: t.picksClosePredictions, at: st.predictionsCloseAt.toISOString() },
+        { label: t.picksCloseDraft, at: st.draftCloseAt.toISOString() },
       ];
     }
     const at = st.predictionsOpen
@@ -137,7 +135,7 @@ export default async function HomePage() {
       : st.predictionsCloseAt.getTime() < st.draftCloseAt.getTime()
       ? st.predictionsCloseAt
       : st.draftCloseAt;
-    return [{ label: t.picksClose, value: fmtDate(at) }];
+    return [{ label: t.picksClose, at: at.toISOString() }];
   };
   const bannerSlides: HomeEventSlide[] = carouselCandidates.map((c) => ({
     id: c.event.id,

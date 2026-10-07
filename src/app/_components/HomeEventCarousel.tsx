@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import LocalDateTime from "./LocalDateTime";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Carrusel del banner de la home: una diapositiva por prueba del día. En móvil
@@ -14,8 +15,9 @@ export interface HomeEventSlide {
   name: string;
   predictionsOpen: boolean;
   draftOpen: boolean;
-  // Textos ya formateados en servidor (fecha de cierre).
-  closeLines: { label: string; value: string }[];
+  // Fecha de cierre como ISO: se formatea en el cliente, en la zona horaria
+  // del usuario (el servidor solo conoce UTC).
+  closeLines: { label: string; at: string }[];
 }
 
 export interface HomeEventCarouselLabels {
@@ -151,7 +153,11 @@ export default function HomeEventCarousel({
                     <p className="text-xs text-ice-100/50 flex flex-wrap gap-x-3">
                       {s.closeLines.map((l) => (
                         <span key={l.label}>
-                          {l.label}: {l.value}
+                          {l.label}:{" "}
+                          <LocalDateTime
+                            value={l.at}
+                            options={{ day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" }}
+                          />
                         </span>
                       ))}
                     </p>
