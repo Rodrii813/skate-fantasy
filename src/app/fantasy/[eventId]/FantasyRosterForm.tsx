@@ -687,7 +687,7 @@ export default function FantasyRosterForm({
             components: t.lineupImageComponents,
             share: t.shareLineupButton,
             working: t.shareLineupWorking,
-            whatsapp: t.shareLineupWhatsapp,
+            download: t.shareLineupDownload,
             copyLink: t.shareLineupCopy,
             copied: t.shareLineupCopied,
             downloaded: t.shareLineupDownloaded,

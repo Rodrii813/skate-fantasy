@@ -26,7 +26,7 @@ export interface LineupImageText {
 export interface LineupShareLabels extends LineupImageText {
   share: string;
   working: string;
-  whatsapp: string;
+  download: string;
   copyLink: string;
   copied: string;
   downloaded: string;
@@ -278,22 +278,38 @@ export default function LineupShareButtons({
     setTimeout(() => setNote(null), 3500);
   };
 
+  const buildFile = async (): Promise<File> => {
+    const [logo, flags] = await Promise.all([loadImage(logoMark.src), loadFlags(rows)]);
+    const canvas = document.createElement("canvas");
+    drawLineup(canvas, { eventName, segmentName, rows, text: labels }, logo, flags);
+    const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
+    if (!blob) throw new Error("no blob");
+    const slug = `rollart-fantasy-${eventName}-${segmentName}`
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    return new File([blob], `${slug}.png`, { type: "image/png" });
+  };
+
+  const saveFile = (file: File) => {
+    const a = document.createElement("a");
+    const objectUrl = URL.createObjectURL(file);
+    a.href = objectUrl;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
+    flash(labels.downloaded);
+  };
+
   const handleShare = async () => {
     setBusy(true);
     setNote(null);
     try {
-      const [logo, flags] = await Promise.all([loadImage(logoMark.src), loadFlags(rows)]);
-      const canvas = document.createElement("canvas");
-      drawLineup(canvas, { eventName, segmentName, rows, text: labels }, logo, flags);
-      const blob: Blob | null = await new Promise((resolve) => canvas.toBlob(resolve, "image/png"));
-      if (!blob) throw new Error("no blob");
-      const slug = `rollart-fantasy-${eventName}-${segmentName}`
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[̀-ͯ]/g, "")
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-|-$/g, "");
-      const file = new File([blob], `${slug}.png`, { type: "image/png" });
+      const file = await buildFile();
       const url = linkUrl();
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       if (nav.canShare && nav.canShare({ files: [file] })) {
@@ -304,15 +320,19 @@ export default function LineupShareButtons({
           if ((e as Error)?.name === "AbortError") return;
         }
       }
-      const a = document.createElement("a");
-      const objectUrl = URL.createObjectURL(file);
-      a.href = objectUrl;
-      a.download = file.name;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 2000);
-      flash(labels.downloaded);
+      saveFile(file);
+    } catch {
+      flash(labels.error, true);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    setBusy(true);
+    setNote(null);
+    try {
+      saveFile(await buildFile());
     } catch {
       flash(labels.error, true);
     } finally {
@@ -343,21 +363,14 @@ export default function LineupShareButtons({
         {busy ? labels.working : labels.share}
       </button>
       <div className="grid grid-cols-2 gap-2">
-        <a
-          href={`https://wa.me/?text=${encodeURIComponent(labels.shareText(linkUrl()))}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={(e) => {
-            // el href se calcula al renderizar; se recalcula al pulsar por si
-            // cambió el segmento activo
-            (e.currentTarget as HTMLAnchorElement).href = `https://wa.me/?text=${encodeURIComponent(
-              labels.shareText(linkUrl())
-            )}`;
-          }}
-          className={`text-center ${btn} bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 border-emerald-500/40`}
+        <button
+          type="button"
+          onClick={handleDownload}
+          disabled={busy}
+          className={`${btn} bg-emerald-600/15 hover:bg-emerald-600/25 text-emerald-300 border-emerald-500/40`}
         >
-          {labels.whatsapp}
-        </a>
+          {labels.download}
+        </button>
         <button
           type="button"
           onClick={handleCopy}
