@@ -183,6 +183,9 @@ describe("validateFantasyRoster — reglas por segmento, independientes", () => 
       { skaterId: "B", warmupGroupShort: 1, warmupGroupLong: 1 },
       { skaterId: "C", warmupGroupShort: 1, warmupGroupLong: 2 },
       { skaterId: "D", warmupGroupShort: 1, warmupGroupLong: 3 },
+      // 5 patinadoras: con 4 o menos se consideraría "pocas patinadoras" y no
+      // se aplicarían las reglas de grupo.
+      { skaterId: "E", warmupGroupShort: 1, warmupGroupLong: 2 },
     ];
     const picks: Record<string, string> = {
       "long-combo1": "C",
@@ -327,5 +330,50 @@ describe("validateFantasyRoster — compatibilidad con slots sin segmentId", () 
     expect(result.segments).toHaveLength(1);
     expect(result.segments[0].segmentLabel).toBe("Corto");
     expect(result.valid).toBe(true);
+  });
+});
+
+describe("validateFantasyRoster — pocas patinadoras (<= 4)", () => {
+  const fourSkaters: RegistrationInfo[] = [
+    { skaterId: "A", warmupGroupShort: 3, warmupGroupLong: 1 },
+    { skaterId: "B", warmupGroupShort: 2, warmupGroupLong: 1 },
+    { skaterId: "C", warmupGroupShort: 1, warmupGroupLong: 1 },
+    { skaterId: "D", warmupGroupShort: 1, warmupGroupLong: 1 },
+  ];
+  const run = (picks: Record<string, string>) =>
+    validateFantasyRoster({ slots: shortSlots, registrations: fourSkaters, segments, picks });
+
+  it("permite repetir una patinadora hasta 2 veces en técnicos", () => {
+    const r = run({
+      "short-combo": "A",
+      "short-solo": "A",
+      "short-axel": "B",
+      "short-comp1": "C",
+      "short-comp2": "D",
+    });
+    expect(r.valid).toBe(true);
+  });
+
+  it("no permite 3 veces la misma en técnicos", () => {
+    const r = run({
+      "short-combo": "A",
+      "short-solo": "A",
+      "short-axel": "A",
+      "short-comp1": "C",
+      "short-comp2": "D",
+    });
+    expect(r.valid).toBe(false);
+  });
+
+  it("no permite repetir en Componentes", () => {
+    const r = run({
+      "short-combo": "A",
+      "short-solo": "B",
+      "short-axel": "C",
+      "short-comp1": "D",
+      "short-comp2": "D",
+    });
+    expect(r.valid).toBe(false);
+    expect(r.errorMessage).toContain("Componentes");
   });
 });

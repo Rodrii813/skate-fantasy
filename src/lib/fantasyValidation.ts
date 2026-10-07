@@ -44,6 +44,20 @@ export interface SegmentInfo {
   order: number;
 }
 
+// Pruebas con muy pocos patinadores inscritos (p.ej. 4 en Senior masculino de
+// Inline): las normas de grupos de calentamiento no tienen sentido y repartir
+// un patinador por elemento técnico dejaría el roster casi sin opciones. En ese
+// caso se quitan las reglas de grupo y cada patinador puede repetirse hasta 2
+// veces en los elementos técnicos; en Componentes sigue sin poder repetirse.
+// También es el umbral de Predicciones: con tan pocos patinadores solo se
+// predice el podio (top 3), no el top 5.
+export const SMALL_FIELD_MAX = 4;
+export const SMALL_FIELD_TECH_REPEATS = 2;
+
+export function isSmallField(registrationsCount: number): boolean {
+  return registrationsCount <= SMALL_FIELD_MAX;
+}
+
 export function isComponentSlotLabel(label: string): boolean {
   const l = label.toLowerCase();
   // OJO: "Choreo Sequence (ChSt)", "Choreo Stop" y "Choreo Step" son
@@ -80,6 +94,8 @@ export interface SegmentValidationResult {
   errorMessage: string;
   missingSlots: number;
   repeatedTechSkater: boolean;
+  repeatedCompSkater: boolean;
+  smallField: boolean;
   countTopGroup: number;
   countSecondGroup: number;
   maxGroupNum: number;
@@ -131,7 +147,8 @@ function validateSegment(
   // categoría con más de 2 slots técnicos, o más de 1 slot de Componentes,
   // deja de poder completarse nunca). Por eso, con 2 grupos o menos, no se
   // aplica ningún límite de grupo — ni en técnicos ni en Componentes.
-  const hasEnoughGroupsForRule = groupNums.length > 2;
+  const smallField = isSmallField(registrations.length);
+  const hasEnoughGroupsForRule = groupNums.length > 2 && !smallField;
 
   const techSkaterCounts: Record<string, number> = {};
   const techGroupUsage: Record<number, number> = {};
@@ -144,9 +161,11 @@ function validateSegment(
   }
 
   const compGroupUsage: Record<number, number> = {};
+  const compSkaterCounts: Record<string, number> = {};
   for (const slot of componentSlots) {
     const skaterId = picks[slot.id];
     if (!skaterId) continue;
+    compSkaterCounts[skaterId] = (compSkaterCounts[skaterId] || 0) + 1;
     const g = warmupGroupOf.get(skaterId) ?? 1;
     compGroupUsage[g] = (compGroupUsage[g] || 0) + 1;
   }
@@ -157,7 +176,9 @@ function validateSegment(
   const exceedsSecondTech = hasEnoughGroupsForRule && countSecondGroup > 2;
   const exceedsCompGroup = hasEnoughGroupsForRule && Object.values(compGroupUsage).some((c) => c > 1);
 
-  const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > 1);
+  const maxTechRepeats = smallField ? SMALL_FIELD_TECH_REPEATS : 1;
+  const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > maxTechRepeats);
+  const repeatedCompSkater = smallField && Object.values(compSkaterCounts).some((c) => c > 1);
 
   const totalSlots = slots.length;
   const filledCount = slots.filter((s) => Boolean(picks[s.id])).length;
@@ -169,7 +190,11 @@ function validateSegment(
       missingSlots === 1 ? "slot" : "slots"
     }`;
   } else if (repeatedTechSkater) {
-    errorMessage = `${segmentLabel}: no puedes elegir a la misma patinadora en dos elementos técnicos`;
+    errorMessage = smallField
+      ? `${segmentLabel}: cada patinadora puede repetirse como máximo ${SMALL_FIELD_TECH_REPEATS} veces en los elementos técnicos`
+      : `${segmentLabel}: no puedes elegir a la misma patinadora en dos elementos técnicos`;
+  } else if (repeatedCompSkater) {
+    errorMessage = `${segmentLabel}: en Componentes no puedes repetir patinadora`;
   } else if (exceedsTopTech) {
     errorMessage = `${segmentLabel}: máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
   } else if (exceedsSecondTech) {
@@ -181,6 +206,7 @@ function validateSegment(
   const valid =
     missingSlots === 0 &&
     !repeatedTechSkater &&
+    !repeatedCompSkater &&
     !exceedsTopTech &&
     !exceedsSecondTech &&
     !exceedsCompGroup;
@@ -192,6 +218,8 @@ function validateSegment(
     errorMessage,
     missingSlots,
     repeatedTechSkater,
+    repeatedCompSkater,
+    smallField,
     countTopGroup,
     countSecondGroup,
     maxGroupNum,

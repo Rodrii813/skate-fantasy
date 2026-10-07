@@ -1,5 +1,6 @@
 "use client";
 
+import { isSmallField } from "@/lib/fantasyValidation";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import SkaterSearchSelect, { type SkaterSearchOption } from "@/app/_components/SkaterSearchSelect";
@@ -46,7 +47,9 @@ export default function PredictionForm({
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ text: string; error: boolean } | null>(null);
 
-  const selectedList = [rank1, rank2, rank3, rank4, rank5];
+  // Con pocas patinadoras inscritas solo se predice el podio (top 3).
+  const podiumOnly = isSmallField(skaters.length);
+  const selectedList = [rank1, rank2, rank3, ...(podiumOnly ? [] : [rank4, rank5])];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,8 +67,8 @@ export default function PredictionForm({
           rank1SkaterId: rank1,
           rank2SkaterId: rank2,
           rank3SkaterId: rank3,
-          rank4SkaterId: rank4 || null,
-          rank5SkaterId: rank5 || null,
+          rank4SkaterId: podiumOnly ? null : rank4 || null,
+          rank5SkaterId: podiumOnly ? null : rank5 || null,
         }),
       });
 
@@ -151,8 +154,8 @@ export default function PredictionForm({
         {renderSelect(t.gold, "🥇 1º", rank1, setRank1, true)}
         {renderSelect(t.silver, "🥈 2º", rank2, setRank2, true)}
         {renderSelect(t.bronze, "🥉 3º", rank3, setRank3, true)}
-        {renderSelect(t.fourth, "4º", rank4, setRank4, false)}
-        {renderSelect(t.fifth, "5º", rank5, setRank5, false)}
+        {!podiumOnly && renderSelect(t.fourth, "4º", rank4, setRank4, false)}
+        {!podiumOnly && renderSelect(t.fifth, "5º", rank5, setRank5, false)}
       </div>
 
       {!isLocked && (

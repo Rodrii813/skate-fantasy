@@ -2,7 +2,12 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { validateFantasyRoster, isComponentSlotLabel } from "@/lib/fantasyValidation";
+import {
+  validateFantasyRoster,
+  isComponentSlotLabel,
+  isSmallField,
+  SMALL_FIELD_TECH_REPEATS,
+} from "@/lib/fantasyValidation";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import SkaterSearchSelect, { type SkaterSearchGroup } from "@/app/_components/SkaterSearchSelect";
 import { useLocale } from "@/lib/i18n/LocaleContext";
@@ -229,16 +234,19 @@ export default function FantasyRosterForm({
     // Mismo umbral que fantasyValidation.ts: con 2 grupos o menos, las
     // normas de grupo no aplican (si no, categorías pequeñas nunca podrían
     // completarse).
-    const hasEnoughGroupsForRule = groupNums.length > 2;
+    const smallField = isSmallField(pool.length);
+    const hasEnoughGroupsForRule = groupNums.length > 2 && !smallField;
 
     const buildCandidate = (): Record<string, string> => {
       const candidate: Record<string, string> = { ...picks };
 
       const techPool = [...pool].sort(() => Math.random() - 0.5);
       const usedTechSkaters = new Set<string>();
+      const techUses: Record<string, number> = {};
       const techGroupCount: Record<number, number> = {};
       for (const slot of technicalSlots) {
         const idx = techPool.findIndex((r) => {
+          if (smallField) return (techUses[r.skaterId] || 0) < SMALL_FIELD_TECH_REPEATS;
           if (usedTechSkaters.has(r.skaterId)) return false;
           if (!hasEnoughGroupsForRule) return true;
           if (r.group === maxGroupNum && (techGroupCount[maxGroupNum] || 0) >= 2) return false;
@@ -248,9 +256,11 @@ export default function FantasyRosterForm({
           return true;
         });
         if (idx === -1) continue;
-        const [chosen] = techPool.splice(idx, 1);
+        // Con pocas patinadoras cada una puede volver a salir (hasta 2 veces).
+        const chosen = smallField ? techPool[idx] : techPool.splice(idx, 1)[0];
         candidate[slot.id] = chosen.skaterId;
         usedTechSkaters.add(chosen.skaterId);
+        techUses[chosen.skaterId] = (techUses[chosen.skaterId] || 0) + 1;
         techGroupCount[chosen.group] = (techGroupCount[chosen.group] || 0) + 1;
       }
 
@@ -494,6 +504,17 @@ export default function FantasyRosterForm({
             <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
               {t.technicalRulesTitle(activeTab?.name ?? "")}
             </h2>
+            {activeSegmentValidation?.smallField ? (
+              <div className="space-y-1 text-xs text-slate-300">
+                <p className="flex items-center gap-1.5 font-medium">
+                  <span>⚠️</span> {t.ruleSmall1}
+                </p>
+                <p className="flex items-center gap-1.5 font-medium">
+                  <span className="opacity-0">⚠️</span> {t.ruleSmall2}
+                </p>
+              </div>
+            ) : (
+              <>
             <div className="space-y-1 text-xs text-slate-300">
               <p className="flex items-center gap-1.5 font-medium">
                 <span>⚠️</span> {t.rule1}
@@ -504,7 +525,10 @@ export default function FantasyRosterForm({
               <p className="pl-5 text-[11px] text-slate-400 italic">{t.warmupGroupHint}</p>
             </div>
 
-            {activeSegmentValidation && (
+              </>
+            )}
+
+            {activeSegmentValidation && !activeSegmentValidation.smallField && (
               <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">
