@@ -45,7 +45,12 @@ export default async function HomePage() {
       // del rosterLocksAt general (que suele ser el del Corto). Filtrar solo
       // por rosterLocksAt dejaba fuera pruebas con el Largo aún abierto.
       OR: [{ rosterLocksAt: { gte: now } }, { segments: { some: { locksAt: { gte: now } } } }],
-      status: "UPCOMING",
+      // Al subir los resultados del Corto el evento pasa a RESULTS_IN
+      // ("resultados parciales") aunque su Largo siga abierto para draftear;
+      // filtrar solo UPCOMING sacaba esas pruebas del banner. El cierre real
+      // (plazo de algún segmento aún futuro) ya lo controlan el OR de arriba
+      // y el filtro de candidatos.
+      status: { in: ["UPCOMING", "LOCKED", "RESULTS_IN"] },
       // No queremos que el evento "de prueba" (ver admin/events) pueda salir
       // en la portada como si fuera una prueba real en directo.
       isTest: false,
