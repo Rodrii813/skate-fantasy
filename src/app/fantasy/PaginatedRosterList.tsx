@@ -17,25 +17,25 @@ function RosterCard({ roster, index, hasScores }: { roster: RosterScore; index: 
   return (
     <details
       key={roster.rosterId}
-      className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden"
+      className="group bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
       open={hasScores && index < 3}
     >
-      <summary className="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="text-lg font-black text-slate-400 w-10 shrink-0 text-center">
+      <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between gap-2 hover:bg-slate-800/40 transition">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-sm font-black text-slate-400 w-8 shrink-0 text-center">
             {!hasScores ? "•" : medal[index] || `#${index + 1}`}
           </span>
-          <span className="font-semibold text-slate-100 truncate">{roster.userName}</span>
+          <span className="text-sm font-semibold text-slate-100 truncate">{roster.userName}</span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono font-bold text-indigo-400 text-lg">{hasScores ? `${roster.total.toFixed(2)} pts` : "—"}</span>
+          <span className="font-mono font-bold text-indigo-400 text-sm">{hasScores ? `${roster.total.toFixed(2)} pts` : "—"}</span>
           <span className="text-slate-500 text-xs transition group-open:rotate-90">▶</span>
         </div>
       </summary>
 
       <div className="border-t border-slate-800 divide-y divide-slate-800/80">
         {roster.slots.map((slot) => (
-          <div key={slot.slotId} className="px-4 py-2.5 flex items-center justify-between gap-3 text-xs">
+          <div key={slot.slotId} className="px-3 py-1.5 flex items-center justify-between gap-3 text-xs">
             <div className="min-w-0">
               <p className="text-slate-400">{slot.slotLabel}</p>
               <p className="text-slate-200 font-semibold truncate">{slot.skaterName}</p>
