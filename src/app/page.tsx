@@ -5,6 +5,7 @@ import { authOptions } from "@/lib/auth";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import { computeEventOpenStatus } from "@/lib/eventOpenStatus";
+import { effectiveLocksAt } from "@/lib/segments";
 import WorldSkateGamesCountdown from "@/app/_components/WorldSkateGamesCountdown";
 import ShareSiteCard from "@/app/_components/ShareSiteCard";
 import HomeEventCarousel, {
@@ -39,7 +40,11 @@ export default async function HomePage() {
   // competiciones DISTINTAS, no solo varios eventos de la misma.
   const upcomingEvents = await prisma.event.findMany({
     where: {
-      rosterLocksAt: { gte: now },
+      // Un evento sigue "vivo" mientras el plazo del evento O el de alguno de
+      // sus segmentos no haya pasado: el Largo puede cerrar bastante después
+      // del rosterLocksAt general (que suele ser el del Corto). Filtrar solo
+      // por rosterLocksAt dejaba fuera pruebas con el Largo aún abierto.
+      OR: [{ rosterLocksAt: { gte: now } }, { segments: { some: { locksAt: { gte: now } } } }],
       status: "UPCOMING",
       // No queremos que el evento "de prueba" (ver admin/events) pueda salir
       // en la portada como si fuera una prueba real en directo.
@@ -52,7 +57,7 @@ export default async function HomePage() {
       _count: { select: { registrations: true } },
     },
     orderBy: { rosterLocksAt: "asc" },
-    take: 20,
+    take: 60,
   });
 
   // Tipado explícito: el cliente de Prisma en este entorno de verificación
@@ -61,8 +66,31 @@ export default async function HomePage() {
   // que se encadene después (find/filter/map, incluso desestructurando en
   // el JSX más abajo) sin que noImplicitAny pueda inferir nada. Anotar el
   // tipo de `candidates` aquí corta esa cadena de una vez.
-  const candidates: { event: (typeof upcomingEvents)[number]; status: ReturnType<typeof computeEventOpenStatus> }[] =
-    upcomingEvents.map((ev: (typeof upcomingEvents)[number]) => ({ event: ev, status: computeEventOpenStatus(ev, now) }));
+  // Segmento "en foco" de cada evento: el que antes cierra de los que todavía
+  // no han cerrado (sin segmentos, el propio evento). De él salen el orden de
+  // los eventos en el banner y su día de pista.
+  const focusOf = (ev: (typeof upcomingEvents)[number]) => {
+    const open = (ev.segments as any[])
+      .map((seg: any) => ({ seg, at: effectiveLocksAt(seg, ev.rosterLocksAt).getTime() }))
+      .filter((x: { at: number }) => x.at >= now.getTime())
+      .sort((x: { at: number }, y: { at: number }) => x.at - y.at)[0];
+    if (open) return { closeAt: open.at, trackAt: (open.seg.scheduledAt ?? ev.scheduledAt ?? null) as Date | null };
+    const evAt = new Date(ev.rosterLocksAt).getTime();
+    return { closeAt: evAt, trackAt: (ev.scheduledAt ?? null) as Date | null };
+  };
+  const candidates: {
+    event: (typeof upcomingEvents)[number];
+    status: ReturnType<typeof computeEventOpenStatus>;
+    closeAt: number;
+    trackAt: Date | null;
+  }[] = upcomingEvents
+    .map((ev: (typeof upcomingEvents)[number]) => ({
+      event: ev,
+      status: computeEventOpenStatus(ev, now),
+      ...focusOf(ev),
+    }))
+    .filter((c: { closeAt: number }) => c.closeAt >= now.getTime())
+    .sort((x: { closeAt: number }, y: { closeAt: number }) => x.closeAt - y.closeAt);
 
   // Bug reportado: el banner se quedaba pegado al evento con el rosterLocksAt
   // más próximo aunque ESE evento ya no tuviera nada abierto (p.ej. su primer
@@ -72,7 +100,21 @@ export default async function HomePage() {
   // escoge el primero que tenga algo REALMENTE abierto; si ninguno lo tiene,
   // se cae al más próximo de todos (mismo comportamiento "próximamente" de
   // siempre).
-  const activeCandidate = candidates.find((c) => c.status.predictionsOpen || c.status.draftOpen) || candidates[0];
+  const venueDayKey = (d: Date | null | undefined) =>
+    d ? formatInTimeZone(d, VENUE_TIMEZONE, { year: "numeric", month: "2-digit", day: "2-digit" }) : null;
+  // El banner solo enseña pruebas de HOY o de MAÑANA (día de la sede), para
+  // que el carrusel no acumule pruebas de días lejanos. Si no hay ninguna en
+  // esa ventana, se cae al comportamiento de antes (la más próxima).
+  const todayKey = venueDayKey(now);
+  const tomorrowKey = venueDayKey(new Date(now.getTime() + 24 * 60 * 60 * 1000));
+  const inWindow = (c: (typeof candidates)[number]) => {
+    const k = venueDayKey(c.trackAt);
+    return k !== null && (k === todayKey || k === tomorrowKey);
+  };
+  const isOpen = (c: (typeof candidates)[number]) => c.status.predictionsOpen || c.status.draftOpen;
+  const windowed = candidates.filter(inWindow);
+  const activeCandidate =
+    windowed.find(isOpen) || windowed[0] || candidates.find(isOpen) || candidates[0];
   const nextActiveEvent = activeCandidate?.event;
 
   // Lista "en directo ahora": por COMPETICIÓN, no por evento — antes salía
@@ -108,18 +150,13 @@ export default async function HomePage() {
   // Carrusel del banner: pruebas del mismo día de sede que la destacada,
   // ordenadas por hora de pista. Sin scheduledAt (o sin ninguna otra ese día)
   // se queda solo la destacada.
-  const venueDayKey = (d: Date | null | undefined) =>
-    d ? formatInTimeZone(d, VENUE_TIMEZONE, { year: "numeric", month: "2-digit", day: "2-digit" }) : null;
-  const featuredDay = venueDayKey(nextActiveEvent?.scheduledAt);
+  const featuredDay = venueDayKey(activeCandidate?.trackAt);
   const carouselCandidates: typeof candidates = !nextActiveEvent
     ? []
     : featuredDay
     ? candidates
-        .filter((c) => venueDayKey(c.event.scheduledAt) === featuredDay)
-        .sort(
-          (x, y) =>
-            new Date(x.event.scheduledAt as Date).getTime() - new Date(y.event.scheduledAt as Date).getTime()
-        )
+        .filter((c) => venueDayKey(c.trackAt) === featuredDay)
+        .sort((x, y) => new Date(x.trackAt as Date).getTime() - new Date(y.trackAt as Date).getTime())
     : [activeCandidate!];
   const closeLinesFor = (st: ReturnType<typeof computeEventOpenStatus>) => {
     if (st.predictionsOpen && st.draftOpen && st.predictionsCloseAt.getTime() !== st.draftCloseAt.getTime()) {
