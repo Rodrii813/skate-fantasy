@@ -526,16 +526,24 @@ export default function FantasyRosterForm({
               <p className="flex items-center gap-1.5 font-medium">
                 <span>⚠️</span> {w(t.rule1)}
               </p>
-              <p className="flex items-center gap-1.5 font-medium">
-                <span className="opacity-0">⚠️</span> {w(t.rule2)}
-              </p>
-              <p className="pl-5 text-[11px] text-slate-400 italic">{w(t.warmupGroupHint)}</p>
+              {activeSegmentValidation && !activeSegmentValidation.groupRulesApply ? (
+                <p className="flex items-center gap-1.5 font-medium">
+                  <span className="opacity-0">⚠️</span> {t.techNoGroups}
+                </p>
+              ) : (
+                <>
+                  <p className="flex items-center gap-1.5 font-medium">
+                    <span className="opacity-0">⚠️</span> {w(t.rule2)}
+                  </p>
+                  <p className="pl-5 text-[11px] text-slate-400 italic">{w(t.warmupGroupHint)}</p>
+                </>
+              )}
             </div>
 
               </>
             )}
 
-            {activeSegmentValidation && !activeSegmentValidation.smallField && (
+            {activeSegmentValidation && activeSegmentValidation.groupRulesApply && (
               <div className="flex flex-wrap items-center gap-4 pt-1 text-xs">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">
@@ -577,7 +585,20 @@ export default function FantasyRosterForm({
                 {t.componentRulesTitle}
               </h2>
               <p className="text-xs text-slate-300">
-                ⭐ <strong>{t.maxOnePerGroup}:</strong> {w(t.componentRuleBody)}
+                ⭐{" "}
+                {activeSegmentValidation?.smallField ? (
+                  <>
+                    <strong>{t.noRepeatLabel}:</strong> {w(t.componentRuleSmall)}
+                  </>
+                ) : activeSegmentValidation && !activeSegmentValidation.groupRulesApply ? (
+                  <>
+                    <strong>{t.noGroupLimit}:</strong> {w(t.componentRuleNoGroups)}
+                  </>
+                ) : (
+                  <>
+                    <strong>{t.maxOnePerGroup}:</strong> {w(t.componentRuleBody)}
+                  </>
+                )}
               </p>
             </div>
           </div>

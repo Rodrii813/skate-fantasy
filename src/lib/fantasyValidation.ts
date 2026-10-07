@@ -100,6 +100,8 @@ export interface SegmentValidationResult {
   repeatedTechSkater: boolean;
   repeatedCompSkater: boolean;
   smallField: boolean;
+  // false cuando no aplican límites de grupo (<= 2 grupos o pocas patinadoras)
+  groupRulesApply: boolean;
   countTopGroup: number;
   countSecondGroup: number;
   maxGroupNum: number;
@@ -224,6 +226,7 @@ function validateSegment(
     repeatedTechSkater,
     repeatedCompSkater,
     smallField,
+    groupRulesApply: hasEnoughGroupsForRule,
     countTopGroup,
     countSecondGroup,
     maxGroupNum,
