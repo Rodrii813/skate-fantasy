@@ -31,6 +31,10 @@ export async function mapWithConcurrency<T, R>(
 }
 
 export type SlotResult = {
+  // true si ya hay una puntuación oficial cargada para este slot (en directo
+  // se van cargando de una en una; sin ella los puntos son 0 pero no "0 de
+  // verdad"). Opcional para no romper a quien construye SlotResult sin esto.
+  scored?: boolean;
   slotId: string;
   slotLabel: string;
   skaterId: string;
@@ -177,6 +181,7 @@ export async function computeEventLeaderboardBySegment(
         skaterId: pick.skaterId,
         skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
+        scored: scoreMap.has(key),
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
       slotsBySegment.get(segmentId)!.push(slotResult);
@@ -259,6 +264,7 @@ export async function computeCompetitionLeaderboardsBySegment(
         skaterId: pick.skaterId,
         skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
+        scored: scoreMap.has(key),
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
       slotsBySegment.get(segmentId)!.push(slotResult);
@@ -493,6 +499,7 @@ export async function computeMyPicksForCompetition(
         skaterId: pick.skaterId,
         skaterName: formatSkaterName(pick.skater),
         points: scoreMap.get(key) ?? 0,
+        scored: scoreMap.has(key),
       };
       if (!slotsBySegment.has(segmentId)) slotsBySegment.set(segmentId, []);
       slotsBySegment.get(segmentId)!.push(slotResult);

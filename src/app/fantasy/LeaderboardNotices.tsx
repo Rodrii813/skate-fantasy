@@ -37,3 +37,13 @@ export function PendingScoresNotice({ label }: { label: string }) {
     </div>
   );
 }
+
+// Aviso corto (no sustituye a la lista): el plazo ya cerró y los equipos ya
+// son públicos, pero todavía no hay ninguna puntuación cargada.
+export function NoScoresYetNote({ label }: { label: string }) {
+  return (
+    <p className="rounded-xl border border-amber-800/50 bg-amber-950/30 px-3 py-2 text-center text-[11px] font-semibold text-amber-300">
+      🔜 {label}: ya puedes ver los equipos. Los puntos aparecerán aquí en cuanto se vayan cargando.
+    </p>
+  );
+}

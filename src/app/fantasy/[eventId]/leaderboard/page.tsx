@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { computeEventLeaderboard, computeEventLeaderboardBySegment } from "@/lib/scoring";
 import { isSegmentLocked, effectiveLocksAt } from "@/lib/segments";
+import LiveRefresh from "@/app/fantasy/LiveRefresh";
 import PaginatedRosterList from "@/app/fantasy/PaginatedRosterList";
-import { LockedNotice, EmptyNotice, PendingScoresNotice } from "@/app/fantasy/LeaderboardNotices";
+import { LockedNotice, EmptyNotice, NoScoresYetNote } from "@/app/fantasy/LeaderboardNotices";
 
 export const dynamic = "force-dynamic";
 
@@ -48,6 +49,14 @@ export default async function EventFantasyLeaderboardPage({
 
   return (
     <div className="min-h-screen bg-[#070b18] text-slate-100 p-6 md:p-10">
+      <LiveRefresh
+        enabled={
+          event.status !== "FINISHED" &&
+          (hasSegments
+            ? event.segments.some((seg) => isSegmentLocked(seg, event.rosterLocksAt))
+            : legacyLocked)
+        }
+      />
       <div className="max-w-3xl mx-auto space-y-6">
         <div>
           <Link
@@ -90,10 +99,11 @@ export default async function EventFantasyLeaderboardPage({
                     <EmptyNotice
                       text={`Nadie ha guardado una alineación de fantasy para ${segment.name} todavía.`}
                     />
-                  ) : !segmentBoard.hasScores ? (
-                    <PendingScoresNotice label={segment.name} />
                   ) : (
-                    <PaginatedRosterList rosters={segmentBoard.rosters} />
+                    <div className="space-y-2">
+                      {!segmentBoard.hasScores && <NoScoresYetNote label={segment.name} />}
+                      <PaginatedRosterList rosters={segmentBoard.rosters} hasScores={segmentBoard.hasScores} />
+                    </div>
                   )}
                 </section>
               );

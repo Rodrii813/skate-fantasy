@@ -13,22 +13,22 @@ const PAGE_SIZE = 15;
 // de la primera. Con muchos rosters la lista se hacía interminable, igual
 // motivo que el acordeón de Draft Status. Solo las 3 primeras posiciones
 // GLOBALES (no por página) empiezan desplegadas.
-function RosterCard({ roster, index }: { roster: RosterScore; index: number }) {
+function RosterCard({ roster, index, hasScores }: { roster: RosterScore; index: number; hasScores: boolean }) {
   return (
     <details
       key={roster.rosterId}
       className="group bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden"
-      open={index < 3}
+      open={hasScores && index < 3}
     >
       <summary className="cursor-pointer list-none p-4 flex items-center justify-between gap-3 hover:bg-slate-800/40 transition">
         <div className="flex items-center gap-3 min-w-0">
           <span className="text-lg font-black text-slate-400 w-10 shrink-0 text-center">
-            {medal[index] || `#${index + 1}`}
+            {!hasScores ? "•" : medal[index] || `#${index + 1}`}
           </span>
           <span className="font-semibold text-slate-100 truncate">{roster.userName}</span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
-          <span className="font-mono font-bold text-indigo-400 text-lg">{roster.total.toFixed(2)} pts</span>
+          <span className="font-mono font-bold text-indigo-400 text-lg">{hasScores ? `${roster.total.toFixed(2)} pts` : "—"}</span>
           <span className="text-slate-500 text-xs transition group-open:rotate-90">▶</span>
         </div>
       </summary>
@@ -40,7 +40,9 @@ function RosterCard({ roster, index }: { roster: RosterScore; index: number }) {
               <p className="text-slate-400">{slot.slotLabel}</p>
               <p className="text-slate-200 font-semibold truncate">{slot.skaterName}</p>
             </div>
-            <span className="font-mono font-bold text-slate-300 shrink-0">{slot.points.toFixed(2)} pts</span>
+            <span className="font-mono font-bold text-slate-300 shrink-0">
+              {slot.scored === false ? "—" : `${slot.points.toFixed(2)} pts`}
+            </span>
           </div>
         ))}
       </div>
@@ -48,7 +50,18 @@ function RosterCard({ roster, index }: { roster: RosterScore; index: number }) {
   );
 }
 
-export default function PaginatedRosterList({ rosters }: { rosters: RosterScore[] }) {
+export default function PaginatedRosterList({
+  rosters: rawRosters,
+  hasScores = true,
+}: {
+  rosters: RosterScore[];
+  // Sin ninguna puntuación todavía no hay clasificación que enseñar: se
+  // listan los equipos por orden alfabético, sin posición ni total.
+  hasScores?: boolean;
+}) {
+  const rosters = hasScores
+    ? rawRosters
+    : [...rawRosters].sort((a, b) => a.userName.localeCompare(b.userName));
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(rosters.length / PAGE_SIZE));
   const start = page * PAGE_SIZE;
@@ -57,7 +70,7 @@ export default function PaginatedRosterList({ rosters }: { rosters: RosterScore[
   return (
     <div className="space-y-3">
       {pageRosters.map((roster, i) => (
-        <RosterCard key={roster.rosterId} roster={roster} index={start + i} />
+        <RosterCard key={roster.rosterId} roster={roster} index={start + i} hasScores={hasScores} />
       ))}
 
       {totalPages > 1 && (

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { RosterScore } from "@/lib/scoring";
 import PaginatedRosterList from "@/app/fantasy/PaginatedRosterList";
-import { LockedNotice, EmptyNotice, PendingScoresNotice } from "@/app/fantasy/LeaderboardNotices";
+import { LockedNotice, EmptyNotice, NoScoresYetNote } from "@/app/fantasy/LeaderboardNotices";
 
 // Misma idea que DraftStatusAccordion (acordeón por disciplina+género, para
 // no enseñar de golpe todas las categorías de una competición grande), pero
@@ -124,10 +124,11 @@ export default function ProgramScoresAccordion({
                               <LockedNotice label={seg.label} deadline={seg.deadlineIso} />
                             ) : seg.rosters.length === 0 ? (
                               <EmptyNotice text={seg.emptyText} />
-                            ) : !seg.hasScores ? (
-                              <PendingScoresNotice label={seg.label} />
                             ) : (
-                              <PaginatedRosterList rosters={seg.rosters} />
+                              <div className="space-y-2">
+                                {!seg.hasScores && <NoScoresYetNote label={seg.label} />}
+                                <PaginatedRosterList rosters={seg.rosters} hasScores={seg.hasScores} />
+                              </div>
                             )}
                           </div>
                         ))}

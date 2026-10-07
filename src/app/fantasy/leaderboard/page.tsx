@@ -13,6 +13,7 @@ import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categ
 import RankSummaryCards from "../RankSummaryCards";
 import ArchivedCompetitionSelect from "../ArchivedCompetitionSelect";
 import { getMyLeagueRanks } from "../rankSummary";
+import LiveRefresh from "../LiveRefresh";
 import ProgramScoresAccordion, { type ProgramScoresColumn } from "./ProgramScoresAccordion";
 
 export const dynamic = "force-dynamic";
@@ -167,7 +168,10 @@ export default async function FantasyLeaderboardPage({
                 locked: isSegmentLocked(segment, ev.rosterLocksAt),
                 deadlineIso: effectiveLocksAt(segment, ev.rosterLocksAt).toISOString(),
                 hasScores: segmentBoard?.hasScores ?? false,
-                rosters: segmentBoard?.rosters ?? [],
+                // Los equipos de otros solo viajan al navegador cuando el
+                // plazo de ESTE segmento ya cerró: si no, quedarían visibles
+                // en la respuesta aunque la interfaz los oculte.
+                rosters: isSegmentLocked(segment, ev.rosterLocksAt) ? segmentBoard?.rosters ?? [] : [],
                 // Formateado aquí, en el servidor: ProgramScoresAccordion es
                 // un Client Component y no puede recibir una función como
                 // prop (ver el comentario en emptyText, en su definición).
@@ -180,8 +184,15 @@ export default async function FantasyLeaderboardPage({
     })
     .filter((col) => col.events.length > 0);
 
+  // Hay algo "en juego": algún segmento ya cerrado en un evento que aún no ha
+  // terminado -> la página se refresca sola para ir mostrando los puntos.
+  const isLive = activeCompetition.events.some(
+    (ev) => ev.status !== "FINISHED" && ev.segments.some((seg) => isSegmentLocked(seg, ev.rosterLocksAt))
+  );
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10">
+      <LiveRefresh enabled={isLive} />
       <div className="max-w-6xl mx-auto space-y-8">
         <div className="border-b border-slate-800 pb-6">
           <Link href="/fantasy" className="text-xs text-slate-400 hover:text-slate-200">
