@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateFantasyRoster } from "@/lib/fantasyValidation";
+import { getSkaterAudience } from "@/lib/skaterWording";
 import { isSegmentLocked, isSegmentOpenByTime } from "@/lib/segments";
 
 export async function POST(req: Request) {
@@ -52,6 +53,7 @@ export async function POST(req: Request) {
     const event = await prisma.event.findUnique({
       where: { id: eventId },
       include: {
+        discipline: { select: { name: true } },
         slots: { select: { id: true, label: true, segmentId: true } },
         registrations: { select: { skaterId: true, warmupGroupShort: true, warmupGroupLong: true } },
         segments: { select: { id: true, order: true, locksAt: true, opensAt: true, manuallyOpened: true } },
@@ -185,6 +187,7 @@ export async function POST(req: Request) {
       registrations: event.registrations,
       segments: event.segments,
       picks: unlockedPicksMap,
+      audience: getSkaterAudience(event),
     });
 
     if (!validation.valid) {

@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
+import { adaptSkaterText, type SkaterAudience } from "@/lib/skaterWording";
 import {
   validateFantasyRoster,
   isComponentSlotLabel,
@@ -68,6 +69,8 @@ interface Props {
   // Corto por defecto). Si no coincide con ningún segmento real, se ignora
   // y se abre en el primero, como siempre.
   initialSegmentId?: string;
+  // A quién se elige (masculino / parejas / show): solo cambia la redacción.
+  audience?: SkaterAudience;
 }
 
 const DEFAULT_TAB_ID = "__default__";
@@ -82,11 +85,13 @@ export default function FantasyRosterForm({
   registrations,
   initialPicks,
   initialSegmentId,
+  audience = "female",
 }: Props) {
   const router = useRouter();
   const { locale } = useLocale();
   const dict = getDictionary(locale);
   const t = dict.fantasyRoster;
+  const w = (text: string) => adaptSkaterText(text, audience, locale);
   const [picks, setPicks] = useState<Record<string, string>>(initialPicks || {});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -196,8 +201,9 @@ export default function FantasyRosterForm({
         })),
         segments: orderedSegments.length > 0 ? orderedSegments : [{ id: DEFAULT_TAB_ID, order: 0 }],
         picks,
+        audience,
       }),
-    [slots, registrations, orderedSegments, picks]
+    [slots, registrations, orderedSegments, picks, audience]
   );
 
   const activeSegmentValidation = validationResult.segments.find((s) => s.segmentId === activeTab?.id);
@@ -300,6 +306,7 @@ export default function FantasyRosterForm({
         registrations: registrationsForValidation,
         segments: segmentsForValidation,
         picks: candidate,
+        audience,
       });
       const segResult = result.segments.find((s) => s.segmentId === activeTab.id);
       if (segResult?.valid) {
@@ -507,22 +514,22 @@ export default function FantasyRosterForm({
             {activeSegmentValidation?.smallField ? (
               <div className="space-y-1 text-xs text-slate-300">
                 <p className="flex items-center gap-1.5 font-medium">
-                  <span>⚠️</span> {t.ruleSmall1}
+                  <span>⚠️</span> {w(t.ruleSmall1)}
                 </p>
                 <p className="flex items-center gap-1.5 font-medium">
-                  <span className="opacity-0">⚠️</span> {t.ruleSmall2}
+                  <span className="opacity-0">⚠️</span> {w(t.ruleSmall2)}
                 </p>
               </div>
             ) : (
               <>
             <div className="space-y-1 text-xs text-slate-300">
               <p className="flex items-center gap-1.5 font-medium">
-                <span>⚠️</span> {t.rule1}
+                <span>⚠️</span> {w(t.rule1)}
               </p>
               <p className="flex items-center gap-1.5 font-medium">
-                <span className="opacity-0">⚠️</span> {t.rule2}
+                <span className="opacity-0">⚠️</span> {w(t.rule2)}
               </p>
-              <p className="pl-5 text-[11px] text-slate-400 italic">{t.warmupGroupHint}</p>
+              <p className="pl-5 text-[11px] text-slate-400 italic">{w(t.warmupGroupHint)}</p>
             </div>
 
               </>
@@ -570,7 +577,7 @@ export default function FantasyRosterForm({
                 {t.componentRulesTitle}
               </h2>
               <p className="text-xs text-slate-300">
-                ⭐ <strong>{t.maxOnePerGroup}:</strong> {t.componentRuleBody}
+                ⭐ <strong>{t.maxOnePerGroup}:</strong> {w(t.componentRuleBody)}
               </p>
             </div>
           </div>

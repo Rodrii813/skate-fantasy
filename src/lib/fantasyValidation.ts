@@ -79,7 +79,11 @@ export function isComponentSlotLabel(label: string): boolean {
   );
 }
 
+import { adaptSkaterText, type SkaterAudience } from "./skaterWording";
+
 export interface ValidateRosterInput {
+  // Solo cambia la redacción de los mensajes (patinador/patinadores/grupo).
+  audience?: SkaterAudience;
   slots: SlotInfo[];
   registrations: RegistrationInfo[];
   segments: SegmentInfo[];
@@ -235,6 +239,7 @@ export function validateFantasyRoster({
   registrations,
   segments,
   picks,
+  audience = "female",
 }: ValidateRosterInput): ValidateRosterResult {
   const orderedSegments = [...segments].sort((a, b) => a.order - b.order);
 
@@ -261,7 +266,7 @@ export function validateFantasyRoster({
     };
   });
 
-  const segmentResults = segmentBuckets.map((bucket) => {
+  const rawSegmentResults = segmentBuckets.map((bucket) => {
     const segmentSlots = slots.filter((s) => (s.segmentId ?? "__sin_segmento__") === bucket.segmentId);
     return validateSegment(
       bucket.segmentId,
@@ -272,6 +277,11 @@ export function validateFantasyRoster({
       bucket.groupField
     );
   });
+
+  const segmentResults = rawSegmentResults.map((r) => ({
+    ...r,
+    errorMessage: adaptSkaterText(r.errorMessage, audience),
+  }));
 
   const firstInvalid = segmentResults.find((s) => !s.valid);
 

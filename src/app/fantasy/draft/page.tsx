@@ -1,3 +1,4 @@
+import { getSkaterAudience } from "@/lib/skaterWording";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
@@ -47,6 +48,7 @@ async function loadDraftFormEvent(eventId: string, userEmail: string, initialSeg
     prisma.event.findUnique({
       where: { id: eventId },
       include: {
+        discipline: true,
         segments: { orderBy: { order: "asc" } },
         slots: { orderBy: { order: "asc" } },
         registrations: { include: { skater: true }, orderBy: [{ startOrder: "asc" }] },
@@ -90,6 +92,7 @@ async function loadDraftFormEvent(eventId: string, userEmail: string, initialSeg
     registrations: event.registrations,
     initialPicks,
     initialSegmentId,
+    audience: getSkaterAudience(event),
   };
 }
 
@@ -352,6 +355,7 @@ export default async function FantasyDraftPage({
                   registrations={draftFormEvent.registrations}
                   initialPicks={draftFormEvent.initialPicks}
                   initialSegmentId={draftFormEvent.initialSegmentId}
+                  audience={draftFormEvent.audience}
                 />
               </div>
             ) : (

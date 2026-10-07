@@ -1,3 +1,4 @@
+import { getSkaterAudience } from "@/lib/skaterWording";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -26,6 +27,7 @@ export default async function EventPage({
   const event = await prisma.event.findUnique({
     where: { id: params.id },
     include: {
+      discipline: true,
       segments: {
         orderBy: { order: "asc" },
       },
@@ -102,6 +104,7 @@ export default async function EventPage({
         registrations={event.registrations}
         initialPicks={initialPicks}
         initialSegmentId={searchParams.segment}
+        audience={getSkaterAudience(event)}
       />
     </div>
   );
