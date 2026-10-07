@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { VALID_COUNTRY_CODES } from "@/lib/iocCountries";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -52,14 +53,8 @@ function resolveSkatingOrderMode(disciplineSlug: string): SkatingOrderMode {
 // mayúsculas que forme parte del nombre de un equipo o coreografía (p.ej.
 // "FASHION ONE" — "ONE" no es un país, pero antes de esta lista cualquier
 // palabra de 3 mayúsculas al final de una línea se confundía con uno).
-const VALID_COUNTRIES = new Set(
-  `ESP ITA FRA GER POR NED GBR BEL SUI AUT DEN SWE NOR FIN POL CZE SVK HUN ROU BUL GRE TUR
-   CRO SLO SRB BIH MKD ALB MDA UKR RUS BLR LTU LAT EST LUX MLT CYP AND MON SMR IRL ISL
-   USA CAN MEX BRA ARG CHI COL PER VEN URU PAR ECU BOL CRI PAN GUA HON DOM PUR CUB
-   JPN KOR CHN TPE THA PHI MAS SIN INA VIE IND ISR UAE KSA AUS NZL RSA`
-    .split(/\s+/)
-    .filter(Boolean)
-);
+// Lista completa (todos los países COI + alias ISO) en src/lib/iocCountries.ts.
+const VALID_COUNTRIES = VALID_COUNTRY_CODES;
 
 function isCountry(code: string | null | undefined): code is string {
   return !!code && VALID_COUNTRIES.has(code);

@@ -7,37 +7,10 @@
 // país (p.ej. "ES" -> 🇪🇸), así que hace falta esta tabla IOC -> alpha-2:
 // no hay una fórmula que lo derive directamente del código de 3 letras.
 //
-// Cubre los países que compiten habitualmente en patinaje artístico/roller
-// a nivel internacional (Europa, América, Asia, Oceanía, algo de África);
-// si aparece un código que no está aquí, simplemente no se muestra bandera
-// (mejor eso que arriesgarse a mostrar la bandera equivocada).
-const IOC_TO_ISO2: Record<string, string> = {
-  // Europa
-  ALB: "AL", AND: "AD", ARM: "AM", AUT: "AT", AZE: "AZ", BLR: "BY", BEL: "BE",
-  BIH: "BA", BUL: "BG", CRO: "HR", CYP: "CY", CZE: "CZ", DEN: "DK", ESP: "ES",
-  EST: "EE", FIN: "FI", FRA: "FR", GBR: "GB", GEO: "GE", GER: "DE", GRE: "GR",
-  HUN: "HU", IRL: "IE", ISL: "IS", ISR: "IL", ITA: "IT", LAT: "LV", LIE: "LI",
-  LTU: "LT", LUX: "LU", MDA: "MD", MKD: "MK", MLT: "MT", MNE: "ME", MON: "MC",
-  NED: "NL", NOR: "NO", POL: "PL", POR: "PT", ROU: "RO", RUS: "RU", SMR: "SM",
-  SRB: "RS", SVK: "SK", SLO: "SI", SWE: "SE", SUI: "CH", TUR: "TR", UKR: "UA",
-
-  // América
-  ARG: "AR", BAH: "BS", BAR: "BB", BOL: "BO", BRA: "BR", CAN: "CA", CHI: "CL",
-  COL: "CO", CRC: "CR", CUB: "CU", DOM: "DO", ECU: "EC", ESA: "SV", GUA: "GT",
-  GUY: "GY", HON: "HN", JAM: "JM", MEX: "MX", NCA: "NI", PAN: "PA", PAR: "PY",
-  PER: "PE", PUR: "PR", TTO: "TT", URU: "UY", USA: "US", VEN: "VE",
-
-  // Asia
-  CHN: "CN", HKG: "HK", INA: "ID", IND: "IN", IRI: "IR", JPN: "JP", KAZ: "KZ",
-  KGZ: "KG", KOR: "KR", KUW: "KW", MAS: "MY", MGL: "MN", PHI: "PH", PRK: "KP",
-  SGP: "SG", SRI: "LK", TPE: "TW", THA: "TH", UZB: "UZ", VIE: "VN",
-
-  // Oceanía
-  AUS: "AU", NZL: "NZ",
-
-  // África y Oriente Medio
-  EGY: "EG", MAR: "MA", RSA: "ZA", TUN: "TN", UAE: "AE",
-};
+// La tabla (iocCountries.ts) cubre todos los países; si aparece un código
+// que no está, simplemente no se muestra bandera (mejor eso que arriesgarse
+// a mostrar la bandera equivocada).
+import { IOC_TO_ISO2 } from "./iocCountries";
 
 // Unicode: cada letra ISO2 se traduce a su "regional indicator symbol"
 // sumando 127397 (0x1F1A5) al código del carácter — así "ES" (69, 83) se
