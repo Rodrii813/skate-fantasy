@@ -3,14 +3,17 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { validateFantasyRoster } from "@/lib/fantasyValidation";
+import { getLocale } from "@/lib/i18n/getLocale";
 import { getSkaterAudience } from "@/lib/skaterWording";
 import { isSegmentLocked, isSegmentOpenByTime } from "@/lib/segments";
+
+const tr = (es: string, en: string) => (getLocale() === "en" ? en : es);
 
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) {
-      return NextResponse.json({ error: "No autorizado" }, { status: 401 });
+      return NextResponse.json({ error: tr("No autorizado", "Not authorized") }, { status: 401 });
     }
 
     const user = await prisma.user.findUnique({
@@ -18,14 +21,14 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      return NextResponse.json({ error: "Usuario no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: tr("Usuario no encontrado", "User not found") }, { status: 404 });
     }
 
     const body = await req.json();
     const { eventId, picks } = body;
 
     if (!eventId || !picks) {
-      return NextResponse.json({ error: "Faltan datos de la plantilla" }, { status: 400 });
+      return NextResponse.json({ error: tr("Faltan datos de la plantilla", "Missing roster data") }, { status: 400 });
     }
 
     // Normalizar picks a un formato plano consistente: Array<{ slotId: string, skaterId: string }>
@@ -61,7 +64,7 @@ export async function POST(req: Request) {
     });
 
     if (!event) {
-      return NextResponse.json({ error: "Evento no encontrado" }, { status: 404 });
+      return NextResponse.json({ error: tr("Evento no encontrado", "Event not found") }, { status: 404 });
     }
 
     // Los slots y patinadoras elegidos tienen que pertenecer de verdad a
@@ -72,13 +75,13 @@ export async function POST(req: Request) {
     for (const pick of normalizedPicks) {
       if (!validSlotIds.has(pick.slotId)) {
         return NextResponse.json(
-          { error: "Uno de los slots no pertenece a este evento." },
+          { error: tr("Uno de los slots no pertenece a este evento.", "One of the slots does not belong to this event.") },
           { status: 400 }
         );
       }
       if (!validSkaterIds.has(pick.skaterId)) {
         return NextResponse.json(
-          { error: "Una de las patinadoras elegidas no está inscrita en este evento." },
+          { error: tr("Una de las patinadoras elegidas no está inscrita en este evento.", "One of the chosen skaters is not entered in this event.") },
           { status: 400 }
         );
       }
@@ -114,7 +117,7 @@ export async function POST(req: Request) {
 
     if (unlockedSlotIds.size === 0) {
       return NextResponse.json(
-        { error: "El plazo para elegir patinadoras en este evento ya ha cerrado." },
+        { error: tr("El plazo para elegir patinadoras en este evento ya ha cerrado.", "The deadline to pick skaters for this event has passed.") },
         { status: 403 }
       );
     }
@@ -155,7 +158,7 @@ export async function POST(req: Request) {
 
     if (touchedSlotIds.size === 0) {
       return NextResponse.json(
-        { error: "No se ha recibido ninguna selección para guardar." },
+        { error: tr("No se ha recibido ninguna selección para guardar.", "No selection received to save.") },
         { status: 400 }
       );
     }
@@ -188,6 +191,7 @@ export async function POST(req: Request) {
       segments: event.segments,
       picks: unlockedPicksMap,
       audience: getSkaterAudience(event),
+      locale: getLocale(),
     });
 
     if (!validation.valid) {

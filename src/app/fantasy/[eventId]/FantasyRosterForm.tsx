@@ -202,8 +202,9 @@ export default function FantasyRosterForm({
         segments: orderedSegments.length > 0 ? orderedSegments : [{ id: DEFAULT_TAB_ID, order: 0 }],
         picks,
         audience,
+        locale,
       }),
-    [slots, registrations, orderedSegments, picks, audience]
+    [slots, registrations, orderedSegments, picks, audience, locale]
   );
 
   const activeSegmentValidation = validationResult.segments.find((s) => s.segmentId === activeTab?.id);
@@ -307,6 +308,7 @@ export default function FantasyRosterForm({
         segments: segmentsForValidation,
         picks: candidate,
         audience,
+        locale,
       });
       const segResult = result.segments.find((s) => s.segmentId === activeTab.id);
       if (segResult?.valid) {

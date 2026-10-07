@@ -84,6 +84,8 @@ import { adaptSkaterText, type SkaterAudience } from "./skaterWording";
 export interface ValidateRosterInput {
   // Solo cambia la redacción de los mensajes (patinador/patinadores/grupo).
   audience?: SkaterAudience;
+  // Idioma de los mensajes de error (por defecto español).
+  locale?: "es" | "en";
   slots: SlotInfo[];
   registrations: RegistrationInfo[];
   segments: SegmentInfo[];
@@ -126,7 +128,8 @@ function validateSegment(
   slots: SlotInfo[],
   registrations: RegistrationInfo[],
   picks: Record<string, string>,
-  groupField: "warmupGroupShort" | "warmupGroupLong"
+  groupField: "warmupGroupShort" | "warmupGroupLong",
+  locale: "es" | "en" = "es"
 ): SegmentValidationResult {
   const technicalSlots = slots.filter((s) => !isComponentSlotLabel(s.label));
   const componentSlots = slots.filter((s) => isComponentSlotLabel(s.label));
@@ -190,23 +193,37 @@ function validateSegment(
   const filledCount = slots.filter((s) => Boolean(picks[s.id])).length;
   const missingSlots = totalSlots - filledCount;
 
+  const en = locale === "en";
+  const seg = en ? (segmentLabel === "Corto" ? "Short" : "Long") : segmentLabel;
   let errorMessage = "";
   if (missingSlots > 0) {
-    errorMessage = `${segmentLabel}: faltan por rellenar ${missingSlots} ${
-      missingSlots === 1 ? "slot" : "slots"
-    }`;
+    errorMessage = en
+      ? `${seg}: ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"} left to fill`
+      : `${seg}: faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
   } else if (repeatedTechSkater) {
     errorMessage = smallField
-      ? `${segmentLabel}: cada patinadora puede repetirse como máximo ${SMALL_FIELD_TECH_REPEATS} veces en los elementos técnicos`
-      : `${segmentLabel}: no puedes elegir a la misma patinadora en dos elementos técnicos`;
+      ? en
+        ? `${seg}: each skater can be picked at most ${SMALL_FIELD_TECH_REPEATS} times across technical elements`
+        : `${seg}: cada patinadora puede repetirse como máximo ${SMALL_FIELD_TECH_REPEATS} veces en los elementos técnicos`
+      : en
+      ? `${seg}: you can't pick the same skater in two technical elements`
+      : `${seg}: no puedes elegir a la misma patinadora en dos elementos técnicos`;
   } else if (repeatedCompSkater) {
-    errorMessage = `${segmentLabel}: en Componentes no puedes repetir patinadora`;
+    errorMessage = en
+      ? `${seg}: in Components you can't pick the same skater twice`
+      : `${seg}: en Componentes no puedes repetir patinadora`;
   } else if (exceedsTopTech) {
-    errorMessage = `${segmentLabel}: máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
+    errorMessage = en
+      ? `${seg}: max 2 technical skaters in Warmup Group ${maxGroupNum} (you have ${countTopGroup})`
+      : `${seg}: máximo 2 patinadoras técnicas en Warmup Group ${maxGroupNum} (llevas ${countTopGroup})`;
   } else if (exceedsSecondTech) {
-    errorMessage = `${segmentLabel}: máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
+    errorMessage = en
+      ? `${seg}: max 2 technical skaters in Warmup Group ${secondMaxGroupNum} (you have ${countSecondGroup})`
+      : `${seg}: máximo 2 patinadoras técnicas en Warmup Group ${secondMaxGroupNum} (llevas ${countSecondGroup})`;
   } else if (exceedsCompGroup) {
-    errorMessage = `${segmentLabel}: en Componentes, máximo 1 patinadora por cada grupo de calentamiento`;
+    errorMessage = en
+      ? `${seg}: in Components, max 1 skater per warmup group`
+      : `${seg}: en Componentes, máximo 1 patinadora por cada grupo de calentamiento`;
   }
 
   const valid =
@@ -243,6 +260,7 @@ export function validateFantasyRoster({
   segments,
   picks,
   audience = "female",
+  locale = "es",
 }: ValidateRosterInput): ValidateRosterResult {
   const orderedSegments = [...segments].sort((a, b) => a.order - b.order);
 
@@ -277,13 +295,14 @@ export function validateFantasyRoster({
       segmentSlots,
       registrations,
       picks,
-      bucket.groupField
+      bucket.groupField,
+      locale
     );
   });
 
   const segmentResults = rawSegmentResults.map((r) => ({
     ...r,
-    errorMessage: adaptSkaterText(r.errorMessage, audience),
+    errorMessage: adaptSkaterText(r.errorMessage, audience, locale),
   }));
 
   const firstInvalid = segmentResults.find((s) => !s.valid);
