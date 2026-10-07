@@ -58,12 +58,14 @@ export default function AdminSettingsPage() {
           countdownEnabled,
           countdownTitle,
           countdownLocation,
-          // El <input datetime-local> da la hora tal cual la escribió el
-          // admin, sin zona horaria — new Date(...) la interpreta en la
-          // zona horaria del SERVIDOR al guardar. Es una limitación
-          // conocida (igual que otros formularios de fecha del admin), no
-          // algo nuevo de esta pantalla.
-          countdownTargetDate: countdownEnabled && countdownTargetDate ? countdownTargetDate : null,
+          // El <input datetime-local> da la hora tal cual la escribió el admin,
+          // SIN zona horaria. Antes se enviaba así y el servidor (en UTC) la
+          // interpretaba como hora UTC; al recargar, el navegador la volvía a
+          // mostrar en hora local y la hora "se movía" sola en cada guardado.
+          // Ahora se convierte aquí a un instante absoluto (ISO con zona)
+          // usando la zona horaria del navegador del admin.
+          countdownTargetDate:
+            countdownEnabled && countdownTargetDate ? new Date(countdownTargetDate).toISOString() : null,
           announcementEnabled,
           announcementText,
         }),
