@@ -929,9 +929,7 @@ export default function EventsManager({
                       {ev.segments.map((seg: any) => {
                         const currentValue =
                           segmentLocksInputs[seg.id] ??
-                          (seg.locksAt
-                            ? toDatetimeLocalValue(seg.locksAt)
-                            : getRememberedValue(LAST_VALUE_KEYS.segmentLocksAt));
+                          (seg.locksAt ? toDatetimeLocalValue(seg.locksAt) : "");
                         return (
                           <div key={seg.id} className="flex flex-wrap items-center gap-2">
                             <span className="text-xs text-slate-300 font-semibold w-24 shrink-0">

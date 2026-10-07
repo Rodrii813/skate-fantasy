@@ -1,4 +1,5 @@
 import {
+  effectiveLocksAt,
   firstSegmentEffectiveLocksAt,
   getPredictionsStatus,
   getSegmentDraftStatus,
@@ -43,11 +44,27 @@ export function computeEventOpenStatus(event: EventForStatus, now: Date = new Da
   for (const slot of event.slots) {
     if (slot.segmentId) slotsBySegment.set(slot.segmentId, (slotsBySegment.get(slot.segmentId) || 0) + 1);
   }
-  const draftOpen = event.segments.some(
-    (seg) => getSegmentDraftStatus(seg, event.rosterLocksAt, (slotsBySegment.get(seg.id) || 0) > 0, now) === "OPEN"
-  );
+  const segStatus = event.segments.map((seg) => ({
+    seg,
+    status: getSegmentDraftStatus(seg, event.rosterLocksAt, (slotsBySegment.get(seg.id) || 0) > 0, now),
+  }));
+  const draftOpen = segStatus.some((x) => x.status === "OPEN");
 
-  const draftCloseAt = typeof event.rosterLocksAt === "string" ? new Date(event.rosterLocksAt) : event.rosterLocksAt;
+  // Cierre del draft = plazo EFECTIVO del segmento que importa (el override
+  // del segmento si lo tiene, y si no el del evento). Antes se usaba siempre
+  // rosterLocksAt, que ignora el plazo propio del segmento y no coincidía con
+  // el de Predicciones ni con el cierre real. Se toma, por orden: el primer
+  // segmento abierto, si no el primero aún por abrir, si no el primero.
+  const bySegOrder = [...segStatus].sort((a, b) => a.seg.order - b.seg.order);
+  const target =
+    bySegOrder.find((x) => x.status === "OPEN") ??
+    bySegOrder.find((x) => x.status === "UPCOMING") ??
+    bySegOrder[0];
+  const draftCloseAt = target
+    ? effectiveLocksAt(target.seg, event.rosterLocksAt)
+    : typeof event.rosterLocksAt === "string"
+    ? new Date(event.rosterLocksAt)
+    : event.rosterLocksAt;
 
   return { predictionsOpen, draftOpen, predictionsCloseAt, draftCloseAt };
 }
