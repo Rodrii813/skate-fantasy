@@ -346,6 +346,7 @@ export default async function FantasyDraftPage({
                   </div>
                 )}
                 <FantasyRosterForm
+                  key={`${draftFormEvent.id}-${searchParams.segment ?? ""}`}
                   eventId={draftFormEvent.id}
                   eventName={draftFormEvent.name}
                   rosterLocksAt={draftFormEvent.rosterLocksAt}

@@ -231,7 +231,12 @@ export default function FantasyRosterForm({
     [slots, registrations, orderedSegments, picks, audience, locale]
   );
 
-  const activeSegmentValidation = validationResult.segments.find((s) => s.segmentId === activeTab?.id);
+  // Si por algún desajuste de datos los slots llevan un segmentId que no
+  // coincide con la pestaña activa, se usa el primer bloque validado para que
+  // las reglas mostradas (y el botón de guardar) sigan siendo coherentes.
+  const activeSegmentValidation =
+    validationResult.segments.find((s) => s.segmentId === activeTab?.id) ??
+    (validationResult.segments.length === 1 ? validationResult.segments[0] : undefined);
 
   const handleSelect = (slotId: string, skaterId: string) => {
     setPicks((prev) => ({
@@ -370,7 +375,11 @@ export default function FantasyRosterForm({
         body: JSON.stringify({
           eventId,
           // Un único roster con los picks de TODOS los segmentos juntos.
-          picks,
+          // Solo los slots de ESTE evento: si el formulario conservara picks
+          // de otra prueba, la API los rechazaría ("slot no pertenece").
+          picks: Object.fromEntries(
+            Object.entries(picks).filter(([slotId]) => slots.some((sl) => sl.id === slotId))
+          ),
         }),
       });
 
