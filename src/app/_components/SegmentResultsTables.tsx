@@ -1,6 +1,7 @@
 import type { SegmentResultBlock } from "@/lib/segmentResults";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import type { Locale } from "@/lib/i18n/config";
+import SegmentDetailRow from "@/app/_components/SegmentDetailRow";
 
 // 3 bloques colapsables por evento — "Programa Corto" / "Programa Largo" /
 // "Total" — inspirado en el patrón de rockerskating.com ("Short Program
@@ -123,33 +124,22 @@ export default function SegmentResultsTables({
                 </thead>
                 <tbody className="divide-y divide-slate-800/80">
                   {block.rows.map((row) => (
-                    <tr key={row.registrationId} className="hover:bg-slate-800/30 transition font-mono">
-                      <td className="py-3 px-5 font-bold text-slate-400">
-                        {row.rank !== null ? `#${row.rank}` : "—"}
-                      </td>
-                      <td className="py-3 px-4 font-sans font-semibold text-slate-200">
-                        {row.skaterName}{" "}
-                        {/* Los emojis de bandera no se renderizan bien en
-                            todos los sistemas (en Windows, sobre todo, salen
-                            en blanco o como texto suelto que parecía un país
-                            duplicado). Se muestra solo el código de país. */}
-                        {row.country && (
-                          <span className="font-mono text-[11px] text-slate-500">({row.country})</span>
-                        )}
-                      </td>
-                      <td className="py-3 px-4 text-right font-bold text-indigo-400 text-base">
-                        {numberOrDash(row.total)}
-                      </td>
-                      <td className="py-3 px-4 text-right text-slate-300">{numberOrDash(row.tes)}</td>
-                      <td className="py-3 px-4 text-right text-slate-300">{numberOrDash(row.pcs)}</td>
-                      <td className="py-3 px-4 text-right text-slate-400">
-                        {/* row.deductions ya viene con su signo real desde el
-                            acta oficial (0 o negativo, p.ej. -1.00): antes se
-                            le anteponía otro "-" a mano, así que un valor ya
-                            negativo salía con doble guion ("--1.00"). */}
-                        {row.deductions.toFixed(2)}
-                      </td>
-                    </tr>
+                    <SegmentDetailRow
+                      key={row.registrationId}
+                      row={row}
+                      segmentId={block.segmentId ?? ""}
+                      labels={{
+                        loading: t.detailLoading,
+                        missing: t.detailMissing,
+                        element: t.detailElement,
+                        base: t.detailBase,
+                        qoe: t.detailQoe,
+                        score: t.detailScore,
+                        components: t.detailComponents,
+                        totalElements: t.detailTotalElements,
+                        deductions: t.detailDeductions,
+                      }}
+                    />
                   ))}
                 </tbody>
               </table>

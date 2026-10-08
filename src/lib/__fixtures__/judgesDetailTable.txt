@@ -1,0 +1,97 @@
+JUDGES DETAILS PER SKATER
+INDIA GONZALEZ
+Rank Name
+Total
+Element
+score
+Nation
+# Executed Element QOEInfo J1 J2 J6J5J4J3
+Base
+Value
+Scores of
+Panel
+7.02 7.42ComboJump1 2 Axel2A +100+1+100.40
+2.22 2.222 Toeloop2T +1000000.00%
+2.51 2.712 Loop2Lo +1+1+1+1+100.20
+7.02 7.02ComboJump2 2 Axel2A 0000000.00
+0.00 0.00No JumpNJ 0000000.00
+2.51 2.462 Loop2Lo 0-10-100-0.05
+00+1-20+1ComboSpin3
+2.80 2.88Heel Backward SpinHBD 0.08%
+0.96 0.98Sit SpinS 0.02%
+0.00 0.00Camel Backward No LevelNLCBD 0.00
+2.90 2.92Upright SpinU 0.02%+
+2.00 2.30Step Sequence4 Choreo StepChStB +1+1+1+1+1+10.30
+1.87 1.47Jump5 3 Salchow3S <<< -3-3-3-3-3-3-0.40
+1.94ComboJump6 2 Loop2Lo < -1-1-1-2-2-1*
+2.03 1.782 Toeloop2T -2-1-1-2-2-1-0.25
+0+1+10+1+1ComboSpin7
+0.00 0.00Heel Backward No LevelNLHBD 0.00
+0.80 0.88Sit SpinS 0.08
+1.70 1.78Upright SpinU 0.08%+
+1.60 1.68Upright SpinU 0.08%+
+38.5037.94 0.56
+Total
+Segment
+score
+Total
+Component
+score (factored)
+Total
+Deductions1 ESP
+38.50 39.41 -1.00 76.91
+Program Components Factor
+Skating Skills 6.00 5.50 6.00 6.25 6.25 5.50 5.941.6
+Transitions/Linking Footwork/Movement 5.75 6.50 5.75 6.25 6.25 5.75 6.001.6
+Performance/Execution 6.25 6.25 5.75 6.75 6.50 5.75 6.191.6
+Choreography/Composition 6.50 6.75 6.50 6.50 6.50 5.75 6.501.6
+Judges Total Program Component Score (factored) 39.41
+Deductions -1.00 Falls: -1.0
+JUDGES DETAILS PER SKATER
+MARIIA KAPICHNIKOVA
+Rank Name
+Total
+Element
+score
+Nation
+# Executed Element QOEInfo J1 J2 J6J5J4J3
+Base
+Value
+Scores of
+Panel
+7.02 7.22ComboJump1 2 Axel2A 00+1-10+10.20
+2.22 2.122 Toeloop2T 0-10-10-1-0.10%
+6.10 6.30Jump2 2 Axel2A 00+10+100.20
+5.60 4.20Jump3 3 Toeloop3T < -2-1-2-3-3-1-1.40
+4.20 2.80Jump4 3 Salchow3S << -2-2-2-2-3-2-1.40
+2.00 2.00Step Sequence5 Choreo StepChStB 0000-1+10.00
+5.36 3.71ComboJump6 3 Toeloop3T << -3-2-3-2-3-2-1.65
+2.41 2.262 Toeloop2T -1-10-10-1-0.15%
+2.42 2.32Jump7 2 Loop2Lo +10-10-1-1-0.10
+00-1-200ComboSpin8
+0.00 0.00Camel Backward No LevelNLCBD 0.00
+0.80 0.78Sit SpinS -0.02
+0.00 0.00Sit Spin No LevelNLSit 0.00
+1.60 1.58Upright SpinU -0.02%+
+000-20+1ComboSpin9
+1.70 1.70Upright SpinU 0.00%+
+0.00 0.00Sit Spin No LevelNLSit 0.00
+1.65 1.65Upright SpinU 0.00%+
+0.50 0.50Upright SpinU 0.00
+39.1443.58 -4.44
+Total
+Segment
+score
+Total
+Component
+score (factored)
+Total
+Deductions2 RUS
+39.14 33.50 0.00 72.64
+Program Components Factor
+Skating Skills 5.75 5.50 5.50 5.00 5.25 5.25 5.381.6
+Transitions/Linking Footwork/Movement 5.50 4.50 5.25 4.75 5.00 5.25 5.061.6
+Performance/Execution 5.75 4.75 5.50 5.00 5.50 5.50 5.381.6
+Choreography/Composition 5.00 4.25 5.75 4.75 5.25 5.50 5.121.6
+Judges Total Program Component Score (factored) 33.50
+Deductions 0.00

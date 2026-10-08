@@ -229,6 +229,7 @@ model Segment {
   splitScheduledAt DateTime?
   slots         FantasySlot[]
   elementScores ElementScore[]
+  details       SegmentDetail[]
 
   @@index([eventId])
 }
@@ -308,8 +309,24 @@ model Registration {
   segment2Ded   Float?
 
   elementScores ElementScore[]
+  details       SegmentDetail[]
 
   @@unique([eventId, skaterId])
+}
+
+// Desglose completo del acta (elementos, QOE, notas por juez, components) de
+// un patinador en un segmento. Solo se MUESTRA en resultados; no interviene
+// en ningún cálculo de puntuaciones ni de Fantasy.
+model SegmentDetail {
+  id             String       @id @default(cuid())
+  registrationId String
+  registration   Registration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  segmentId      String
+  segment        Segment      @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  data           Json
+  updatedAt      DateTime     @default(now()) @updatedAt
+
+  @@unique([registrationId, segmentId])
 }
 
 model ElementScore {

@@ -48,6 +48,7 @@ export default async function CompetitionDetailPage({
             include: {
               skater: true,
               elementScores: { include: { elementCategory: true } },
+              details: { select: { segmentId: true } },
             },
             orderBy: [{ finalRank: "asc" }, { startOrder: "asc" }],
           },

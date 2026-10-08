@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { scoreEventPredictions } from "@/lib/calculatePredictions";
 import { extractText } from "unpdf";
 import { parseJudgesDetailsText, parseShowGroupResults } from "@/lib/pdfJudgesDetailsParser";
+import { parseJudgesDetailTables } from "@/lib/pdfJudgesDetailTable";
 
 function cleanStr(text: string): string {
   return text
@@ -249,6 +250,14 @@ export async function POST(req: Request) {
 
     // 3. Parsear el acta oficial con la función que corresponda.
     const parsedResults = isShowGroup ? parseShowGroupResults(fullText) : parseJudgesDetailsText(fullText);
+    const detailByName = new Map<string, ReturnType<typeof parseJudgesDetailTables>[number]>();
+    if (!isShowGroup) {
+      try {
+        for (const d of parseJudgesDetailTables(fullText)) detailByName.set(cleanStr(d.name), d);
+      } catch {
+        /* el detalle es opcional */
+      }
+    }
 
     if (!parsedResults || parsedResults.length === 0) {
       return NextResponse.json(
@@ -408,6 +417,24 @@ export async function POST(req: Request) {
           ...(newTotalScore !== null ? { totalScore: newTotalScore } : {}),
         },
       });
+
+      // Desglose completo (elementos, QOE, notas por juez) solo para mostrarlo en
+      // resultados. Va aparte y dentro de try/catch: si falla o el acta no
+      // cuadra, no afecta a ninguna puntuación.
+      try {
+        const detail = detailByName.get(cleanStr(rawName));
+        if (detail) {
+          await prisma.segmentDetail.upsert({
+            where: {
+              registrationId_segmentId: { registrationId: matchedReg.id, segmentId: segment.id },
+            },
+            update: { data: detail as any },
+            create: { registrationId: matchedReg.id, segmentId: segment.id, data: detail as any },
+          });
+        }
+      } catch (e) {
+        console.error("No se pudo guardar el detalle del acta:", e);
+      }
 
       for (const slot of segmentSlots) {
         const tag = (slot.label + " " + (slot.elementCategory?.name || "")).toLowerCase();

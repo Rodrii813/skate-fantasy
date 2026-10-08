@@ -43,6 +43,7 @@ export default async function ResultadosPage({
         include: {
           skater: true,
           elementScores: { include: { elementCategory: true } },
+          details: { select: { segmentId: true } },
         },
         orderBy: [{ finalRank: "asc" }, { totalScore: "desc" }],
       },

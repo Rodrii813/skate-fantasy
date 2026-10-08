@@ -33,10 +33,13 @@ export interface SegmentResultRow {
   shortScore?: number | null;
   longRank?: number | null;
   longScore?: number | null;
+  // Hay desglose del acta guardado para este patinador en este segmento
+  hasDetail?: boolean;
 }
 
 export interface SegmentResultBlock {
   key: "short" | "long" | "total";
+  segmentId?: string;
   title: string;
   rows: SegmentResultRow[];
 }
@@ -53,6 +56,7 @@ interface RegistrationLike {
   segment2Pcs: number | null;
   segment2Ded: number | null;
   finalRank: number | null;
+  details?: { segmentId: string }[];
   skater: { firstName: string; lastName: string; country: string };
   // Parejas: el nombre se muestra "A / B". Lo rellena computeSegmentResultBlocks.
   pair?: boolean;
@@ -68,7 +72,7 @@ function buildRows(
   registrations: RegistrationLike[],
   scoreOf: (r: RegistrationLike) => number | null,
   breakdownOf: (r: RegistrationLike) => { tes: number | null; pcs: number | null; ded: number | null },
-  options: { includeUnscored: boolean; rankOf?: (r: RegistrationLike) => number | null }
+  options: { includeUnscored: boolean; rankOf?: (r: RegistrationLike) => number | null; segmentId?: string }
 ): SegmentResultRow[] {
   const scored = registrations
     .filter((r) => scoreOf(r) !== null)
@@ -88,6 +92,7 @@ function buildRows(
       tes: tes ?? 0,
       pcs: pcs ?? 0,
       deductions: ded ?? 0,
+      hasDetail: options.segmentId ? !!r.details?.some((d) => d.segmentId === options.segmentId) : false,
     };
   };
 
@@ -166,7 +171,7 @@ export function computeSegmentResultBlocks(
         registrations,
         (r) => r.segment1Score,
         (r) => ({ tes: r.segment1Tes, pcs: r.segment1Pcs, ded: r.segment1Ded }),
-        { includeUnscored: false }
+        { includeUnscored: false, segmentId: shortSegment.id }
       )
     : [];
 
@@ -175,12 +180,12 @@ export function computeSegmentResultBlocks(
         registrations,
         (r) => r.segment2Score,
         (r) => ({ tes: r.segment2Tes, pcs: r.segment2Pcs, ded: r.segment2Ded }),
-        { includeUnscored: false }
+        { includeUnscored: false, segmentId: longSegment.id }
       )
     : [];
 
-  if (shortSegment) blocks.push({ key: "short", title: shortSegment.name, rows: shortRows });
-  if (longSegment) blocks.push({ key: "long", title: longSegment.name, rows: longRows });
+  if (shortSegment) blocks.push({ key: "short", segmentId: shortSegment.id, title: shortSegment.name, rows: shortRows });
+  if (longSegment) blocks.push({ key: "long", segmentId: longSegment.id, title: longSegment.name, rows: longRows });
 
   blocks.push({
     key: "total",
