@@ -3,6 +3,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
 import { checkRateLimit } from "./rateLimit";
+import { REQUIRE_EMAIL_VERIFICATION } from "./emailVerification";
 
 // Intentos de login permitidos por cuenta antes de frenar — cuenta TODOS los
 // intentos (acierten o no), no solo los fallidos, para que no haga falta
@@ -51,7 +52,7 @@ export const authOptions: NextAuthOptions = {
         // mensaje concreto "EMAIL_NOT_VERIFIED" llegue tal cual al cliente
         // en signIn(...).error, para poder mostrar un botón de "reenviar
         // email" en vez del genérico "credenciales incorrectas".
-        if (!user.emailVerified) {
+        if (REQUIRE_EMAIL_VERIFICATION && !user.emailVerified) {
           throw new Error("EMAIL_NOT_VERIFIED");
         }
 

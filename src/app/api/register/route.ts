@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { sendVerificationEmail } from "@/lib/email";
+import { REQUIRE_EMAIL_VERIFICATION } from "@/lib/emailVerification";
 import { checkRateLimit, getClientIp, rateLimitResponse } from "@/lib/rateLimit";
 
 // Máximo de cuentas nuevas por IP en una hora — sin esto, un script podría
@@ -57,8 +58,19 @@ export async function POST(req: Request) {
 
   try {
     const user = await prisma.user.create({
-      data: { name: trimmedName, email: normalizedEmail, passwordHash },
+      data: {
+        name: trimmedName,
+        email: normalizedEmail,
+        passwordHash,
+        // Sin verificación exigida, la cuenta nace ya verificada (así, si
+        // se vuelve a activar el interruptor, estas cuentas siguen entrando).
+        ...(REQUIRE_EMAIL_VERIFICATION ? {} : { emailVerified: new Date() }),
+      },
     });
+
+    if (!REQUIRE_EMAIL_VERIFICATION) {
+      return NextResponse.json({ id: user.id, name: user.name, email: user.email, needsVerification: false });
+    }
 
     // Email de verificación: el login queda bloqueado (ver src/lib/auth.ts)
     // hasta que confirme con este enlace, así que hay que enviarlo ya mismo

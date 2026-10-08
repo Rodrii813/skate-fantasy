@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { getDictionary } from "@/lib/i18n/dictionary";
 
 export default function RegisterPage() {
+  const router = useRouter();
   const { locale } = useLocale();
   const t = getDictionary(locale).auth;
   const [name, setName] = useState("");
@@ -44,6 +47,20 @@ export default function RegisterPage() {
     if (!res.ok) {
       setError(data.error ?? t.registerError);
       setLoading(false);
+      return;
+    }
+
+    // Sin verificación de email: la cuenta ya está activa, se inicia sesión
+    // directamente y se va a la portada.
+    if (data.needsVerification === false) {
+      const login = await signIn("credentials", { email, password, redirect: false });
+      setLoading(false);
+      if (login?.error) {
+        router.push("/login");
+        return;
+      }
+      router.push("/");
+      router.refresh();
       return;
     }
 
