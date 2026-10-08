@@ -10,6 +10,7 @@ import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import LocalDateTime from "@/app/_components/LocalDateTime";
 import PublicFavoritesImageButton from "./PublicFavoritesImageButton";
+import MyPredictionShare from "./MyPredictionShare";
 import TestEventBanner from "@/app/_components/TestEventBanner";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import PredictionEventSelector, { type PredictionEventGroup } from "./PredictionEventSelector";
@@ -197,6 +198,22 @@ export default async function PredictionsPage({
     statsRank3 = getRankStats("rank3SkaterId");
   }
 
+  // Mis elecciones (sin porcentajes) para la imagen que cada usuario puede
+  // compartir: top 3, 4 o 5 según lo que haya enviado.
+  let myPicks: { name: string; country: string }[] = [];
+  if (activeEvent && userPrediction) {
+    const isPairEv = isPairDiscipline(activeEvent.discipline?.name);
+    const byId = new Map<string, { name: string; country: string }>();
+    activeEvent.registrations.forEach((r: any) =>
+      byId.set(r.skater.id, { name: formatSkaterName(r.skater, isPairEv), country: r.skater.country })
+    );
+    const up: any = userPrediction;
+    myPicks = [up.rank1SkaterId, up.rank2SkaterId, up.rank3SkaterId, up.rank4SkaterId, up.rank5SkaterId]
+      .filter(Boolean)
+      .map((id: string) => byId.get(id))
+      .filter((x): x is { name: string; country: string } => Boolean(x));
+  }
+
   // Ranking de Predicciones: por evento o global por competición, según la
   // pestaña activa — reutilizando las funciones de src/lib/scoring.ts
   // basadas en Prediction.pointsEarned ya calculado. Antes se calculaban
@@ -341,6 +358,27 @@ export default async function PredictionsPage({
                     skaters={activeEvent.registrations.map((r) => r.skater)}
                     isPair={isPairDiscipline(activeEvent.discipline?.name)}
                     initialPrediction={userPrediction}
+                  />
+                )}
+
+                {/* Compartir mi predicción (cualquier usuario que ya haya enviado la suya) */}
+                {myPicks.length >= 3 && (
+                  <MyPredictionShare
+                    eventName={activeEvent.name}
+                    competitionName={activeEvent.competition.name}
+                    picks={myPicks}
+                    linkPath={`/predictions?competition=${activeEvent.competition.id}&event=${activeEvent.id}`}
+                    labels={{
+                      title: t.myPredImgTitle,
+                      share: t.favImgShare,
+                      download: t.favImgDownloadUser,
+                      copyLink: t.favImgCopy,
+                      copied: t.favImgCopied,
+                      downloaded: t.favImgDownloaded,
+                      working: t.favImgWorking,
+                      error: t.favImgError,
+                      shareText: t.myPredImgText,
+                    }}
                   />
                 )}
 
