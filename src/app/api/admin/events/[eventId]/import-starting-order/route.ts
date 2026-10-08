@@ -400,7 +400,7 @@ async function parseAndRegisterSkaters(
     if (skater && legacyMatch && !candidateMatch) {
       skater = await prisma.skater.update({
         where: { id: skater.id },
-        data: { firstName, country },
+        data: { firstName, country: country ?? undefined },
       });
     }
 

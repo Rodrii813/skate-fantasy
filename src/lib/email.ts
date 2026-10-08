@@ -14,17 +14,73 @@ const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KE
 // remitente con dominio propio verificado vía RESEND_FROM_EMAIL.
 const FROM = process.env.RESEND_FROM_EMAIL || "Rollart Fantasy <onboarding@resend.dev>";
 
+// Brevo (300 emails/día gratis frente a los 100 de Resend). Si BREVO_API_KEY
+// está configurada se usa Brevo y, si falla (límite, caída...), se intenta con
+// Resend como respaldo. Sin Brevo configurado todo sigue funcionando solo con
+// Resend, como antes.
+//   BREVO_API_KEY     clave API de Brevo (SMTP & API → API Keys)
+//   BREVO_FROM_EMAIL  remitente YA VERIFICADO en Brevo (p.ej. noreply@rollartfantasy.com)
+//   BREVO_FROM_NAME   nombre visible (por defecto "Rollart Fantasy")
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
+const BREVO_FROM_EMAIL = process.env.BREVO_FROM_EMAIL || "";
+const BREVO_FROM_NAME = process.env.BREVO_FROM_NAME || "Rollart Fantasy";
+
+interface OutgoingEmail {
+  to: string;
+  subject: string;
+  html: string;
+  replyTo?: string;
+}
+
+async function sendViaBrevo(mail: OutgoingEmail) {
+  const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: { "api-key": BREVO_API_KEY, "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify({
+      sender: { name: BREVO_FROM_NAME, email: BREVO_FROM_EMAIL },
+      to: [{ email: mail.to }],
+      subject: mail.subject,
+      htmlContent: mail.html,
+      ...(mail.replyTo ? { replyTo: { email: mail.replyTo } } : {}),
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Brevo ${res.status}: ${(await res.text().catch(() => "")).slice(0, 300)}`);
+  }
+}
+
+async function deliver(mail: OutgoingEmail) {
+  if (BREVO_API_KEY && BREVO_FROM_EMAIL) {
+    try {
+      await sendViaBrevo(mail);
+      return;
+    } catch (err) {
+      console.error("[email] Brevo ha fallado, se intenta con Resend:", err);
+    }
+  }
+  if (!resend) throw new Error("No hay ningún proveedor de email disponible");
+  const { error } = await resend.emails.send({
+    from: FROM,
+    to: mail.to,
+    subject: mail.subject,
+    html: mail.html,
+    ...(mail.replyTo ? { replyTo: mail.replyTo } : {}),
+  });
+  if (error) throw new Error(`Resend: ${error.message}`);
+}
+
+const hasProvider = () => Boolean((BREVO_API_KEY && BREVO_FROM_EMAIL) || resend);
+
 export async function sendPasswordResetEmail(to: string, resetUrl: string) {
-  if (!resend) {
+  if (!hasProvider()) {
     console.warn(
-      "[email] RESEND_API_KEY no configurada — no se ha enviado el email de recuperación. Enlace de prueba:",
+      "[email] Ningún proveedor de email configurado — no se ha enviado el email de recuperación. Enlace de prueba:",
       resetUrl
     );
     return;
   }
 
-  await resend.emails.send({
-    from: FROM,
+  await deliver({
     to,
     subject: "Recupera tu contraseña — Rollart Fantasy",
     html: `
@@ -81,16 +137,15 @@ export async function sendContactEmail(input: {
 }) {
   const reasonLabel = CONTACT_REASON_LABELS[input.reason] || input.reason;
 
-  if (!resend) {
+  if (!hasProvider()) {
     console.warn(
-      "[email] RESEND_API_KEY no configurada — mensaje de contacto solo registrado aquí:",
+      "[email] Ningún proveedor de email configurado — mensaje de contacto solo registrado aquí:",
       input
     );
     return;
   }
 
-  await resend.emails.send({
-    from: FROM,
+  await deliver({
     to: CONTACT_EMAIL,
     // Responder directamente a este email contesta al usuario, no a
     // "onboarding@resend.dev" (el remitente técnico).
@@ -109,16 +164,15 @@ export async function sendContactEmail(input: {
 }
 
 export async function sendVerificationEmail(to: string, verifyUrl: string) {
-  if (!resend) {
+  if (!hasProvider()) {
     console.warn(
-      "[email] RESEND_API_KEY no configurada — no se ha enviado el email de verificación. Enlace de prueba:",
+      "[email] Ningún proveedor de email configurado — no se ha enviado el email de verificación. Enlace de prueba:",
       verifyUrl
     );
     return;
   }
 
-  await resend.emails.send({
-    from: FROM,
+  await deliver({
     to,
     subject: "Confirma tu email — Rollart Fantasy",
     html: `
