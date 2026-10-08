@@ -1,13 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 
 // Aviso para instalar la web como app. En Android usa el aviso nativo del
-// navegador; en iPhone/iPad (donde no existe) enseña los 3 pasos. Se oculta
+// navegador; en iPhone/iPad (donde no existe) enseña los 3 pasos. Solo sale en
+// móvil/tablet, UNA vez por sesión del navegador (no en cada página), se oculta
 // si ya está instalada y no vuelve a salir en 14 días si se cierra.
 
 const KEY = "rf-install-dismissed";
+const SEEN_KEY = "rf-install-seen";
 const DAYS = 14;
 
 type BIPEvent = Event & { prompt: () => Promise<void>; userChoice: Promise<{ outcome: string }> };
@@ -44,6 +47,13 @@ export default function InstallBanner() {
   const t = TEXT[locale === "en" ? "en" : "es"];
   const [mode, setMode] = useState<"none" | "android" | "ios">("none");
   const [deferred, setDeferred] = useState<BIPEvent | null>(null);
+  const pathname = usePathname();
+  const [firstPath] = useState(pathname);
+
+  // Si la persona cambia de página sin tocar el aviso, se quita solo
+  useEffect(() => {
+    if (pathname !== firstPath) setMode("none");
+  }, [pathname, firstPath]);
 
   useEffect(() => {
     try {
@@ -54,17 +64,31 @@ export default function InstallBanner() {
       try {
         const ts = Number(localStorage.getItem(KEY) || 0);
         if (ts && Date.now() - ts < DAYS * 86400000) return;
+        // Ya se enseñó en esta sesión del navegador: no repetirlo al cambiar de página
+        if (sessionStorage.getItem(SEEN_KEY)) return;
       } catch {}
 
       const ua = navigator.userAgent;
+      // Solo móvil/tablet: en ordenador el aviso resulta molesto
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+      if (!isMobile) return;
+      const markSeen = () => {
+        try {
+          sessionStorage.setItem(SEEN_KEY, "1");
+        } catch {}
+      };
       const isIos = /iPhone|iPad|iPod/i.test(ua);
       const isSafari = /Safari/i.test(ua) && !/CriOS|FxiOS|EdgiOS/i.test(ua);
-      if (isIos && isSafari) setMode("ios");
+      if (isIos && isSafari) {
+        setMode("ios");
+        markSeen();
+      }
 
       const onPrompt = (e: Event) => {
         e.preventDefault();
         setDeferred(e as BIPEvent);
         setMode("android");
+        markSeen();
       };
       window.addEventListener("beforeinstallprompt", onPrompt);
       return () => window.removeEventListener("beforeinstallprompt", onPrompt);
