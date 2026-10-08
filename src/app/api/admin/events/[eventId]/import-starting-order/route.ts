@@ -381,9 +381,28 @@ async function parseAndRegisterSkaters(
         (normalizeName(c.firstName) === nLast && normalizeName(c.lastName) === nFirst)
     );
 
-    let skater = candidateMatch
-      ? await prisma.skater.findUnique({ where: { id: candidateMatch.id } })
+    // Reparación de importaciones antiguas de equipos: si una importación
+    // anterior guardó el país como parte del nombre ("SHIRIC ARG" en vez de
+    // "SHIRIC" + ARG), se reutiliza ese mismo registro y se corrige su nombre
+    // en vez de crear un equipo duplicado.
+    const legacyMatch =
+      !candidateMatch && mode === "team" && country && !lastName
+        ? candidates.find(
+            (c: { id: string; firstName: string; lastName: string }) =>
+              !c.lastName && normalizeName(c.firstName) === `${nFirst} ${normalizeName(country)}`
+          )
+        : undefined;
+
+    let skater = candidateMatch || legacyMatch
+      ? await prisma.skater.findUnique({ where: { id: (candidateMatch ?? legacyMatch)!.id } })
       : null;
+
+    if (skater && legacyMatch && !candidateMatch) {
+      skater = await prisma.skater.update({
+        where: { id: skater.id },
+        data: { firstName, country },
+      });
+    }
 
     if (!skater) {
       skater = await prisma.skater.create({
