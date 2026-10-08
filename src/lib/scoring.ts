@@ -62,6 +62,7 @@ async function computeEventLeaderboardUncached(eventId: string): Promise<RosterS
     include: {
       user: true,
       picks: {
+        orderBy: { slot: { order: "asc" } },
         include: {
           slot: true,
           skater: { include: { discipline: { select: { name: true } } } },
@@ -147,6 +148,7 @@ async function computeEventLeaderboardBySegmentUncached(
     include: {
       user: true,
       picks: {
+        orderBy: { slot: { order: "asc" } },
         include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } },
       },
     },
@@ -229,7 +231,7 @@ async function computeCompetitionLeaderboardsBySegmentUncached(
     where: { event: { competitionId } },
     include: {
       user: true,
-      picks: { include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } },
+      picks: { orderBy: { slot: { order: "asc" } }, include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } },
     },
   });
   if (rosters.length === 0) return result;
@@ -322,7 +324,7 @@ async function computeBulkFantasyTotals(
 
   const rosters = await prisma.fantasyRoster.findMany({
     where: { eventId: { in: eventIds } },
-    include: { user: true, picks: { include: { slot: true } } },
+    include: { user: true, picks: { orderBy: { slot: { order: "asc" } }, include: { slot: true } } },
   });
   if (rosters.length === 0) return totalsByUser;
 
@@ -464,7 +466,7 @@ export async function computeMyPicksForCompetition(
 ): Promise<Map<string, MyEventPicks>> {
   const rosters = await prisma.fantasyRoster.findMany({
     where: { userId, event: { competitionId } },
-    include: { picks: { include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } } },
+    include: { picks: { orderBy: { slot: { order: "asc" } }, include: { slot: true, skater: { include: { discipline: { select: { name: true } } } } } } },
   });
 
   const result = new Map<string, MyEventPicks>();
