@@ -84,6 +84,12 @@ model User {
   pushSubscriptions PushSubscription[]
 }
 
+// Avisos automáticos ya enviados (clave única por aviso: "open:<segmentId>"...).
+model NotificationLog {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
+
 // Suscripción push de un dispositivo (PWA). Se borra sola si el navegador
 // la da de baja (404/410 al enviar).
 model PushSubscription {

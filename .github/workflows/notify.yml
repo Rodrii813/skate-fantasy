@@ -1,0 +1,12 @@
+name: Avisos automaticos
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Llamar a la web
+        run: |
+          curl -fsS -X POST "${{ secrets.SITE_URL }}/api/cron/notify" -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}"
