@@ -56,7 +56,7 @@ export type RosterScore = {
  * elegido en la categoría de elemento + segmento que define el slot.
  * Si el admin aún no ha cargado esa puntuación, cuenta como 0 (pendiente).
  */
-export async function computeEventLeaderboard(eventId: string): Promise<RosterScore[]> {
+async function computeEventLeaderboardUncached(eventId: string): Promise<RosterScore[]> {
   const rosters = await prisma.fantasyRoster.findMany({
     where: { eventId },
     include: {
@@ -139,7 +139,7 @@ export type SegmentLeaderboard = {
  * Los slots sin segmento (eventos antiguos sin segmentos configurados) no
  * aparecen aquí — para esos sigue sirviendo computeEventLeaderboard tal cual.
  */
-export async function computeEventLeaderboardBySegment(
+async function computeEventLeaderboardBySegmentUncached(
   eventId: string
 ): Promise<Map<string, SegmentLeaderboard>> {
   const rosters = await prisma.fantasyRoster.findMany({
@@ -220,7 +220,7 @@ export async function computeEventLeaderboardBySegment(
  * arriba, solo que aquí agrupando por evento+segmento en vez de sumar un
  * único total por usuario.
  */
-export async function computeCompetitionLeaderboardsBySegment(
+async function computeCompetitionLeaderboardsBySegmentUncached(
   competitionId: string
 ): Promise<Map<string, Map<string, SegmentLeaderboard>>> {
   const result = new Map<string, Map<string, SegmentLeaderboard>>();
@@ -362,7 +362,7 @@ async function computeBulkFantasyTotals(
 }
 
 /** Ranking global: suma los totales de cada usuario a través de todos los eventos. */
-export async function computeGlobalLeaderboard() {
+async function computeGlobalLeaderboardUncached() {
   const events = await prisma.event.findMany({ select: { id: true } });
   const totals = await computeBulkFantasyTotals(events.map((e) => e.id));
 
@@ -383,7 +383,7 @@ export type CompetitionScore = {
  * pero acotado a los eventos de UNA competición (para la tarjeta "Global" y
  * la Clasificación Global de /fantasy y /fantasy/leaderboard).
  */
-export async function computeCompetitionFantasyLeaderboard(
+async function computeCompetitionFantasyLeaderboardUncached(
   competitionId: string
 ): Promise<CompetitionScore[]> {
   const events = await prisma.event.findMany({
@@ -415,7 +415,7 @@ export type LeagueScore = {
  * crearse (por eso se recorre league.memberships, no el resultado de
  * computeBulkFantasyTotals).
  */
-export async function computeLeagueLeaderboard(leagueId: string): Promise<LeagueScore[]> {
+async function computeLeagueLeaderboardUncached(leagueId: string): Promise<LeagueScore[]> {
   const league = await prisma.league.findUnique({
     where: { id: leagueId },
     include: {
@@ -525,7 +525,7 @@ export type PredictionScore = {
  * se ejecuta desde el panel de admin al cargar resultados) — aquí solo se
  * lee y se ordena, no se recalcula la puntuación.
  */
-export async function computeEventPredictionLeaderboard(eventId: string): Promise<PredictionScore[]> {
+async function computeEventPredictionLeaderboardUncached(eventId: string): Promise<PredictionScore[]> {
   const predictions = await prisma.prediction.findMany({
     where: { eventId, pointsEarned: { not: null } },
     include: { user: true },
@@ -545,7 +545,7 @@ export async function computeEventPredictionLeaderboard(eventId: string): Promis
  * Ranking de Predicciones GLOBAL de una competición: suma pointsEarned de
  * todos los eventos ya puntuados de esa competición, por usuario.
  */
-export async function computeCompetitionPredictionLeaderboard(
+async function computeCompetitionPredictionLeaderboardUncached(
   competitionId: string
 ): Promise<PredictionScore[]> {
   const predictions = await prisma.prediction.findMany({
@@ -572,3 +572,67 @@ export async function computeCompetitionPredictionLeaderboard(
     .map(([userId, v]) => ({ userId, ...v }))
     .sort((a, b) => b.total - a.total);
 }
+
+
+// ---------------------------------------------------------------------------
+// Caché de corta duración de los rankings.
+//
+// Cada visita a una clasificación recalculaba todo desde la base de datos, y
+// con la clasificación en directo (LiveRefresh) cada persona con la página
+// abierta lo repetía cada pocos segundos: la base de datos (Neon, que cobra
+// por tiempo despierta) casi nunca se dormía. Ahora el resultado se guarda en
+// memoria del servidor unos segundos y todas las visitas simultáneas lo
+// comparten (y si dos llegan a la vez, comparten la misma consulta en vuelo).
+// Los datos pueden ir hasta CACHE_TTL_MS por detrás, imperceptible para el
+// usuario. Se devuelve siempre una copia, para que ninguna página pueda
+// alterar por accidente lo que ve la siguiente.
+const CACHE_TTL_MS = 20_000;
+const resultCache = new Map<string, { at: number; value: Promise<unknown> }>();
+
+function memo<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  // En los tests no se cachea: cada llamada debe ver los datos simulados nuevos.
+  if (process.env.NODE_ENV === "test") return fn();
+
+  const now = Date.now();
+  const hit = resultCache.get(key);
+  let value: Promise<unknown>;
+  if (hit && now - hit.at < CACHE_TTL_MS) {
+    value = hit.value;
+  } else {
+    value = fn();
+    resultCache.set(key, { at: now, value });
+    // Un error no se cachea: la siguiente visita lo reintenta.
+    value.catch(() => {
+      if (resultCache.get(key)?.value === value) resultCache.delete(key);
+    });
+    if (resultCache.size > 300) {
+      for (const [k, v] of Array.from(resultCache.entries())) {
+        if (now - v.at >= CACHE_TTL_MS) resultCache.delete(k);
+      }
+    }
+  }
+  return value.then((v) => structuredClone(v) as T);
+}
+
+export const computeEventLeaderboard = (eventId: string) =>
+  memo(`event:${eventId}`, () => computeEventLeaderboardUncached(eventId));
+
+export const computeEventLeaderboardBySegment = (eventId: string) =>
+  memo(`eventSeg:${eventId}`, () => computeEventLeaderboardBySegmentUncached(eventId));
+
+export const computeCompetitionLeaderboardsBySegment = (competitionId: string) =>
+  memo(`compSeg:${competitionId}`, () => computeCompetitionLeaderboardsBySegmentUncached(competitionId));
+
+export const computeGlobalLeaderboard = () => memo("global", () => computeGlobalLeaderboardUncached());
+
+export const computeCompetitionFantasyLeaderboard = (competitionId: string) =>
+  memo(`compFantasy:${competitionId}`, () => computeCompetitionFantasyLeaderboardUncached(competitionId));
+
+export const computeLeagueLeaderboard = (leagueId: string) =>
+  memo(`league:${leagueId}`, () => computeLeagueLeaderboardUncached(leagueId));
+
+export const computeEventPredictionLeaderboard = (eventId: string) =>
+  memo(`predEvent:${eventId}`, () => computeEventPredictionLeaderboardUncached(eventId));
+
+export const computeCompetitionPredictionLeaderboard = (competitionId: string) =>
+  memo(`predComp:${competitionId}`, () => computeCompetitionPredictionLeaderboardUncached(competitionId));
