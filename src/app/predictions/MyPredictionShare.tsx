@@ -22,7 +22,7 @@ export interface MyPredictionLabels {
   downloaded: string;
   working: string;
   error: string;
-  shareText: (url: string) => string;
+  shareText: string;
 }
 
 const MEDALS = ["#c9a227", "#b8c2cc", "#cd7f32"];
@@ -187,7 +187,7 @@ export default function MyPredictionShare({
       const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
       if (nav.canShare && nav.canShare({ files: [file] })) {
         try {
-          await nav.share({ files: [file], text: labels.shareText(linkUrl()) });
+          await nav.share({ files: [file], text: `${labels.shareText} ${linkUrl()}` });
           return;
         } catch (e) {
           if ((e as Error)?.name === "AbortError") return;
