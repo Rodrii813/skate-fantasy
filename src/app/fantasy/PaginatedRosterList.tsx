@@ -11,14 +11,13 @@ const PAGE_SIZE = 15;
 // nueva clasificación general de toda la competición (fantasy/leaderboard,
 // una instancia por cada segmento de cada evento) — antes vivía solo dentro
 // de la primera. Con muchos rosters la lista se hacía interminable, igual
-// motivo que el acordeón de Draft Status. Solo las 3 primeras posiciones
-// GLOBALES (no por página) empiezan desplegadas.
+// motivo que el acordeón de Draft Status. Todos los equipos empiezan plegados
+// y cada usuario despliega el que quiera.
 function RosterCard({ roster, index, hasScores }: { roster: RosterScore; index: number; hasScores: boolean }) {
   return (
     <details
       key={roster.rosterId}
       className="group bg-slate-900 border border-slate-800 rounded-xl overflow-hidden"
-      open={hasScores && index < 3}
     >
       <summary className="cursor-pointer list-none px-3 py-2 flex items-center justify-between gap-2 hover:bg-slate-800/40 transition">
         <div className="flex items-center gap-2 min-w-0">
