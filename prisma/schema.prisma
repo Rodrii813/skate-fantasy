@@ -81,6 +81,21 @@ model User {
   leagueMemberships LeagueMembership[]
   passwordResets    PasswordResetToken[]
   emailVerifications EmailVerificationToken[]
+  pushSubscriptions PushSubscription[]
+}
+
+// Suscripción push de un dispositivo (PWA). Se borra sola si el navegador
+// la da de baja (404/410 al enviar).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
 
 // Recuperación de contraseña: token de un solo uso, con caducidad de 1 hora,

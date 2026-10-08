@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Fraunces, Inter } from "next/font/google";
 import { Analytics } from "@vercel/analytics/react";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -6,6 +6,8 @@ import "./globals.css";
 import Providers from "./providers";
 import NavBar from "./nav-bar";
 import Footer from "./_components/Footer";
+import PwaRegister from "./_components/PwaRegister";
+import InstallBanner from "./_components/InstallBanner";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { LocaleProvider } from "@/lib/i18n/LocaleContext";
 
@@ -39,8 +41,14 @@ const SITE_DESCRIPTION =
 // (ni imagen, ni título, ni descripción) — solo la URL pelada. La imagen
 // referenciada (opengraph-image.png, junto a este archivo) la detecta Next
 // automáticamente por convención de nombre.
+export const viewport: Viewport = {
+  themeColor: "#020617",
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(BASE_URL),
+  applicationName: "Rollart Fantasy",
+  appleWebApp: { capable: true, title: "Rollart Fantasy", statusBarStyle: "black-translucent" },
   title: { default: SITE_TITLE, template: `%s — Rollart Fantasy` },
   description: SITE_DESCRIPTION,
   openGraph: {
@@ -73,6 +81,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <NavBar />
             <main className="mx-auto w-full max-w-5xl flex-1 px-4 pb-24 pt-8">{children}</main>
             <Footer />
+            <PwaRegister />
+            <InstallBanner />
           </Providers>
         </LocaleProvider>
         <Analytics />

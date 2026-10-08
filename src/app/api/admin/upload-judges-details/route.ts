@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { scoreEventPredictions } from "@/lib/calculatePredictions";
+import { pushToEventParticipants } from "@/lib/push";
 import { extractText } from "unpdf";
 import { parseJudgesDetailsText, parseShowGroupResults } from "@/lib/pdfJudgesDetailsParser";
 import { parseJudgesDetailTables } from "@/lib/pdfJudgesDetailTable";
@@ -520,6 +521,16 @@ export async function POST(req: Request) {
           await scoreEventPredictions(eventId);
         } catch (e) {
           console.error("Error puntuando predicciones:", e);
+        }
+        // Aviso push a quien participó en el evento (no bloquea ni falla la subida)
+        try {
+          await pushToEventParticipants(eventId, {
+            title: "Resultados disponibles",
+            body: `${event.name}: ya puedes ver los resultados y tu clasificación.`,
+            url: `/competitions/${event.competitionId}`,
+          });
+        } catch (e) {
+          console.error("Error enviando notificaciones:", e);
         }
       }
     }

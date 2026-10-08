@@ -28,6 +28,12 @@ export default function AdminDashboardPage() {
       color: "border-purple-500/30 hover:border-purple-500",
     },
     {
+      title: "🔔 Notificaciones push",
+      desc: "Envía un aviso a los dispositivos que han activado las notificaciones.",
+      href: "/admin/notifications",
+      color: "border-cyan-500/30 hover:border-cyan-500",
+    },
+    {
       title: "⚙️ Ajustes del Sitio",
       desc: "Activa o desactiva la cuenta atrás de la home y edita su texto y fecha.",
       href: "/admin/settings",
