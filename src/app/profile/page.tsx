@@ -5,6 +5,7 @@ import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import NicknameForm from "./NicknameForm";
 import NotificationToggle from "./NotificationToggle";
+import InstallCard from "./InstallCard";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export default async function ProfilePage() {
         </div>
 
         <NicknameForm currentName={session.user.name || ""} />
+
+        <InstallCard />
 
         <NotificationToggle />
       </div>
