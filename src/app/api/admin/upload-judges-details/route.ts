@@ -135,19 +135,21 @@ function computeTechnicalScoreQuartets(tag: string, scores: ParsedSlotScores): n
   return 0;
 }
 
-// Precisi\u00f3n: 8 slots t\u00e9cnicos, cada uno con su propio elemento \u2014 sin "mejor
-// de N" ni "pack sumado", cada patinadora/equipo ejecuta exactamente 1 de
-// cada.
+// Precisión: 8 elementos fijos que cada equipo ejecuta exactamente 1 vez. Los
+// slots nuevos agrupan 2 elementos ("Rotating Wheel + Linear Line") y puntúan
+// la SUMA de ambos; los slots antiguos de 1 solo elemento siguen funcionando
+// igual (solo coincide una palabra clave).
 function computeTechnicalScorePrecision(tag: string, scores: ParsedSlotScores): number {
-  if (tag.includes("rotating wheel") || tag.includes("wheel")) return scores.wheelTotal || 0;
-  if (tag.includes("linear line") || tag.includes("line")) return scores.lineTotal || 0;
-  if (tag.includes("pivoting block") || tag.includes("block")) return scores.blockTotal || 0;
-  if (tag.includes("move element")) return scores.moveElementTotal || 0;
-  if (tag.includes("intersection")) return scores.intersectionTotal || 0;
-  if (tag.includes("traveling")) return scores.travelingTotal || 0;
-  if (tag.includes("creative")) return scores.creativeTotal || 0;
-  if (tag.includes("no hold element")) return scores.noHoldElementTotal || 0;
-  return 0;
+  let total = 0;
+  if (tag.includes("wheel")) total += scores.wheelTotal || 0;
+  if (tag.includes("linear line") || /\bline\b/.test(tag)) total += scores.lineTotal || 0;
+  if (tag.includes("block")) total += scores.blockTotal || 0;
+  if (tag.includes("move element")) total += scores.moveElementTotal || 0;
+  if (tag.includes("intersection")) total += scores.intersectionTotal || 0;
+  if (tag.includes("traveling")) total += scores.travelingTotal || 0;
+  if (tag.includes("creative")) total += scores.creativeTotal || 0;
+  if (tag.includes("no hold element")) total += scores.noHoldElementTotal || 0;
+  return Number(total.toFixed(2));
 }
 
 // Punto de entrada \u00fanico: los 2 slots de Componentes (agrupados de 2 en 2)

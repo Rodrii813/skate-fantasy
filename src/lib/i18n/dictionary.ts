@@ -559,9 +559,9 @@ export const dictionaries = {
       },
       s6: {
         title: "6. Precisión",
-        p1: "Precisión también se compite en un único programa (sin Corto/Largo). Todo equipo incluye una lista fija de 8 elementos técnicos — el nivel que elija cada equipo para cada uno no cambia qué slots hay, solo la nota.",
-        cardTitle: "Slots técnicos (8)",
-        list: ["Rotating Wheel", "Linear Line", "Pivoting Block", "Move Element", "Intersection", "Traveling", "Creative", "No Hold Element"],
+        p1: "Precisión también se compite en un único programa (sin Corto/Largo). Todo equipo incluye una lista fija de 8 elementos técnicos, que se agrupan de 2 en 2 en 4 slots: cada slot puntúa la suma de sus dos elementos. El nivel que elija cada equipo para cada uno no cambia qué slots hay, solo la nota.",
+        cardTitle: "Slots técnicos (4)",
+        list: ["Rotating Wheel + Linear Line", "Pivoting Block + Move Element", "Intersection + Traveling", "Creative + No Hold Element"],
         p2: "Igual que en el resto de disciplinas (menos Show), en Componentes hay 2 slots agrupados: \"Skating Skills + Transitions\" y \"Performance + Choreography\".",
       },
       s7: {
@@ -1335,9 +1335,9 @@ export const dictionaries = {
       },
       s6: {
         title: "6. Precision",
-        p1: "Precision is also a single program (no Short/Long). Every team includes a fixed list of 8 technical elements — the level each team picks for each one doesn't change which slots exist, only the mark.",
-        cardTitle: "Technical slots (8)",
-        list: ["Rotating Wheel", "Linear Line", "Pivoting Block", "Move Element", "Intersection", "Traveling", "Creative", "No Hold Element"],
+        p1: "Precision is also a single program (no Short/Long). Every team includes a fixed list of 8 technical elements, grouped in pairs into 4 slots: each slot scores the sum of its two elements. The level each team picks for each one doesn't change which slots exist, only the mark.",
+        cardTitle: "Technical slots (4)",
+        list: ["Rotating Wheel + Linear Line", "Pivoting Block + Move Element", "Intersection + Traveling", "Creative + No Hold Element"],
         p2: "As with the other disciplines (except Show), Components has 2 grouped slots: \"Skating Skills + Transitions\" and \"Performance + Choreography\".",
       },
       s7: {
