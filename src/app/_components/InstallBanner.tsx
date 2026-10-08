@@ -61,6 +61,8 @@ export default function InstallBanner() {
         window.matchMedia("(display-mode: standalone)").matches ||
         (navigator as unknown as { standalone?: boolean }).standalone === true;
       if (standalone) return;
+      // Cerrado antes (cookie como respaldo por si el almacenamiento falla)
+      if (document.cookie.includes(`${KEY}=1`)) return;
       try {
         const ts = Number(localStorage.getItem(KEY) || 0);
         if (ts && Date.now() - ts < DAYS * 86400000) return;
@@ -96,6 +98,9 @@ export default function InstallBanner() {
   }, []);
 
   function dismiss() {
+    try {
+      document.cookie = `${KEY}=1; path=/; max-age=${DAYS * 86400}; SameSite=Lax`;
+    } catch {}
     try {
       localStorage.setItem(KEY, String(Date.now()));
     } catch {}
