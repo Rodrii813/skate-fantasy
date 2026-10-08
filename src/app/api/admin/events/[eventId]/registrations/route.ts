@@ -60,13 +60,17 @@ export async function POST(
       },
       update: {
         [groupField]: Number(warmupGroup) || 1,
-        startOrder: Number(skatingOrder) || 1,
+        // El orden del Largo es propio (startOrderLong); no pisa el del Corto.
+        ...(groupField === "warmupGroupLong"
+          ? { startOrderLong: Number(skatingOrder) || 1 }
+          : { startOrder: Number(skatingOrder) || 1 }),
       },
       create: {
         eventId,
         skaterId,
         [groupField]: Number(warmupGroup) || 1,
         startOrder: Number(skatingOrder) || 1,
+        ...(groupField === "warmupGroupLong" ? { startOrderLong: Number(skatingOrder) || 1 } : {}),
       },
     });
 

@@ -281,7 +281,8 @@ model Registration {
   skater        Skater         @relation(fields: [skaterId], references: [id])
   
   // Añade estas 3 líneas aquí:
-  startOrder    Int?           // Orden de salida (1, 2, 3...)
+  startOrder    Int?           // Orden de salida (1, 2, 3...) — del Corto (o el único programa)
+  startOrderLong Int?          // Orden de salida del Largo; si es null el Largo usa startOrder (datos anteriores)
   warmupGroup   Int?           // Grupo de calentamiento (1, 2, 3...) — legado, no segment-aware; se conserva por compatibilidad con datos antiguos pero no se usa para nada nuevo
   warmupGroupShort Int?        // Grupo de calentamiento del Programa Corto (sorteo propio, distinto del Largo)
   warmupGroupLong  Int?        // Grupo de calentamiento del Programa Largo (se redibuja según el resultado del Corto)

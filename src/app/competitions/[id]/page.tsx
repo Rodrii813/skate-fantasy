@@ -109,13 +109,18 @@ export default async function CompetitionDetailPage({
   type RegistrationRow = (typeof events)[number]["registrations"][number];
   type GroupField = "warmupGroupShort" | "warmupGroupLong" | "warmupGroup" | null;
 
+  // Orden de salida según el programa: el Largo tiene el suyo (startOrderLong,
+  // con startOrder como respaldo para datos anteriores).
+  const orderOf = (r: RegistrationRow, groupField: GroupField) =>
+    (groupField === "warmupGroupLong" ? r.startOrderLong ?? r.startOrder : r.startOrder) ?? Number.MAX_SAFE_INTEGER;
+
   const sortEntries = (regs: RegistrationRow[], groupField: GroupField) =>
     [...regs].sort((a, b) => {
       const ga = groupField ? a[groupField] ?? Number.MAX_SAFE_INTEGER : 0;
       const gb = groupField ? b[groupField] ?? Number.MAX_SAFE_INTEGER : 0;
       if (ga !== gb) return ga - gb;
-      const oa = a.startOrder ?? Number.MAX_SAFE_INTEGER;
-      const ob = b.startOrder ?? Number.MAX_SAFE_INTEGER;
+      const oa = orderOf(a, groupField);
+      const ob = orderOf(b, groupField);
       return oa - ob;
     });
 
@@ -513,7 +518,7 @@ export default async function CompetitionDetailPage({
                                       </td>
                                     )}
                                     <td className="py-3.5 px-4 font-bold text-slate-400">
-                                      {reg.startOrder ?? index + 1}
+                                      {(table.groupField === "warmupGroupLong" ? reg.startOrderLong ?? reg.startOrder : reg.startOrder) ?? index + 1}
                                     </td>
                                     <td className="py-3.5 px-4 font-sans font-semibold text-slate-200">
                                       {formatSkaterName(reg.skater, isPairDiscipline(activeEvent?.discipline.name))}

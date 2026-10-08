@@ -154,6 +154,11 @@ function cleanBlock(blockText: string): string {
     .replace(/\d{1,2}[:.]\d{2}([:.]\d{2})?/g, "") // horas "12:27" o "21.40"
     .replace(/\d{2}\/\d{2}\/\d{2,4}/g, "") // fechas "07/09/2026" o "30/05/26"
     .replace(/#\s*Start\s+Length\s+End\s+Nation/gi, "")
+    // Cabecera de la lista de salida de Precision Junior: "Order Start Time
+    // Length End Time Country" (sin ella la racha de filas con dorsal no
+    // empezaba en la primera línea y el equipo se quedaba sin país).
+    .replace(/\bOrder\s+Start\s+Time\s+Length\s+End\s+Time\s+Country\b/gi, "")
+    .replace(/\bSTARTING\s+LIST\b/gi, "")
     .replace(/TIME\s+FOR\s+SKATING(\s+ORDER)?/gi, "")
     .replace(/WORLD\s*SKATE\b/gi, "")
     .replace(/\bSHORT\s+PROGRAM\b/gi, "")
@@ -282,6 +287,16 @@ function parseSkatingOrderBlock(blockText: string, mode: SkatingOrderMode): Pars
       }
     }
 
+    // Equipo con nombre y país en la MISMA línea y sin línea de música (p.ej.
+    // "2 17:39 8:30 17:48 SHIRIC ARG"): se separa el país del final.
+    if (mode === "team" && country === null && entryLines.length === 1) {
+      const m = entryLines[0].match(/^(.+?)\s+([A-Z]{3})$/);
+      if (m && isCountry(m[2])) {
+        entryLines[0] = m[1];
+        country = m[2];
+      }
+    }
+
     let firstName: string | null;
     let lastName: string;
     if (mode === "pair" && entryLines.length >= 2) {
@@ -393,10 +408,22 @@ async function parseAndRegisterSkaters(
     // Precisión no tienen grupos de calentamiento reales — al no separarse
     // por "Warm Up Group N" en el PDF, todo cae en el grupo 1 por defecto,
     // que es inofensivo porque esas disciplinas no usan ese campo para nada.
+    // El orden de salida también es propio de cada segmento: el del Largo va
+    // en startOrderLong y NO toca startOrder (el del Corto) — antes se
+    // pisaba y el Corto se quedaba ordenado como el Largo.
+    const isLong = warmupGroupField === "warmupGroupLong";
     await prisma.registration.upsert({
       where: { eventId_skaterId: { eventId, skaterId: skater.id } },
-      update: { startOrder: order, [warmupGroupField]: group },
-      create: { eventId, skaterId: skater.id, startOrder: order, [warmupGroupField]: group },
+      update: isLong
+        ? { startOrderLong: order, [warmupGroupField]: group }
+        : { startOrder: order, [warmupGroupField]: group },
+      create: {
+        eventId,
+        skaterId: skater.id,
+        startOrder: order,
+        ...(isLong ? { startOrderLong: order } : {}),
+        [warmupGroupField]: group,
+      },
     });
 
     imported.push({

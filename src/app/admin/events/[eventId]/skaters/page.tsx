@@ -8,6 +8,7 @@ interface RegistrationRow {
   id: string;
   skaterId: string;
   startOrder: number | null;
+  startOrderLong?: number | null;
   warmupGroup: number | null;
   warmupGroupShort: number | null;
   warmupGroupLong: number | null;
@@ -366,6 +367,9 @@ export default function EventSkatersPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <span className="font-bold text-slate-400 w-7 shrink-0 text-center">
                       {r.startOrder ?? "—"}
+                      {r.startOrderLong != null && r.startOrderLong !== r.startOrder && (
+                        <span className="block text-[10px] font-mono text-indigo-300">L{r.startOrderLong}</span>
+                      )}
                     </span>
                     <span className="shrink-0 rounded bg-slate-800 border border-slate-700 px-2 py-0.5 text-indigo-300 text-[11px] font-mono">
                       {groupLabel(r)}

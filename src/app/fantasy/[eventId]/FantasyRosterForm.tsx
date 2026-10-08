@@ -26,6 +26,7 @@ interface Skater {
 interface Registration {
   skaterId: string;
   startOrder: number | null;
+  startOrderLong?: number | null;
   warmupGroupShort: number | null;
   warmupGroupLong: number | null;
   skater: Skater;
@@ -197,7 +198,9 @@ export default function FantasyRosterForm({
     }
 
     for (const g in groups) {
-      groups[g].sort((a, b) => (a.startOrder || 0) - (b.startOrder || 0));
+      const orderOf = (r: Registration) =>
+        (groupField === "warmupGroupLong" ? r.startOrderLong ?? r.startOrder : r.startOrder) || 0;
+      groups[g].sort((a, b) => orderOf(a) - orderOf(b));
     }
 
     return Object.keys(groups)
