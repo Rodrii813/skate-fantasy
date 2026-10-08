@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
+import { invalidateNotifySchedule } from "@/lib/autoNotify";
 
 // Permite al admin fijar (o quitar):
 // - El plazo de fichaje propio de UN segmento (locksAt), independiente del
@@ -86,6 +87,7 @@ export async function PATCH(
       data,
     });
 
+    invalidateNotifySchedule();
     return NextResponse.json({ ok: true, segment: updated });
   } catch (error: any) {
     console.error("Error actualizando el plazo del segmento:", error);

@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
+import { invalidateNotifySchedule } from "@/lib/autoNotify";
 
 async function requireAdmin() {
   const session = await getServerSession(authOptions);
@@ -91,6 +92,7 @@ export async function PATCH(
       data,
     });
 
+    invalidateNotifySchedule();
     return NextResponse.json({ ok: true, event: updatedEvent });
   } catch (error: any) {
     console.error("Error actualizando evento:", error);
@@ -133,6 +135,7 @@ export async function DELETE(
       prisma.event.delete({ where: { id: eventId } }),
     ]);
 
+    invalidateNotifySchedule();
     return NextResponse.json({ ok: true });
   } catch (error: any) {
     console.error("Error borrando evento:", error);

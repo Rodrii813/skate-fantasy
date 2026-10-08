@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { zonedTimeToUtc, VENUE_TIMEZONE } from "@/lib/timezone";
 import { requireAdmin } from "@/lib/adminAuth";
+import { invalidateNotifySchedule } from "@/lib/autoNotify";
 
 export async function GET() {
   const auth = await requireAdmin();
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
       },
     });
 
+    invalidateNotifySchedule();
     return NextResponse.json({ ok: true, event: newEvent });
   } catch (error: any) {
     console.error("Error creando evento:", error);
