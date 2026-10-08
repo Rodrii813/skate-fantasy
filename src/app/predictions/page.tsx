@@ -9,6 +9,7 @@ import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderbo
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
 import LocalDateTime from "@/app/_components/LocalDateTime";
+import PublicFavoritesImageButton from "./PublicFavoritesImageButton";
 import TestEventBanner from "@/app/_components/TestEventBanner";
 import { translateCategoryName, translateDisciplineName } from "@/lib/i18n/categoryTranslations";
 import PredictionEventSelector, { type PredictionEventGroup } from "./PredictionEventSelector";
@@ -32,6 +33,8 @@ export default async function PredictionsPage({
   searchParams: { competition?: string; event?: string; rank?: string };
 }) {
   const session = await getServerSession(authOptions);
+  // El botón de descargar la imagen de Favoritos del Público es solo para admin.
+  const isAdmin = (session?.user as any)?.role === "ADMIN";
   const locale = getLocale();
   const dict = getDictionary(locale);
   const t = dict.predictions;
@@ -344,6 +347,7 @@ export default async function PredictionsPage({
                 {/* Favoritos del Público */}
                 {activeEvent.predictions.length > 0 && (
                   <div className="border-t border-slate-800 pt-5 space-y-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <span className="text-[11px] font-mono font-bold tracking-wider text-indigo-400 uppercase bg-indigo-950/70 border border-indigo-800/60 px-2 py-0.5 rounded">
                         {t.consensusTag}
@@ -352,6 +356,29 @@ export default async function PredictionsPage({
                       <p className="text-xs text-slate-400">
                         {t.predictionsSubmitted(activeEvent.predictions.length)}
                       </p>
+                    </div>
+                    {/* Solo admin: descarga la imagen (story) con el top 3 de cada puesto. */}
+                    {isAdmin && (
+                      <PublicFavoritesImageButton
+                        eventName={activeEvent.name}
+                        competitionName={activeEvent.competition.name}
+                        groups={[
+                          { title: t.favImgGold, color: "#c9a227", stats: statsRank1 },
+                          { title: t.favImgSilver, color: "#b8c2cc", stats: statsRank2 },
+                          { title: t.favImgBronze, color: "#cd7f32", stats: statsRank3 },
+                        ].map((g) => ({
+                          ...g,
+                          stats: g.stats.slice(0, 3).map((x) => ({ name: x.skaterName, country: x.country, percent: x.percent })),
+                        }))}
+                        labels={{
+                          button: t.favImgDownload,
+                          working: t.favImgWorking,
+                          error: t.favImgError,
+                          title: t.publicFavorites.toUpperCase(),
+                          subtitle: t.predictionsSubmitted(activeEvent.predictions.length),
+                        }}
+                      />
+                    )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {[
