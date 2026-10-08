@@ -129,7 +129,8 @@ function validateSegment(
   registrations: RegistrationInfo[],
   picks: Record<string, string>,
   groupField: "warmupGroupShort" | "warmupGroupLong",
-  locale: "es" | "en" = "es"
+  locale: "es" | "en" = "es",
+  showMode = false
 ): SegmentValidationResult {
   const technicalSlots = slots.filter((s) => !isComponentSlotLabel(s.label));
   const componentSlots = slots.filter((s) => isComponentSlotLabel(s.label));
@@ -157,7 +158,13 @@ function validateSegment(
   // deja de poder completarse nunca). Por eso, con 2 grupos o menos, no se
   // aplica ningún límite de grupo — ni en técnicos ni en Componentes.
   const smallField = isSmallField(registrations.length);
-  const hasEnoughGroupsForRule = groupNums.length > 2 && !smallField;
+  // Show (Cuartetos, Grupos...): no hay grupos de calentamiento, así que no
+  // se aplica NINGUNA regla de grupo. La única restricción es que cada
+  // grupo/club solo puede elegirse en UN slot del segmento (siempre que haya
+  // grupos de sobra para cubrir todos los slots; si no, sería imposible
+  // completar el roster).
+  const uniquePerTeam = showMode && registrations.length >= slots.length;
+  const hasEnoughGroupsForRule = groupNums.length > 2 && !smallField && !showMode;
 
   const techSkaterCounts: Record<string, number> = {};
   const techGroupUsage: Record<number, number> = {};
@@ -185,9 +192,14 @@ function validateSegment(
   const exceedsSecondTech = hasEnoughGroupsForRule && countSecondGroup > 2;
   const exceedsCompGroup = hasEnoughGroupsForRule && Object.values(compGroupUsage).some((c) => c > 1);
 
-  const maxTechRepeats = smallField ? SMALL_FIELD_TECH_REPEATS : 1;
+  const maxTechRepeats = smallField && !uniquePerTeam ? SMALL_FIELD_TECH_REPEATS : 1;
   const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > maxTechRepeats);
-  const repeatedCompSkater = smallField && Object.values(compSkaterCounts).some((c) => c > 1);
+  const repeatedCompSkater =
+    (smallField || uniquePerTeam) && Object.values(compSkaterCounts).some((c) => c > 1);
+  // Show: el mismo grupo no puede estar ni una vez en técnicos y otra en
+  // componentes (un solo slot por grupo en todo el segmento).
+  const repeatedAcrossTypes =
+    uniquePerTeam && Object.keys(techSkaterCounts).some((id) => compSkaterCounts[id]);
 
   const totalSlots = slots.length;
   const filledCount = slots.filter((s) => Boolean(picks[s.id])).length;
@@ -200,6 +212,10 @@ function validateSegment(
     errorMessage = en
       ? `${seg}: ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"} left to fill`
       : `${seg}: faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
+  } else if (uniquePerTeam && (repeatedTechSkater || repeatedCompSkater || repeatedAcrossTypes)) {
+    errorMessage = en
+      ? `${seg}: each skater can only be picked in one slot`
+      : `${seg}: cada patinadora solo puede elegirse en un slot`;
   } else if (repeatedTechSkater) {
     errorMessage = smallField
       ? en
@@ -230,6 +246,7 @@ function validateSegment(
     missingSlots === 0 &&
     !repeatedTechSkater &&
     !repeatedCompSkater &&
+    !repeatedAcrossTypes &&
     !exceedsTopTech &&
     !exceedsSecondTech &&
     !exceedsCompGroup;
@@ -296,7 +313,8 @@ export function validateFantasyRoster({
       registrations,
       picks,
       bucket.groupField,
-      locale
+      locale,
+      audience === "show"
     );
   });
 

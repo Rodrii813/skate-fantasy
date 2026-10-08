@@ -550,7 +550,16 @@ export default function FantasyRosterForm({
             <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider">
               {t.technicalRulesTitle(activeTab?.name ?? "")}
             </h2>
-            {activeSegmentValidation?.smallField ? (
+            {audience === "show" ? (
+              <div className="space-y-1 text-xs text-slate-300">
+                <p className="flex items-center gap-1.5 font-medium">
+                  <span>⚠️</span> {t.showRule}
+                </p>
+                <p className="flex items-center gap-1.5 font-medium">
+                  <span className="opacity-0">⚠️</span> {t.showRuleSub}
+                </p>
+              </div>
+            ) : activeSegmentValidation?.smallField ? (
               <div className="space-y-1 text-xs text-slate-300">
                 <p className="flex items-center gap-1.5 font-medium">
                   <span>⚠️</span> {w(t.ruleSmall1)}
@@ -625,7 +634,11 @@ export default function FantasyRosterForm({
               </h2>
               <p className="text-xs text-slate-300">
                 ⭐{" "}
-                {activeSegmentValidation?.smallField ? (
+                {audience === "show" ? (
+                  <>
+                    <strong>{t.noRepeatLabel}:</strong> {t.showRuleShort}
+                  </>
+                ) : activeSegmentValidation?.smallField ? (
                   <>
                     <strong>{t.noRepeatLabel}:</strong> {w(t.componentRuleSmall)}
                   </>

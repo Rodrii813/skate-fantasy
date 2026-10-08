@@ -377,3 +377,44 @@ describe("validateFantasyRoster — pocas patinadoras (<= 4)", () => {
     expect(r.errorMessage).toContain("Componentes");
   });
 });
+
+describe("validateFantasyRoster — Show (audience 'show')", () => {
+  // Varios grupos de calentamiento: en otras disciplinas aplicarían los
+  // límites de grupo. En Show no deben aplicarse.
+  const teams: RegistrationInfo[] = ["A", "B", "C", "D", "E", "F"].map((id, i) => ({
+    skaterId: id,
+    warmupGroupShort: (i % 4) + 1,
+    warmupGroupLong: 1,
+  }));
+  const run = (picks: Record<string, string>, regs = teams) =>
+    validateFantasyRoster({ slots: shortSlots, registrations: regs, segments, picks, audience: "show" });
+
+  it("acepta grupos distintos sin aplicar límites de grupo de calentamiento", () => {
+    const r = run({
+      "short-combo": "A",
+      "short-solo": "E",
+      "short-axel": "B",
+      "short-comp1": "F",
+      "short-comp2": "C",
+    });
+    expect(r.valid).toBe(true);
+    expect(r.segments[0].groupRulesApply).toBe(false);
+  });
+
+  it("no permite elegir el mismo grupo en dos slots (ni entre técnicos y componentes)", () => {
+    const base = { "short-combo": "A", "short-solo": "B", "short-axel": "C", "short-comp1": "D", "short-comp2": "E" };
+    expect(run({ ...base, "short-comp2": "D" }).valid).toBe(false);
+    expect(run({ ...base, "short-comp2": "A" }).valid).toBe(false);
+    expect(run({ ...base, "short-solo": "A" }).valid).toBe(false);
+    expect(run({ ...base, "short-comp2": "D" }).errorMessage).toContain("un slot");
+  });
+
+  it("si hay menos grupos que slots no exige que sean únicos (sería imposible completar)", () => {
+    const four = teams.slice(0, 4);
+    const r = run(
+      { "short-combo": "A", "short-solo": "B", "short-axel": "C", "short-comp1": "D", "short-comp2": "A" },
+      four
+    );
+    expect(r.errorMessage).not.toContain("un slot");
+  });
+});
