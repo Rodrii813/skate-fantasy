@@ -24,9 +24,9 @@ const f2 = (n: number | null | undefined) => (n === null || n === undefined ? "�
 
 function judgeStyle(v: number): CSSProperties {
   if (v === 0) return {};
-  const a = Math.min(0.15 + Math.abs(v) * 0.14, 0.75);
+  const a = Math.min(0.22 + Math.abs(v) * 0.16, 0.9);
   return {
-    backgroundColor: v > 0 ? `rgba(59,130,246,${a})` : `rgba(239,68,68,${a})`,
+    backgroundColor: v > 0 ? `rgba(37,99,235,${a})` : `rgba(220,38,38,${a * 0.85})`,
   };
 }
 
@@ -45,13 +45,13 @@ function DetailTable({ d, labels }: { d: SkaterDetailTable; labels: DetailLabels
               <th className="py-1.5 px-2 text-left w-7">#</th>
               <th className="py-1.5 px-2 text-left font-sans">{labels.element}</th>
               {judges.map((i) => (
-                <th key={i} className="py-1.5 px-1 text-center w-9">
+                <th key={i} className="py-1.5 px-0 text-center w-10 min-w-[2.5rem]">
                   J{i + 1}
                 </th>
               ))}
-              <th className="py-1.5 px-2 text-right">{labels.base}</th>
-              <th className="py-1.5 px-2 text-right">{labels.qoe}</th>
-              <th className="py-1.5 px-2 text-right">{labels.score}</th>
+              <th className="py-1 px-3 text-right">{labels.base}</th>
+              <th className="py-1 px-3 text-right">{labels.qoe}</th>
+              <th className="py-1 px-3 text-right">{labels.score}</th>
             </tr>
           </thead>
           <tbody>
@@ -65,9 +65,9 @@ function DetailTable({ d, labels }: { d: SkaterDetailTable; labels: DetailLabels
               <td className="py-1.5 px-2" />
               <td className="py-1.5 px-2 font-sans">{labels.totalElements}</td>
               <td colSpan={d.judgeCount} />
-              <td className="py-1.5 px-2 text-right">{f2(d.baseTotal)}</td>
-              <td className="py-1.5 px-2 text-right">{f2(d.qoeTotal)}</td>
-              <td className="py-1.5 px-2 text-right text-indigo-400">{f2(d.tes)}</td>
+              <td className="py-1 px-3 text-right">{f2(d.baseTotal)}</td>
+              <td className="py-1 px-3 text-right">{f2(d.qoeTotal)}</td>
+              <td className="py-1 px-3 text-right text-indigo-400">{f2(d.tes)}</td>
             </tr>
           </tbody>
         </table>
@@ -83,8 +83,8 @@ function DetailTable({ d, labels }: { d: SkaterDetailTable; labels: DetailLabels
                   J{i + 1}
                 </th>
               ))}
-              <th className="py-1.5 px-2 text-right">×</th>
-              <th className="py-1.5 px-2 text-right">PCS</th>
+              <th className="py-1 px-3 text-right">×</th>
+              <th className="py-1 px-3 text-right">PCS</th>
             </tr>
           </thead>
           <tbody>
@@ -96,19 +96,19 @@ function DetailTable({ d, labels }: { d: SkaterDetailTable; labels: DetailLabels
                     {v.toFixed(2)}
                   </td>
                 ))}
-                <td className="py-1.5 px-2 text-right text-slate-500">{c.factor}</td>
-                <td className="py-1.5 px-2 text-right font-bold">{c.score.toFixed(2)}</td>
+                <td className="py-1 px-3 text-right text-slate-500">{c.factor}</td>
+                <td className="py-1 px-3 text-right font-bold">{c.score.toFixed(2)}</td>
               </tr>
             ))}
             <tr className="border-t border-slate-700 font-bold text-slate-200">
               <td className="py-1.5 px-2 font-sans">PCS</td>
               <td colSpan={d.judgeCount + 1} />
-              <td className="py-1.5 px-2 text-right text-indigo-400">{f2(d.pcs)}</td>
+              <td className="py-1 px-3 text-right text-indigo-400">{f2(d.pcs)}</td>
             </tr>
             <tr className="text-slate-400">
               <td className="py-1.5 px-2 font-sans">{labels.deductions}</td>
               <td colSpan={d.judgeCount + 1} />
-              <td className="py-1.5 px-2 text-right">{f2(d.ded)}</td>
+              <td className="py-1 px-3 text-right">{f2(d.ded)}</td>
             </tr>
           </tbody>
         </table>
@@ -133,7 +133,7 @@ function ElementBlock({
         <td
           key={i}
           style={v === undefined ? undefined : judgeStyle(v)}
-          className="py-1.5 px-1 text-center text-slate-200"
+          className="h-8 w-10 min-w-[2.5rem] px-0 text-center text-slate-100 font-semibold"
         >
           {v === undefined ? "" : judgeText(v)}
         </td>
@@ -144,7 +144,7 @@ function ElementBlock({
     <>
       {isGroup && (
         <tr className="border-t border-slate-800/80 text-slate-200">
-          <td className="py-1.5 px-2 text-slate-500">{el.n}</td>
+          <td className="py-1 px-2 text-slate-500">{el.n}</td>
           <td className="py-1.5 px-2 font-sans font-semibold">{el.type}</td>
           {judgeCells(el.judges)}
           <td colSpan={3} />
@@ -163,9 +163,9 @@ function ElementBlock({
             {r.name && <span className="ml-2 text-[10px] text-slate-500">{r.name}</span>}
           </td>
           {judgeCells(r.judges)}
-          <td className="py-1.5 px-2 text-right">{f2(r.base)}</td>
-          <td className="py-1.5 px-2 text-right">{r.qoe === null ? "" : f2(r.qoe)}</td>
-          <td className="py-1.5 px-2 text-right font-bold text-slate-100">{f2(r.score)}</td>
+          <td className="py-1 px-3 text-right">{f2(r.base)}</td>
+          <td className="py-1 px-3 text-right">{r.qoe === null ? "" : f2(r.qoe)}</td>
+          <td className="py-1 px-3 text-right font-bold text-slate-100">{f2(r.score)}</td>
         </tr>
       ))}
     </>
@@ -213,12 +213,13 @@ export default function SegmentDetailRow({
         <td className="py-3 px-5 font-bold text-slate-400">{row.rank !== null ? `#${row.rank}` : "—"}</td>
         <td className="py-3 px-4 font-sans font-semibold text-slate-200">
           {clickable && (
-            <span
-              className={`mr-2 inline-block text-[10px] text-slate-500 transition-transform ${open ? "rotate-90" : ""}`}
+            <svg
+              viewBox="0 0 12 12"
+              className={`mr-2 inline-block h-3 w-3 align-[-1px] text-slate-500 transition-transform ${open ? "rotate-90" : ""}`}
               aria-hidden="true"
             >
-              ▶
-            </span>
+              <path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
           )}
           {row.skaterName}{" "}
           {row.country && <span className="font-mono text-[11px] text-slate-500">({row.country})</span>}
