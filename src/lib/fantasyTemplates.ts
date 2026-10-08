@@ -34,6 +34,23 @@ export const FREE_SKATING_LONG_SLOTS: SlotTemplate[] = [
   { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
 ];
 
+// 2b. PROGRAMA LARGO — SOLO LIBRE (no Inline)
+// En Libre, los dos slots de combo y los dos de salto suelto ya no valen lo
+// mismo: el primero puntúa con el MEJOR combo (o salto) de la patinadora
+// elegida y el segundo con su SEGUNDO mejor. Inline conserva la plantilla
+// anterior (FREE_SKATING_LONG_SLOTS), donde ambos slots usan el mejor.
+export const FREE_SKATING_LONG_SLOTS_LIBRE: SlotTemplate[] = [
+  { name: "Best Combo Jump", slotType: "TECHNICAL", categoryCode: "COMBO_JUMP", rule: "BEST_1" },
+  { name: "2nd Best Combo Jump", slotType: "TECHNICAL", categoryCode: "COMBO_JUMP", rule: "BEST_2" },
+  { name: "Best Solo Jump", slotType: "TECHNICAL", categoryCode: "SOLO_JUMP", rule: "BEST_1" },
+  { name: "2nd Best Solo Jump", slotType: "TECHNICAL", categoryCode: "SOLO_JUMP", rule: "BEST_2" },
+  { name: "Spins (Piruetas)", slotType: "TECHNICAL", categoryCode: "SPINS_TOTAL", rule: "BEST_1" },
+  { name: "Choreo Sequence (ChSt)", slotType: "TECHNICAL", categoryCode: "CHOREO_SEQUENCE", rule: "BEST_1" },
+
+  { name: "Skating Skills + Transitions", slotType: "COMPONENT", categoryCode: "PCS_SKATING_TRANSITIONS", rule: "COMBINED_PCS" },
+  { name: "Performance + Choreography", slotType: "COMPONENT", categoryCode: "PCS_PERFORMANCE_CHOREO", rule: "COMBINED_PCS" },
+];
+
 // 3. SOLO DANZA — STYLE DANCE
 // Misma mecánica que Libre (un slot por elemento técnico + 2 slots de
 // componentes agrupados), pero con los elementos propios de Danza en vez de
@@ -205,6 +222,7 @@ export const SHOW_GROUP_SLOTS: SlotTemplate[] = [
 const ALL_SLOT_TEMPLATES: SlotTemplate[] = [
   ...FREE_SKATING_SHORT_SLOTS,
   ...FREE_SKATING_LONG_SLOTS,
+  ...FREE_SKATING_LONG_SLOTS_LIBRE,
   ...SOLO_DANCE_STYLE_SLOTS,
   ...SOLO_DANCE_FREE_SLOTS,
   ...PAIRS_SHORT_SLOTS,

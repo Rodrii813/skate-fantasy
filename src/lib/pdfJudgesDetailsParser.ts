@@ -91,6 +91,10 @@ export interface SkaterDetailedResult {
     // individuales (soloJump) y se coge el mejor de los dos para rellenar
     // cualquiera de los slots "Solo Jump" del Largo.
     soloOrAxel: number;
+    // SEGUNDO mejor combo y segundo mejor salto individual (+ Axel en el Largo)
+    // de la patinadora. Solo los usa el Largo de Libre (slots "2nd Best ...").
+    comboJump2: number;
+    soloOrAxel2: number;
     spinsTotal: number;
     stepSequence: number;
     choreoSequence: number;
@@ -250,6 +254,8 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
         soloJump: 0,
         axel: 0,
         soloOrAxel: 0,
+        comboJump2: 0,
+        soloOrAxel2: 0,
         spinsTotal: 0,
         stepSequence: 0,
         choreoSequence: 0,
@@ -475,6 +481,8 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     // de los dos.
     const solosOrAxels = [...solos, ...axels].sort((a, b) => b.score - a.score);
     skaterResult.slotScores.soloOrAxel = solosOrAxels[0]?.score || 0;
+    skaterResult.slotScores.comboJump2 = combos[1]?.score || 0;
+    skaterResult.slotScores.soloOrAxel2 = solosOrAxels[1]?.score || 0;
     skaterResult.slotScores.spinsTotal = Number(spins.reduce((acc, curr) => acc + curr.score, 0).toFixed(2));
     skaterResult.slotScores.choreoSequence = choreos[0]?.score || 0;
     skaterResult.slotScores.stepSequence = steps[0]?.score || 0;

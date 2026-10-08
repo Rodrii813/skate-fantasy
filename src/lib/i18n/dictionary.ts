@@ -507,9 +507,9 @@ export const dictionaries = {
         shortCardTitle: "Programa Corto — slots técnicos",
         shortList: ["Combo Jump", "Solo Jump", "Axel", "Spins (piruetas)", "Step Sequence"],
         longCardTitle: "Programa Largo — slots técnicos",
-        longList: ["Combo Jump 1 y 2", "Solo Jump 1 y 2", "Spins (piruetas)", "Choreo Sequence"],
+        longList: ["Best Combo Jump y 2nd Best Combo Jump (el mejor y el segundo mejor combo de la patinadora)", "Best Solo Jump y 2nd Best Solo Jump (el mejor y el segundo mejor salto suelto)", "Spins (piruetas)", "Choreo Sequence"],
         p3: "En ambos programas hay además 2 slots de Componentes del Programa: \"Skating Skills + Transitions\" y \"Performance + Choreography\".",
-        inlineNote: "Inline sigue exactamente esta misma estructura (mismos elementos técnicos y componentes) — es la misma disciplina sobre patines en línea.",
+        inlineNote: "Inline sigue esta misma estructura (mismos elementos técnicos y componentes), con una diferencia: en el Programa Largo de Inline, los slots de combo y de salto suelto 1 y 2 puntúan ambos con el mejor combo/salto de la patinadora.",
       },
       s2: {
         title: "2. Solo Danza",
@@ -1274,9 +1274,9 @@ export const dictionaries = {
         shortCardTitle: "Short Program — technical slots",
         shortList: ["Combo Jump", "Solo Jump", "Axel", "Spins", "Step Sequence"],
         longCardTitle: "Long Program — technical slots",
-        longList: ["Combo Jump 1 & 2", "Solo Jump 1 & 2", "Spins", "Choreo Sequence"],
+        longList: ["Best Combo Jump & 2nd Best Combo Jump (the skater's best and second best combo)", "Best Solo Jump & 2nd Best Solo Jump (best and second best single jump)", "Spins", "Choreo Sequence"],
         p3: "Both programs also have 2 Program Components slots: \"Skating Skills + Transitions\" and \"Performance + Choreography\".",
-        inlineNote: "Inline follows this exact same structure (same technical elements and components) — it's the same discipline on inline skates.",
+        inlineNote: "Inline follows this same structure (same technical elements and components), with one difference: in the Inline Long Program, combo and single jump slots 1 and 2 both score with the skater's best combo/jump.",
       },
       s2: {
         title: "2. Solo Dance",

@@ -46,6 +46,15 @@ describe("parseJudgesDetailsText (fixture real: World Skate RESULTS DETAILS)", (
     results = parseJudgesDetailsText(fullText);
   });
 
+  it("comboJump2 / soloOrAxel2 son el SEGUNDO mejor y nunca superan al mejor", () => {
+    for (const r of results) {
+      expect(r.slotScores.comboJump2).toBeLessThanOrEqual(r.slotScores.comboJump);
+      expect(r.slotScores.soloOrAxel2).toBeLessThanOrEqual(r.slotScores.soloOrAxel);
+    }
+    // En un Largo con varias combinaciones por patinadora, alguna tiene segundo combo
+    expect(results.some((r) => r.slotScores.comboJump2 > 0 || r.slotScores.soloOrAxel2 > 0)).toBe(true);
+  });
+
   it("extrae exactamente las 21 patinadoras del acta", () => {
     expect(results).toHaveLength(21);
   });

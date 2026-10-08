@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import {
   FREE_SKATING_SHORT_SLOTS,
   FREE_SKATING_LONG_SLOTS,
+  FREE_SKATING_LONG_SLOTS_LIBRE,
   SOLO_DANCE_STYLE_SLOTS,
   SOLO_DANCE_FREE_SLOTS,
   PAIRS_SHORT_SLOTS,
@@ -202,7 +203,8 @@ export async function POST(
         shortName: "Short Program",
         longName: "Long Program",
         short: FREE_SKATING_SHORT_SLOTS,
-        long: FREE_SKATING_LONG_SLOTS,
+        // Libre: Best / 2nd Best Combo y Solo Jump (Inline mantiene el anterior).
+        long: FREE_SKATING_LONG_SLOTS_LIBRE,
       },
       inline: {
         shortName: "Short Program",

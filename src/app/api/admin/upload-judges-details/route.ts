@@ -22,11 +22,21 @@ type ParsedSlotScores = ReturnType<typeof parseJudgesDetailsText>[number]["slotS
 // sea el slot en el que la hayan drafteado, as\u00ed que el "1"/"2" del label ya
 // no distingue qu\u00e9 valor coger (ver el comentario en
 // pdfJudgesDetailsParser.ts `slotScores`).
-function computeTechnicalScoreLibre(tag: string, scores: ParsedSlotScores, isFirstSegment: boolean): number {
+function computeTechnicalScoreLibre(
+  tag: string,
+  scores: ParsedSlotScores,
+  isFirstSegment: boolean,
+  disciplineSlug = "libre"
+): number {
+  // SOLO en el Largo de Libre (no Inline): el slot "2nd Best ..." (o el
+  // antiguo "... 2") puntúa con el SEGUNDO mejor combo / salto suelto de la
+  // patinadora; el resto de slots, con el mejor.
+  const wantsSecond = disciplineSlug === "libre" && !isFirstSegment && /(2nd|second|\b2\b)/.test(tag);
   if (tag.includes("combo jump") || tag.includes("combinacion")) {
-    return scores.comboJump || 0;
+    return (wantsSecond ? scores.comboJump2 : scores.comboJump) || 0;
   }
   if (tag.includes("solo jump") || tag.includes("salto solo")) {
+    if (wantsSecond) return scores.soloOrAxel2 || 0;
     // El Axel es obligatorio en los dos programas, pero solo en el Corto
     // tiene su propio slot fijo; en el Largo puede ir en cualquier posici\u00f3n
     // y cuenta como un salto individual m\u00e1s, as\u00ed que aqu\u00ed se usa el "mejor
@@ -173,7 +183,7 @@ function computeEarnedScore(
     earnedScore = computeTechnicalScorePrecision(tag, scores);
   } else {
     // Libre/Inline, y cualquier otra disciplina sin mapeo t\u00e9cnico propio.
-    earnedScore = computeTechnicalScoreLibre(tag, scores, isFirstSegment);
+    earnedScore = computeTechnicalScoreLibre(tag, scores, isFirstSegment, disciplineSlug);
   }
 
   if (earnedScore === 0 && tag.includes("component")) {
