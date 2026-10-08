@@ -140,16 +140,36 @@ function ElementBlock({
       );
     });
 
+  if (isGroup) {
+    // Spin con varias posiciones: una sola fila con la nota de los jueces y la
+    // suma de base/QOE/puntos; las posiciones van como etiquetas debajo.
+    const sum = (k: "base" | "qoe" | "score") =>
+      Number(el.rows.reduce((a, r) => a + (r[k] ?? 0), 0).toFixed(2));
+    return (
+      <tr className="border-t border-slate-800/80 text-slate-300">
+        <td className="py-1.5 px-2 align-top text-slate-500">{el.n}</td>
+        <td className="py-1.5 px-2 font-sans">
+          <div className="font-semibold text-slate-100">{el.type}</div>
+          <div className="mt-0.5 flex flex-wrap gap-x-2 gap-y-0.5 text-[11px] text-slate-400">
+            {el.rows.map((r, i) => (
+              <span key={i} title={r.name}>
+                <span className="font-semibold text-slate-300">{r.code}</span>
+                {r.marks && <span className="text-amber-400">{r.marks}</span>}
+                {r.flags && <span className="text-sky-400">{r.flags}</span>}
+              </span>
+            ))}
+          </div>
+        </td>
+        {judgeCells(el.judges)}
+        <td className="py-1 px-3 text-right align-middle">{f2(sum("base"))}</td>
+        <td className="py-1 px-3 text-right align-middle">{f2(sum("qoe"))}</td>
+        <td className="py-1 px-3 text-right align-middle font-bold text-slate-100">{f2(sum("score"))}</td>
+      </tr>
+    );
+  }
+
   return (
     <>
-      {isGroup && (
-        <tr className="border-t border-slate-800/80 text-slate-200">
-          <td className="py-1 px-2 text-slate-500">{el.n}</td>
-          <td className="py-1.5 px-2 font-sans font-semibold">{el.type}</td>
-          {judgeCells(el.judges)}
-          <td colSpan={3} />
-        </tr>
-      )}
       {el.rows.map((r, idx) => (
         <tr
           key={idx}
