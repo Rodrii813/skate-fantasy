@@ -401,20 +401,29 @@ describe("validateFantasyRoster — Show (audience 'show')", () => {
     expect(r.segments[0].groupRulesApply).toBe(false);
   });
 
-  it("no permite elegir el mismo grupo en dos slots (ni entre técnicos y componentes)", () => {
+  it("no permite repetir un club entre técnicos, ni entre componentes", () => {
     const base = { "short-combo": "A", "short-solo": "B", "short-axel": "C", "short-comp1": "D", "short-comp2": "E" };
-    expect(run({ ...base, "short-comp2": "D" }).valid).toBe(false);
-    expect(run({ ...base, "short-comp2": "A" }).valid).toBe(false);
     expect(run({ ...base, "short-solo": "A" }).valid).toBe(false);
-    expect(run({ ...base, "short-comp2": "D" }).errorMessage).toContain("un slot");
+    expect(run({ ...base, "short-comp2": "D" }).valid).toBe(false);
   });
 
-  it("si hay menos grupos que slots no exige que sean únicos (sería imposible completar)", () => {
-    const four = teams.slice(0, 4);
+  it("sí permite repetir en componentes un club ya usado en técnicos", () => {
+    const r = run({
+      "short-combo": "A",
+      "short-solo": "B",
+      "short-axel": "C",
+      "short-comp1": "A",
+      "short-comp2": "B",
+    });
+    expect(r.valid).toBe(true);
+  });
+
+  it("si hay menos clubes que slots técnicos no exige que sean únicos (sería imposible completar)", () => {
+    const two = teams.slice(0, 2);
     const r = run(
-      { "short-combo": "A", "short-solo": "B", "short-axel": "C", "short-comp1": "D", "short-comp2": "A" },
-      four
+      { "short-combo": "A", "short-solo": "B", "short-axel": "A", "short-comp1": "A", "short-comp2": "B" },
+      two
     );
-    expect(r.errorMessage).not.toContain("un slot");
+    expect(r.segments[0].repeatedTechSkater).toBe(false);
   });
 });

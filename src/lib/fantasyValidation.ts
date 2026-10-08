@@ -160,10 +160,12 @@ function validateSegment(
   const smallField = isSmallField(registrations.length);
   // Show (Cuartetos, Grupos...): no hay grupos de calentamiento, así que no
   // se aplica NINGUNA regla de grupo. La única restricción es que cada
-  // grupo/club solo puede elegirse en UN slot del segmento (siempre que haya
-  // grupos de sobra para cubrir todos los slots; si no, sería imposible
-  // completar el roster).
-  const uniquePerTeam = showMode && registrations.length >= slots.length;
+  // grupo/club solo puede elegirse en UN slot técnico y en UN slot de
+  // Componentes (puede repetirse entre técnico y componentes). Solo se exige
+  // si hay grupos de sobra para cubrir los slots de cada tipo; si no, sería
+  // imposible completar el roster.
+  const uniquePerTeam =
+    showMode && registrations.length >= Math.max(technicalSlots.length, componentSlots.length);
   const hasEnoughGroupsForRule = groupNums.length > 2 && !smallField && !showMode;
 
   const techSkaterCounts: Record<string, number> = {};
@@ -196,10 +198,6 @@ function validateSegment(
   const repeatedTechSkater = Object.values(techSkaterCounts).some((c) => c > maxTechRepeats);
   const repeatedCompSkater =
     (smallField || uniquePerTeam) && Object.values(compSkaterCounts).some((c) => c > 1);
-  // Show: el mismo grupo no puede estar ni una vez en técnicos y otra en
-  // componentes (un solo slot por grupo en todo el segmento).
-  const repeatedAcrossTypes =
-    uniquePerTeam && Object.keys(techSkaterCounts).some((id) => compSkaterCounts[id]);
 
   const totalSlots = slots.length;
   const filledCount = slots.filter((s) => Boolean(picks[s.id])).length;
@@ -212,10 +210,6 @@ function validateSegment(
     errorMessage = en
       ? `${seg}: ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"} left to fill`
       : `${seg}: faltan por rellenar ${missingSlots} ${missingSlots === 1 ? "slot" : "slots"}`;
-  } else if (uniquePerTeam && (repeatedTechSkater || repeatedCompSkater || repeatedAcrossTypes)) {
-    errorMessage = en
-      ? `${seg}: each skater can only be picked in one slot`
-      : `${seg}: cada patinadora solo puede elegirse en un slot`;
   } else if (repeatedTechSkater) {
     errorMessage = smallField
       ? en
@@ -246,7 +240,6 @@ function validateSegment(
     missingSlots === 0 &&
     !repeatedTechSkater &&
     !repeatedCompSkater &&
-    !repeatedAcrossTypes &&
     !exceedsTopTech &&
     !exceedsSecondTech &&
     !exceedsCompGroup;
