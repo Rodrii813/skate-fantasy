@@ -502,36 +502,54 @@ export async function POST(req: Request) {
         )
     );
 
-    // Estado: parcial hasta que todos los segmentos del evento tengan resultados
-    if (event.status !== "FINISHED") {
-      const scoredSegs = await prisma.elementScore.findMany({
-        where: { segment: { eventId } },
-        select: { segmentId: true },
-        distinct: ["segmentId"],
-      });
-      const allDone =
-        event.segments.length > 0 && scoredSegs.length >= event.segments.length;
+    // Estado: parcial hasta que CADA segmento tenga resultados de todos los
+    // patinadores inscritos. Así se pueden subir las actas sueltas (una por
+    // patinador/grupo, según van saliendo) sin que el evento se dé por
+    // terminado ni se puntúen las predicciones con una clasificación a medias.
+    const wasFinished = event.status === "FINISHED";
+    const scoredPairs = await prisma.elementScore.findMany({
+      where: { segment: { eventId } },
+      select: { segmentId: true, registrationId: true },
+      distinct: ["segmentId", "registrationId"],
+    });
+    const scoredPerSegment = new Map<string, number>();
+    for (const p of scoredPairs) {
+      scoredPerSegment.set(p.segmentId, (scoredPerSegment.get(p.segmentId) ?? 0) + 1);
+    }
+    const allDone =
+      event.segments.length > 0 &&
+      event.registrations.length > 0 &&
+      event.segments.every(
+        (sg) => (scoredPerSegment.get(sg.id) ?? 0) >= event.registrations.length
+      );
+
+    if (!wasFinished) {
       await prisma.event.update({
         where: { id: eventId },
         data: { status: allDone ? "FINISHED" : "RESULTS_IN" },
       });
-      // Con el evento completo, el finalRank ya es el definitivo: puntúa las predicciones
-      if (allDone) {
-        try {
-          await scoreEventPredictions(eventId);
-        } catch (e) {
-          console.error("Error puntuando predicciones:", e);
-        }
-        // Aviso push a quien participó en el evento (no bloquea ni falla la subida)
-        try {
-          await pushToEventParticipants(eventId, {
-            title: "Resultados disponibles",
-            body: `${event.name}: ya puedes ver los resultados y tu clasificación.`,
-            url: `/competitions/${event.competitionId}`,
-          });
-        } catch (e) {
-          console.error("Error enviando notificaciones:", e);
-        }
+    }
+
+    // Con el evento completo el finalRank ya es el definitivo: puntúa las
+    // predicciones (también al re-subir un acta corregida de un evento ya
+    // terminado, para que los puntos no queden desfasados).
+    if (allDone || wasFinished) {
+      try {
+        await scoreEventPredictions(eventId);
+      } catch (e) {
+        console.error("Error puntuando predicciones:", e);
+      }
+    }
+    // Aviso push solo la primera vez que el evento pasa a terminado
+    if (allDone && !wasFinished) {
+      try {
+        await pushToEventParticipants(eventId, {
+          title: "Resultados disponibles",
+          body: `${event.name}: ya puedes ver los resultados y tu clasificación.`,
+          url: `/competitions/${event.competitionId}`,
+        });
+      } catch (e) {
+        console.error("Error enviando notificaciones:", e);
       }
     }
 
