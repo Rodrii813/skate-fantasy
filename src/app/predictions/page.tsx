@@ -5,6 +5,7 @@ import Link from "next/link";
 import PredictionForm from "./PredictionForm";
 import { formatSkaterName, isPairDiscipline } from "@/lib/skaterName";
 import { firstSegmentEffectiveLocksAt, getPredictionsStatus } from "@/lib/segments";
+import PaginatedPredictionRanking from "./PaginatedPredictionRanking";
 import { computeEventPredictionLeaderboard, computeCompetitionPredictionLeaderboard } from "@/lib/scoring";
 import { getLocale } from "@/lib/i18n/getLocale";
 import { getDictionary } from "@/lib/i18n/dictionary";
@@ -501,40 +502,12 @@ export default async function PredictionsPage({
                       );
                     }
                     return (
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-left text-sm">
-                          <thead>
-                            <tr className="bg-slate-800/60 text-slate-400 text-xs uppercase font-semibold border-b border-slate-800">
-                              <th className="py-2.5 px-3 w-16">Rank</th>
-                              <th className="py-2.5 px-3">{t.user}</th>
-                              {rankTab === "competition" && (
-                                <th className="py-2.5 px-3 text-center">{t.events}</th>
-                              )}
-                              <th className="py-2.5 px-3 text-right font-bold text-white">{t.points}</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-800/70">
-                            {ranking.map((row, index) => (
-                              <tr key={row.userId} className="hover:bg-slate-800/30 transition font-mono">
-                                <td className="py-2.5 px-3 font-bold text-slate-400">
-                                  {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `#${index + 1}`}
-                                </td>
-                                <td className="py-2.5 px-3 font-sans font-semibold text-slate-200">
-                                  {row.userName}
-                                </td>
-                                {rankTab === "competition" && (
-                                  <td className="py-2.5 px-3 text-center text-slate-400 font-sans text-xs">
-                                    {row.eventsPlayed}
-                                  </td>
-                                )}
-                                <td className="py-2.5 px-3 text-right font-bold text-blue-400">
-                                  {row.total} {t.pointsSuffix}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
+                      <PaginatedPredictionRanking
+                        key={rankTab}
+                        rows={ranking}
+                        showEvents={rankTab === "competition"}
+                        labels={{ user: t.user, events: t.events, points: t.points, pointsSuffix: t.pointsSuffix }}
+                      />
                     );
                   })()}
                 </div>
