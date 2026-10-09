@@ -75,7 +75,7 @@ function parseRowRemainder(
   const tokens = rem.trim().split(/\s+/);
   const last = tokens.pop();
   if (!last) return null;
-  const jq = last.match(new RegExp(`^(${JT}*?)(-?\\d\\.\\d\\d)?([%+*!]*)$`));
+  const jq = last.match(new RegExp(`^(${JT}*?)(-?\\d\\.\\d\\d)?([%+*!H]*)$`));
   if (!jq) return null;
   const judges = parseJudgeString(jq[1]);
   if (!judges) return null;
