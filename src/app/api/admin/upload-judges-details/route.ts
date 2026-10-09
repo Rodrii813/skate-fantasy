@@ -217,6 +217,8 @@ export async function POST(req: Request) {
     const file = formData.get("file") as File;
     const eventId = formData.get("eventId") as string;
     const segmentName = (formData.get("segmentName") as string) || "";
+    // Última acta del segmento: los inscritos sin resultado se dan por ausentes
+    const markAbsent = formData.get("markAbsent") === "true";
 
     if (!file || !eventId) {
       return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
@@ -512,15 +514,41 @@ export async function POST(req: Request) {
       select: { segmentId: true, registrationId: true },
       distinct: ["segmentId", "registrationId"],
     });
-    const scoredPerSegment = new Map<string, number>();
+    const scoredBySegment = new Map<string, Set<string>>();
     for (const p of scoredPairs) {
-      scoredPerSegment.set(p.segmentId, (scoredPerSegment.get(p.segmentId) ?? 0) + 1);
+      if (!scoredBySegment.has(p.segmentId)) scoredBySegment.set(p.segmentId, new Set());
+      scoredBySegment.get(p.segmentId)!.add(p.registrationId);
     }
+
+    // Ausentes (no salieron a pista): al marcar "última acta", los inscritos
+    // sin resultado en este segmento pasan a withdrawn y dejan de contar para
+    // dar el evento por completo. Quien tenga resultados deja de estar ausente.
+    const regsNow = await prisma.registration.findMany({
+      where: { eventId },
+      select: { id: true, withdrawn: true },
+    });
+    const scoredThisSeg = scoredBySegment.get(segment.id) ?? new Set<string>();
+    const anyScored = new Set(scoredPairs.map((p: { registrationId: string }) => p.registrationId));
+    const toWithdraw = markAbsent
+      ? regsNow.filter((r: { id: string; withdrawn: boolean }) => !scoredThisSeg.has(r.id) && !r.withdrawn).map((r: { id: string }) => r.id)
+      : [];
+    const toRestore = regsNow
+      .filter((r: { id: string; withdrawn: boolean }) => r.withdrawn && anyScored.has(r.id))
+      .map((r: { id: string }) => r.id);
+    if (toWithdraw.length > 0) {
+      await prisma.registration.updateMany({ where: { id: { in: toWithdraw } }, data: { withdrawn: true } });
+    }
+    if (toRestore.length > 0) {
+      await prisma.registration.updateMany({ where: { id: { in: toRestore } }, data: { withdrawn: false } });
+    }
+    const required = regsNow
+      .filter((r: { id: string; withdrawn: boolean }) => (r.withdrawn ? toRestore.includes(r.id) : true) && !toWithdraw.includes(r.id))
+      .map((r: { id: string }) => r.id);
     const allDone =
       event.segments.length > 0 &&
-      event.registrations.length > 0 &&
-      event.segments.every(
-        (sg) => (scoredPerSegment.get(sg.id) ?? 0) >= event.registrations.length
+      required.length > 0 &&
+      event.segments.every((sg: { id: string }) =>
+        required.every((id: string) => scoredBySegment.get(sg.id)?.has(id))
       );
 
     if (!wasFinished) {
@@ -558,6 +586,7 @@ export async function POST(req: Request) {
       skatersParsed: parsedResults.length,
       matchedAndScored,
       registrationsInEvent: event.registrations.length,
+      absentMarked: toWithdraw.length,
       segment: segment.name,
       unmatchedNames,
       registeredNames: event.registrations.map(

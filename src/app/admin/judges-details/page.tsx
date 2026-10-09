@@ -8,6 +8,7 @@ export default function JudgesDetailsUploadPage() {
   const [events, setEvents] = useState<any[]>([]);
   const [selectedEventId, setSelectedEventId] = useState("");
   const [segmentName, setSegmentName] = useState("Long Program");
+  const [markAbsent, setMarkAbsent] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -34,6 +35,7 @@ export default function JudgesDetailsUploadPage() {
     formData.append("file", file);
     formData.append("eventId", selectedEventId);
     formData.append("segmentName", segmentName);
+    formData.append("markAbsent", markAbsent ? "true" : "false");
 
     try {
       const res = await fetch("/api/admin/upload-judges-details", {
@@ -111,6 +113,19 @@ export default function JudgesDetailsUploadPage() {
               required
             />
           </div>
+
+          <label className="flex items-start gap-2 text-xs text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={markAbsent}
+              onChange={(e) => setMarkAbsent(e.target.checked)}
+              className="mt-0.5"
+            />
+            <span>
+              Es la <b>última acta</b> de este segmento: las inscritas que no aparecen se marcan como
+              ausentes (no salieron) y no impiden cerrar el evento.
+            </span>
+          </label>
 
           <button
             type="submit"

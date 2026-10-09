@@ -315,6 +315,7 @@ model Registration {
   segment2Score Float?         // Nota del segundo segmento (Free / Free Dance)
   totalScore    Float?         // Suma total oficial
   finalRank     Int?           // Puesto final (1º, 2º, 3º...)
+  withdrawn     Boolean        @default(false) // No salió a pista (ausente): no cuenta para dar el evento por completo
 
   // TES/PCS/Deducciones OFICIALES de cada segmento, tal cual los calcula el
   // panel de jueces (no reconstruidos a partir de los slots de Fantasy, que
