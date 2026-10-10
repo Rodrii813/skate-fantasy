@@ -354,6 +354,7 @@ export default async function PredictionsPage({
                   </div>
                 ) : (
                   <PredictionForm
+                    key={activeEvent.id}
                     eventId={activeEvent.id}
                     isLocked={isLocked}
                     skaters={activeEvent.registrations.map((r) => r.skater)}
