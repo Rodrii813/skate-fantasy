@@ -287,11 +287,23 @@ export async function POST(req: Request) {
     }
 
     // Resuelve el segmento real por nombre (Short/Long), no siempre el primero
-    const segment = segmentName
+    const segmentsByOrder = [...event.segments].sort(
+      (a: { order: number }, b: { order: number }) => a.order - b.order
+    );
+    let segment = segmentName
       ? event.segments.find(
-          (s) => s.name.trim().toLowerCase() === segmentName.trim().toLowerCase()
+          (s: { name: string }) => s.name.trim().toLowerCase() === segmentName.trim().toLowerCase()
         )
       : event.segments[0];
+    // El desplegable del admin solo ofrece "Short Program" / "Long Program",
+    // pero hay pruebas cuyos segmentos se llaman distinto (p.ej. Style Dance /
+    // Free Dance). Si no hay coincidencia exacta, "Short" = primer segmento y
+    // "Long" = último (con un solo segmento, ambos son ese).
+    if (!segment && segmentName && segmentsByOrder.length > 0) {
+      const wanted = segmentName.trim().toLowerCase();
+      if (wanted.includes("short")) segment = segmentsByOrder[0];
+      else if (wanted.includes("long")) segment = segmentsByOrder[segmentsByOrder.length - 1];
+    }
 
     if (!segment) {
       return NextResponse.json(
