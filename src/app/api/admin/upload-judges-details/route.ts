@@ -427,7 +427,17 @@ export async function POST(req: Request) {
       // resultados. Va aparte y dentro de try/catch: si falla o el acta no
       // cuadra, no afecta a ninguna puntuación.
       try {
-        const detail = detailByName.get(cleanStr(rawName));
+        const detailKey = cleanStr(rawName);
+        // El nombre de una pareja puede ocupar 2 líneas en el acta y llegar
+        // cortado del lector principal: si no hay coincidencia exacta, se
+        // acepta la que empiece igual (o al revés).
+        const detail =
+          detailByName.get(detailKey) ??
+          (detailKey.length >= 8
+            ? [...detailByName.entries()].find(
+                ([k]) => k.startsWith(detailKey) || detailKey.startsWith(k)
+              )?.[1]
+            : undefined);
         if (detail) {
           await prisma.segmentDetail.upsert({
             where: {

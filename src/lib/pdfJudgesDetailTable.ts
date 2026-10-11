@@ -60,7 +60,7 @@ function parseJudgeString(s: string): number[] | null {
 
 function splitNameCode(raw: string): { name: string; code: string } {
   const m = raw.match(
-    /^(.*?(?:Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
+    /^(.*?(?:Cluster Sequence|Lift Stationary|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
   );
   if (m) return { name: m[1].trim(), code: m[2].trim() };
   const m2 = raw.match(/^(.*[a-z])([A-Z0-9][A-Za-z0-9]*)$/);
@@ -100,8 +100,35 @@ function parseRowRemainder(
 }
 
 function parseChunk(chunk: string): SkaterDetailTable | null {
-  const lines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
-  const name = lines[0];
+  const rawLines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+  // Parejas de Danza: el nombre puede ocupar 2 líneas ("MARTIN VERDEJO -
+  // ANTONELLA" / "VIVEROS"), y cada elemento de pareja viene partido en varias
+  // líneas ("Couple (M)" + código y notas en la siguiente) con líneas de
+  // "features" (YNYYY (DE-BM-JU), N(e) N(e)...). Se recompone cada fila en una
+  // sola línea y se descartan las líneas auxiliares; en el resto de acta esto
+  // no se activa porque esas líneas no existen.
+  let name = rawLines[0];
+  let start = 1;
+  if (name && rawLines[1] && /^[A-ZÁÉÍÓÚÑÜ'][A-ZÁÉÍÓÚÑÜ' -]*$/.test(rawLines[1]) && !/^RANK\b/.test(rawLines[1])) {
+    name = `${name} ${rawLines[1]}`;
+    start = 2;
+  }
+  const lines: string[] = [name];
+  let joinNext = false;
+  for (const l of rawLines.slice(start)) {
+    if (/^[YN]{2,}\s*\(.*\)$/.test(l) || /^(N\([a-z]+\)\s*)+$/.test(l)) continue;
+    if (/^Couple \([ML]\)$/.test(l)) {
+      joinNext = true;
+      continue;
+    }
+    if (joinNext && lines.length > 1) {
+      lines[lines.length - 1] += l;
+      joinNext = false;
+      continue;
+    }
+    joinNext = false;
+    lines.push(l);
+  }
   if (!name) return null;
 
   // Components + nº de jueces
