@@ -60,7 +60,7 @@ function parseJudgeString(s: string): number[] | null {
 
 function splitNameCode(raw: string): { name: string; code: string } {
   const m = raw.match(
-    /^(.*?(?:Cluster Sequence|Lift Stationary|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
+    /^(.*?(?:Throw \d [A-Za-z]+|Cluster Sequence|Lift Stationary|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
   );
   if (m) return { name: m[1].trim(), code: m[2].trim() };
   const m2 = raw.match(/^(.*[a-z])([A-Z0-9][A-Za-z0-9]*)$/);
