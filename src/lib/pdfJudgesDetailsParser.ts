@@ -122,7 +122,7 @@ export interface SkaterDetailedResult {
     // ya vistas; si alguna vez sale distinto de 0, es la señal de que el
     // acta trae una variante de Danza aún no mapeada.
     danceStepTotal: number;
-    // Parejas: a diferencia de comboJump/soloJump/axel/soloOrAxel de arriba
+    // Parejas (solos + axel + combos side-by-side): a diferencia de comboJump/soloJump/axel/soloOrAxel de arriba
     // (pensados para el "mejor de la patinadora" de Libre), en Parejas TODOS
     // los saltos side-by-side (los que no son Twist ni Throw) se suman en un
     // único pack, igual que el resto de elementos de esta modalidad.
@@ -502,11 +502,11 @@ export function parseJudgesDetailsText(pdfText: string): SkaterDetailedResult[] 
     skaterResult.slotScores.noHoldSequenceTotal = sum(noHoldSequences);
     skaterResult.slotScores.choreoStopTotal = sum(choreoStops);
     skaterResult.slotScores.danceStepTotal = sum(danceSteps);
-    // Parejas: TODOS los saltos side-by-side (los que caen bajo SOLO_JUMP o
-    // AXEL por no ser Twist ni Throw) se suman en un único pack — a
+    // Parejas: TODOS los saltos side-by-side (los que caen bajo SOLO_JUMP,
+    // AXEL o COMBO_JUMP por no ser Twist ni Throw) se suman en un único pack — a
     // diferencia de Libre, donde estos mismos buckets se usan para el
     // "mejor salto" (ver comboJump/soloJump/axel/soloOrAxel de arriba).
-    skaterResult.slotScores.sideBySideJumpTotal = sum([...solos, ...axels]);
+    skaterResult.slotScores.sideBySideJumpTotal = sum([...solos, ...axels, ...combos]);
     // Solo Danza / Pareja Danza Style
     skaterResult.slotScores.patternSequenceTotal = sum(patternSequences);
     skaterResult.slotScores.footSequenceTotal = sum(footSequences);
