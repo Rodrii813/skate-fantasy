@@ -60,7 +60,7 @@ function parseJudgeString(s: string): number[] | null {
 
 function splitNameCode(raw: string): { name: string; code: string } {
   const m = raw.match(
-    /^(.*?(?:Throw \d [A-Za-z]+|Cluster Sequence|Lift Stationary|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
+    /^(.*?(?:Throw \d [A-Za-z]+|Traveling Couples \([ML]\)|No Hold Sequence \([ML]\)|Cluster Sequence|Lift (?:Stationary|Rotational|Combo)|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
   );
   if (m) return { name: m[1].trim(), code: m[2].trim() };
   const m2 = raw.match(/^(.*[a-z])([A-Z0-9][A-Za-z0-9]*)$/);
@@ -100,7 +100,11 @@ function parseRowRemainder(
 }
 
 function parseChunk(chunk: string): SkaterDetailTable | null {
-  const rawLines = chunk.split("\n").map((l) => l.trim()).filter(Boolean);
+  const rawLines = chunk
+    .replace(/(\S)(Judges Total Program Component)/g, "$1\n$2")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
   // Parejas de Danza: el nombre puede ocupar 2 líneas ("MARTIN VERDEJO -
   // ANTONELLA" / "VIVEROS"), y cada elemento de pareja viene partido en varias
   // líneas ("Couple (M)" + código y notas en la siguiente) con líneas de
