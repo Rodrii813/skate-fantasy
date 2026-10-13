@@ -59,6 +59,14 @@ function parseJudgeString(s: string): number[] | null {
 }
 
 function splitNameCode(raw: string): { name: string; code: string } {
+  // Pattern Sequence (Solo Danza / Pareja Danza): el nombre es una danza
+  // ("Italian Foxtrot Section 2", "No Level Pattern Dance"...) y el código va
+  // pegado al final ("...Section 2IF2L2", "...Pattern DanceNLPD"). Se separa
+  // el último bloque de mayúsculas/dígitos tras la parte del nombre.
+  const pat = raw.match(
+    /^(.*?(?:Section \d|No Level Traveling|Pattern Dance|Foxtrot|Tango|Waltz|Blues|Rhumba|Fiesta|Samba|Polka|March|Quickstep|Kilian|Rocker|Dance))\s*([A-Z][A-Z0-9a-z]+)$/
+  );
+  if (pat) return { name: pat[1].trim(), code: pat[2].trim() };
   const m = raw.match(
     /^(.*?(?:Throw \d [A-Za-z]+|Traveling Couples \([ML]\)|No Hold Sequence \([ML]\)|Cluster Sequence|Lift (?:Stationary|Rotational|Combo)|Stop\/Step seq\.|Axel|Toeloop|Loop|Salchow|Flip|Lutz|Jump|Spin|Level|Step|[Ss]equence|Spiral|Lift|Twist|Throw|Seq|Traveling|Cluster|Wheel|Line|Block|Element|Intersection|Move|Creative|Canon|Stop))(.+)$/
   );
