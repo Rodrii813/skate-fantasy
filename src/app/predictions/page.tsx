@@ -57,11 +57,6 @@ export default async function PredictionsPage({
           discipline: true,
           category: true,
           segments: { select: { id: true, order: true, locksAt: true } },
-          registrations: {
-            include: { skater: true },
-            orderBy: { skater: { lastName: "asc" } },
-          },
-          predictions: true,
         },
       },
     },
@@ -86,8 +81,30 @@ export default async function PredictionsPage({
   // Evento activo: el indicado por la URL si pertenece a la competición
   // elegida, si no el primero de esa competición.
   const selectedEventId = searchParams.event;
-  const activeEvent =
+  const activeEventBase =
     activeCompetition?.events.find((e) => e.id === selectedEventId) || activeCompetition?.events[0];
+
+  // Inscritos y predicciones SOLO del evento activo. Antes la consulta de
+  // arriba cargaba los de TODOS los eventos de TODAS las competiciones en cada
+  // visita (cientos de inscritos con su patinador + todas las predicciones),
+  // y era lo que más CPU de Vercel gastaba. Ahora el selector solo necesita
+  // los datos ligeros del evento, y lo pesado se pide para uno solo.
+  const [activeRegistrations, activePredictions] = activeEventBase
+    ? await Promise.all([
+        prisma.registration.findMany({
+          where: { eventId: activeEventBase.id },
+          include: { skater: true },
+          orderBy: { skater: { lastName: "asc" } },
+        }),
+        prisma.prediction.findMany({
+          where: { eventId: activeEventBase.id },
+          select: { rank1SkaterId: true, rank2SkaterId: true, rank3SkaterId: true },
+        }),
+      ])
+    : [[], []];
+  const activeEvent = activeEventBase
+    ? { ...activeEventBase, registrations: activeRegistrations, predictions: activePredictions }
+    : undefined;
 
   // Eventos de la competición activa agrupados por disciplina, en el orden
   // en que aparece cada disciplina por primera vez. Se calcula aquí (en vez
