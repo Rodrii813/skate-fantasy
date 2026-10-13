@@ -1,0 +1,119 @@
+// Rollart Scores — base de datos APARTE de Fantasy (otro proyecto de Neon).
+// Guarda el histórico de competiciones, resultados, resultados detallados
+// (TES/PCS, elementos y notas de jueces) y a los patinadores como PERSONAS
+// únicas entre competiciones.
+//
+// No forma parte del build de la web: se genera su propio cliente en
+// scores/generated (ver scores/README.md) y usa SCORES_DATABASE_URL.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "./generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("SCORES_DATABASE_URL")
+}
+
+model Competition {
+  id        String   @id @default(cuid())
+  name      String
+  season    String // "2026"
+  location  String?
+  startDate DateTime?
+  endDate   DateTime?
+  events    Event[]
+
+  @@unique([season, name])
+}
+
+// Una prueba dentro de una competición: "Free Skating Men Seniores",
+// "Solo Dance Ladies Juniores"... (nombre tal cual sale en el acta).
+model Event {
+  id            String      @id @default(cuid())
+  competitionId String
+  competition   Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  name          String
+  discipline    String? // "Free Skating", "Solo Dance", "Pairs", "Couple Dance"...
+  gender        String? // "MEN" | "LADIES" | null
+  category      String? // "Seniores", "Juniores"...
+  segments      Segment[]
+  entries       Entry[]
+
+  @@unique([competitionId, name])
+  @@index([competitionId])
+}
+
+model Segment {
+  id       String          @id @default(cuid())
+  eventId  String
+  event    Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  name     String // "Short Program", "Free Program", "Style Dance"...
+  order    Int // 1 = primer segmento, 2 = segundo
+  date     DateTime?
+  results  SegmentResult[]
+
+  @@unique([eventId, name])
+}
+
+// Persona = patinador (o pareja) único, con independencia de categoría,
+// disciplina o competición. normName = nombre sin acentos en minúsculas,
+// que es lo que se usa para reconocerlo entre actas.
+model Person {
+  id       String        @id @default(cuid())
+  name     String // nombre para mostrar (con acentos si alguna acta los trae)
+  normName String
+  country  String? // IOC; null si solo se ha visto en actas por clubes
+  gender   String?
+  aliases  PersonAlias[]
+  entries  Entry[]
+
+  @@index([normName])
+}
+
+// Para unir a mano dos grafías de la misma persona (o separar homónimos).
+model PersonAlias {
+  id       String @id @default(cuid())
+  personId String
+  person   Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+  alias    String @unique // normName alternativo
+
+  @@index([personId])
+}
+
+// Participación de una persona en una prueba (clasificación final).
+model Entry {
+  id        String          @id @default(cuid())
+  eventId   String
+  event     Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  personId  String
+  person    Person          @relation(fields: [personId], references: [id])
+  country   String? // país con el que compitió (actas por naciones)
+  club      String? // club/federación (actas por clubes)
+  finalRank Int?
+  points    Float?
+  results   SegmentResult[]
+
+  @@unique([eventId, personId])
+  @@index([personId])
+}
+
+model SegmentResult {
+  id        String  @id @default(cuid())
+  entryId   String
+  entry     Entry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  segmentId String
+  segment   Segment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+  rank      Int?
+  tes       Float
+  pcs       Float
+  ded       Float
+  total     Float
+  // Resultado detallado completo (elementos, notas de jueces, componentes),
+  // mismo formato que el desplegable de Fantasy (SkaterDetailTable).
+  detail    Json
+
+  @@unique([entryId, segmentId])
+  @@index([segmentId])
+}
