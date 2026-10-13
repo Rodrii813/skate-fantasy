@@ -67,7 +67,8 @@ model Person {
   country  String? // IOC; null si solo se ha visto en actas por clubes
   gender   String?
   aliases  PersonAlias[]
-  entries  Entry[]
+  entries  Entry[]         @relation("EntryPerson")
+  partnerEntries Entry[]   @relation("EntryPartner")
 
   @@index([normName])
 }
@@ -88,7 +89,11 @@ model Entry {
   eventId   String
   event     Event           @relation(fields: [eventId], references: [id], onDelete: Cascade)
   personId  String
-  person    Person          @relation(fields: [personId], references: [id])
+  person    Person          @relation("EntryPerson", fields: [personId], references: [id])
+  // Parejas (Pairs / Couple Dance): la segunda persona del equipo. El perfil de
+  // cada patinador junta las participaciones donde sale como persona o como pareja.
+  partnerId String?
+  partner   Person?         @relation("EntryPartner", fields: [partnerId], references: [id])
   country   String? // país con el que compitió (actas por naciones)
   club      String? // club/federación (actas por clubes)
   finalRank Int?
@@ -97,6 +102,7 @@ model Entry {
 
   @@unique([eventId, personId])
   @@index([personId])
+  @@index([partnerId])
 }
 
 model SegmentResult {

@@ -7,7 +7,7 @@ const clean = (s) => s.replace(/\s+/g, " ").trim();
 
 export function parseHeader(text) {
   const lines = text.split("\n").map((l) => l.trim());
-  const idx = lines.findIndex((l) => /^RESULTS DETAILS$/i.test(l));
+  const idx = lines.findIndex((l) => /^RESULTS DETAILS\b/i.test(l));
   if (idx < 0) return null;
   const head = lines.slice(Math.max(0, idx - 4), idx).filter(Boolean);
   // línea 1: "<lugar> - dd/mm/aaaa"; línea 2: "<prueba> - <segmento>"; línea 3: título libre
@@ -30,9 +30,10 @@ export function parseHeader(text) {
 export function deriveEventInfo(eventName) {
   const n = eventName;
   const gender = /\b(Men|Male)\b/i.test(n) ? "MEN" : /\b(Ladies|Women|Female)\b/i.test(n) ? "LADIES" : null;
-  const cat = n.match(/\b(Seniores|Juniores|Seniors?|Juniors?|Youth|Juvenil(?:es)?|Infantil(?:es)?|Cadetes?|Prejuvenil(?:es)?|Benjamin(?:es)?|Alevin(?:es)?|Master|Adult)\b/i);
+  const cat = n.match(/\b(Seniores|Juniores|Seniors?|Juniors?|Youth|Cadets?|Juvenil(?:es)?|Infantil(?:es)?|Cadetes?|Prejuvenil(?:es)?|Benjamin(?:es)?|Alevin(?:es)?|Master|Adult)\b/i);
   let discipline = null;
-  if (/^Free Skating/i.test(n)) discipline = "Free Skating";
+  if (/^Inline/i.test(n)) discipline = "Inline Free Skating";
+  else if (/^Free Skating/i.test(n)) discipline = "Free Skating";
   else if (/Solo Dance/i.test(n)) discipline = "Solo Dance";
   else if (/Couple Dance|Pair Dance|Dance Couple/i.test(n)) discipline = "Couple Dance";
   else if (/Pairs/i.test(n)) discipline = "Pairs";
@@ -52,7 +53,7 @@ const escapeRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 // las tablas de detalle) para separar bien nación/club, nombre y puesto.
 export function parseResultsTable(text, names) {
   const lines = text.split("\n").map((l) => l.trim());
-  const start = lines.findIndex((l) => /^RESULTS DETAILS$/i.test(l));
+  const start = lines.findIndex((l) => /^RESULTS DETAILS\b/i.test(l));
   if (start < 0) return new Map();
   let end = lines.findIndex((l, i) => i > start && /^TECHNICAL PANEL/i.test(l));
   if (end < 0) end = lines.length;
@@ -69,8 +70,9 @@ export function parseResultsTable(text, names) {
     if (!m) continue;
     const rest = clean(m[1]);
     for (const name of names) {
-      const nm = clean(name);
-      const r = rest.match(new RegExp("^(.*?)" + escapeRe(nm) + "\\s*(\\d+)$"));
+      // Parejas: en el acta el nombre va "A B" en dos líneas, en el detalle "A - B".
+      const nm = clean(name).replace(/\s+-\s*/g, " ");
+      const r = rest.match(new RegExp("^(.*?)" + escapeRe(nm).replace(/ /g, "\\s+(?:-\\s*)?") + "\\s*(\\d+)\\s*R?$"));
       if (r) {
         const origin = clean(r[1]);
         const isNation = /^[A-Z]{3}$/.test(origin);
@@ -108,6 +110,18 @@ export function parseFinalResult(text) {
     out.push({ rank: r.rank, points: Number(m[2]), name: clean(m[3]), origin: clean(m[1]) });
   }
   return out;
+}
+
+// Clave para casar el nombre de la clasificación final con el del detalle
+// (parejas: "A - B" en uno y "A B" en el otro).
+export function nameKey(n) {
+  return normalizeName(n).replace(/\s+-\s*/g, " ").replace(/\s+/g, " ").trim();
+}
+
+// "A - B" -> ["A", "B"]; un nombre sin " - " es una sola persona.
+export function splitTeam(name) {
+  const parts = name.split(/\s+-\s*/).map((x) => x.trim()).filter(Boolean);
+  return parts.length === 2 ? parts : [name.trim()];
 }
 
 export { normalizeName };

@@ -10,21 +10,59 @@ import fs from "node:fs";
 import path from "node:path";
 import { extractText } from "unpdf";
 import { parseJudgesDetailTables } from "../src/lib/pdfJudgesDetailTable.ts";
-import { parseHeader, deriveEventInfo, segmentOrder, parseResultsTable, parseFinalResult } from "./pdfMeta.mjs";
+import { parseHeader, deriveEventInfo, segmentOrder, parseResultsTable, parseFinalResult, nameKey, splitTeam } from "./pdfMeta.mjs";
 import { resolvePerson } from "./personMatch.mjs";
 import { normalizeName } from "../src/lib/normalizeName.ts";
 
 const argv = process.argv.slice(2);
-const files = [];
+const inputs = [];
 const opt = {};
 for (let i = 0; i < argv.length; i++) {
   const a = argv[i];
   if (a === "--apply") opt.apply = true;
   else if (a.startsWith("--")) opt[a.slice(2)] = argv[++i];
-  else files.push(a);
+  else inputs.push(a.replace(/["\\\s]+$/, ""));
 }
-if (!files.length || !opt.competition || !opt.season) {
-  console.error('Uso: import-pdf.mjs <pdf...> --competition "Nombre" --season 2026 [--apply]');
+if (!inputs.length) {
+  console.error('Uso: import-pdf.mjs <carpeta-o-pdfs...> [--competition "Nombre"] [--season 2026] [--apply]');
+  console.error("Si pasas UNA carpeta, su nombre se usa como nombre de la competición.");
+  process.exit(1);
+}
+
+// Cadena de conexión: variable de entorno o, si no, scores/.env (SCORES_DATABASE_URL=...)
+if (!process.env.SCORES_DATABASE_URL) {
+  try {
+    const envFile = fs.readFileSync(new URL("./.env", import.meta.url), "utf8");
+    for (const line of envFile.split(/\r?\n/)) {
+      const m = line.match(/^\s*([A-Z_]+)\s*=\s*"?([^"\r\n]*)"?\s*$/);
+      if (m && !process.env[m[1]]) process.env[m[1]] = m[2];
+    }
+  } catch {}
+}
+
+// Carpetas -> sus PDFs, también los que estén dentro de subcarpetas (orden alfabético).
+function findPdfs(dir) {
+  const out = [];
+  for (const e of fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory()) out.push(...findPdfs(full));
+    else if (/\.pdf$/i.test(e.name)) out.push(full);
+  }
+  return out;
+}
+const files = [];
+for (const input of inputs) {
+  if (fs.existsSync(input) && fs.statSync(input).isDirectory()) {
+    if (!opt.competition && inputs.length === 1) opt.competition = path.basename(path.resolve(input));
+    files.push(...findPdfs(input));
+  } else files.push(input);
+}
+if (!files.length) {
+  console.error("No he encontrado ningún PDF.");
+  process.exit(1);
+}
+if (!opt.competition) {
+  console.error('Falta el nombre de la competición: pasa una carpeta o usa --competition "Nombre".');
   process.exit(1);
 }
 
@@ -57,6 +95,12 @@ async function apply(parsed) {
   const { PrismaClient } = await import("./generated/client/index.js");
   const db = new PrismaClient();
   const people = { matched: 0, created: 0, homonym: [], ambiguous: [] };
+  const countPerson = (how, name) => {
+    if (how === "matched") people.matched++;
+    else if (how === "created") people.created++;
+    else if (how === "homonym") people.homonym.push(name);
+    else if (how === "ambiguous") people.ambiguous.push(name);
+  };
   try {
     for (const p of parsed) {
       const { header, details, table, final } = p;
@@ -83,17 +127,23 @@ async function apply(parsed) {
         create: { eventId: event.id, name: header.segmentName, order: segmentOrder(header.segmentName), date: header.date },
         update: { date: header.date },
       });
-      const finalByName = new Map(final.map((f) => [normalizeName(f.name), f]));
+      const finalByName = new Map(final.map((f) => [nameKey(f.name), f]));
 
       for (const d of details) {
         const t = table.get(d.name) || {};
-        const { person, how } = await resolvePerson(db, d.name, t.country || null);
-        if (how === "matched") people.matched++;
-        else if (how === "created") people.created++;
-        else if (how === "homonym") people.homonym.push(d.name);
-        else if (how === "ambiguous") people.ambiguous.push(d.name);
-        const f = finalByName.get(normalizeName(d.name));
+        // Parejas: "A - B" son dos personas; la primera es la principal del Entry.
+        const [nameA, nameB] = splitTeam(d.name);
+        const { person, how } = await resolvePerson(db, nameA, t.country || null);
+        let partner = null;
+        if (nameB) {
+          const r2 = await resolvePerson(db, nameB, t.country || null);
+          partner = r2.person;
+          countPerson(r2.how, nameB);
+        }
+        countPerson(how, nameA);
+        const f = finalByName.get(nameKey(d.name));
         const entryData = {
+          partnerId: partner ? partner.id : undefined,
           country: t.country || undefined,
           club: t.club || undefined,
           finalRank: f ? f.rank : undefined,
@@ -122,10 +172,28 @@ async function apply(parsed) {
 }
 
 const parsed = [];
+const skipped = [];
 for (const f of files) {
-  const p = await readPdf(f);
+  let p;
+  try {
+    p = await readPdf(f);
+  } catch (e) {
+    // PDFs que no son actas de "resultados detallados" (inscripciones, horarios,
+    // paneles de jueces...): se saltan sin más.
+    if (/No encuentro la cabecera|No se han podido leer/.test(e.message)) {
+      skipped.push(f);
+      continue;
+    }
+    console.error(`\nERROR en ${path.basename(f)}: ${e.message}`);
+    process.exitCode = 1;
+    continue;
+  }
   parsed.push(p);
   summarize(p);
 }
+if (!parsed.length) process.exit(1);
+if (!opt.season) opt.season = String(parsed[0].header.date?.getUTCFullYear() ?? new Date().getFullYear());
+console.log(`\nCompetición: "${opt.competition}" · temporada ${opt.season} · ${parsed.length} acta(s) con resultados detallados`);
+if (skipped.length) console.log(`Saltados (no son resultados detallados): ${skipped.length}\n   ` + skipped.map((f) => path.relative(process.cwd(), f)).join("\n   "));
 if (opt.apply) await apply(parsed);
 else console.log("\n(Simulación: no se ha escrito nada. Añade --apply para guardar en la base de datos.)");

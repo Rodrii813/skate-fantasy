@@ -121,7 +121,7 @@ function parseChunk(chunk: string): SkaterDetailTable | null {
   // no se activa porque esas líneas no existen.
   let name = rawLines[0];
   let start = 1;
-  if (name && rawLines[1] && /^[A-ZÁÉÍÓÚÑÜ'][A-ZÁÉÍÓÚÑÜ' -]*$/.test(rawLines[1]) && !/^RANK\b/.test(rawLines[1])) {
+  if (name && rawLines[1] && /^-?\p{Lu}[\p{Lu}' .-]*$/u.test(rawLines[1]) && !/^RANK\b/.test(rawLines[1])) {
     name = `${name} ${rawLines[1]}`;
     start = 2;
   }
