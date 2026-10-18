@@ -592,7 +592,7 @@ export function parseShowGroupResults(pdfText: string): TeamShowGroupResult[] {
     // ese marcador y la cabecera en vez de coger solo la última.
     let markerIdx = -1;
     for (let i = prevLines.length - 1; i >= 0; i--) {
-      if (/^Show (Small|Large) Groups$/i.test(prevLines[i])) {
+      if (/^Show (Small|Large|Junior|Senior|Youth|Cadet|Adult|Master)s? Groups$/i.test(prevLines[i])) {
         markerIdx = i;
         break;
       }
