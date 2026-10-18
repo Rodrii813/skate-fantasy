@@ -344,7 +344,7 @@ export async function POST(req: Request) {
 
       const targetName = cleanStr(rawName);
 
-      const matchedReg = event.registrations.find((reg) => {
+      let matchedReg = event.registrations.find((reg) => {
         const fullDirect = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
         const fullInverted = cleanStr(`${reg.skater.lastName} ${reg.skater.firstName}`);
         const lastNameOnly = cleanStr(reg.skater.lastName);
@@ -356,6 +356,18 @@ export async function POST(req: Request) {
           fullDirect.includes(targetName)
         );
       });
+
+      // Equipos (Show/Cuartetos): el acta a veces añade un sufijo al nombre
+      // inscrito ("SKATE CLUB LORRAIN - HYMNIA" frente a "SKATE CLUB LORRAIN").
+      // Solo si lo anterior no ha encontrado nada: se acepta que el nombre del
+      // acta CONTENGA el inscrito, y únicamente si hay una sola coincidencia.
+      if (!matchedReg) {
+        const contained = event.registrations.filter((reg) => {
+          const full = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
+          return full.length >= 6 && targetName.includes(full);
+        });
+        if (contained.length === 1) matchedReg = contained[0];
+      }
 
       if (!matchedReg) {
         unmatchedNames.push(rawName);
