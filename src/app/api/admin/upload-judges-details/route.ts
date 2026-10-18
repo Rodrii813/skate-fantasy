@@ -357,24 +357,30 @@ export async function POST(req: Request) {
         );
       });
 
-      // Equipos (Show/Cuartetos): el acta a veces añade un sufijo al nombre
-      // inscrito ("SKATE CLUB LORRAIN - HYMNIA" frente a "SKATE CLUB LORRAIN").
-      // Solo si lo anterior no ha encontrado nada: se acepta que el nombre del
-      // acta CONTENGA el inscrito, y únicamente si hay una sola coincidencia.
+      // Equipos (Show/Cuartetos): el nombre del acta no siempre es el inscrito.
+      // Casos reales: el acta añade el título del programa ("SKATE CLUB LORRAIN
+      // - HYMNIA") o el inscrito lleva una etiqueta corta añadida para
+      // distinguirlo entre pruebas ("ARTISTIC SKATING CUNIT LRG", "DIVISION LRG",
+      // "... ESP"). Solo se usa si lo anterior no encontró nada, y únicamente
+      // cuando hay UNA sola inscripción compatible.
       if (!matchedReg) {
+        const toks = (v: string) =>
+          v.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim().split(" ").filter(Boolean);
+        const targetToks = toks(rawName);
         const contained = event.registrations.filter((reg) => {
-          let full = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
-          // Registros antiguos de equipo guardaron el país pegado al nombre
-          // ("ARTISTIC SKATING CUNIT ESP"): se compara también sin ese sufijo.
-          const cc = cleanStr(reg.skater.country || "");
-          if (cc && !reg.skater.lastName && full.endsWith(cc) && full.length - cc.length >= 6) {
-            full = full.slice(0, full.length - cc.length);
-          }
+          const full = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
           if (full.length >= 6 && targetName.includes(full)) return true;
-          // Equipos guardados con algo en "apellido" (país, "-"...): vale con el nombre solo.
-          const first = cleanStr(reg.skater.firstName);
-          // (solo si el apellido es vacío o de ≤3 letras: nunca para personas con apellido real)
-          return cleanStr(reg.skater.lastName).length <= 3 && first.length >= 8 && targetName.includes(first);
+          // Sin las últimas 1-2 palabras cortas (≤4 letras: LRG, SML, JUN, ESP...)
+          // el nombre inscrito debe ser el arranque del nombre del acta.
+          const rt = toks(`${reg.skater.firstName} ${reg.skater.lastName}`);
+          for (let k = rt.length; k >= Math.max(1, rt.length - 2); k--) {
+            const dropped = rt.slice(k);
+            const prefix = rt.slice(0, k);
+            if (!dropped.every((t) => t.length <= 4)) break;
+            if (prefix.join("").length < 6) break;
+            if (prefix.every((t, i) => targetToks[i] === t)) return true;
+          }
+          return false;
         });
         if (contained.length === 1) matchedReg = contained[0];
       }
