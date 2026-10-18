@@ -363,7 +363,13 @@ export async function POST(req: Request) {
       // acta CONTENGA el inscrito, y únicamente si hay una sola coincidencia.
       if (!matchedReg) {
         const contained = event.registrations.filter((reg) => {
-          const full = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
+          let full = cleanStr(`${reg.skater.firstName} ${reg.skater.lastName}`);
+          // Registros antiguos de equipo guardaron el país pegado al nombre
+          // ("ARTISTIC SKATING CUNIT ESP"): se compara también sin ese sufijo.
+          const cc = cleanStr(reg.skater.country || "");
+          if (cc && !reg.skater.lastName && full.endsWith(cc) && full.length - cc.length >= 6) {
+            full = full.slice(0, full.length - cc.length);
+          }
           return full.length >= 6 && targetName.includes(full);
         });
         if (contained.length === 1) matchedReg = contained[0];
