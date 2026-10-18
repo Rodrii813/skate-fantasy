@@ -370,7 +370,11 @@ export async function POST(req: Request) {
           if (cc && !reg.skater.lastName && full.endsWith(cc) && full.length - cc.length >= 6) {
             full = full.slice(0, full.length - cc.length);
           }
-          return full.length >= 6 && targetName.includes(full);
+          if (full.length >= 6 && targetName.includes(full)) return true;
+          // Equipos guardados con algo en "apellido" (país, "-"...): vale con el nombre solo.
+          const first = cleanStr(reg.skater.firstName);
+          // (solo si el apellido es vacío o de ≤3 letras: nunca para personas con apellido real)
+          return cleanStr(reg.skater.lastName).length <= 3 && first.length >= 8 && targetName.includes(first);
         });
         if (contained.length === 1) matchedReg = contained[0];
       }
